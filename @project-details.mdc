@@ -1,0 +1,364 @@
+# JPOS (Jones Point of Sale) - Project Details
+
+## Codebase Mapping (2024-06-11)
+
+The entire codebase has been mapped and reviewed as of 2024-06-11. Below is a summary of the architecture, file responsibilities, and data flow:
+
+### Top-Level Structure
+```
+jpos/
+├── index.html                # Main SPA entry point (UI, layout, modals, page containers)
+├── assets/
+│   └── js/
+│       └── main.js           # All frontend logic (SPA, state, API calls, UI updates)
+├── api/                      # All backend PHP endpoints (RESTful, WordPress/WooCommerce integrated)
+│   ├── auth.php              # Login/logout/status (WordPress user system)
+│   ├── products.php          # Product catalog, inventory, categories, tags
+│   ├── checkout.php          # Transaction processing, order creation
+│   ├── orders.php            # Order listing/filtering
+│   ├── reports.php           # Sales analytics, reporting
+│   ├── export-pdf.php        # PDF export for reports
+│   ├── stock.php             # Stock/variation details, updates
+│   ├── sessions.php          # Cash drawer session history
+│   ├── drawer.php            # Cash drawer open/close/status
+│   ├── refund.php            # Returns and refunds
+│   └── settings.php          # Store/receipt configuration
+├── @project-details.mdc      # Full project documentation
+├── @build-log.mdc            # Development roadmap, feature tracking
+```
+
+### Summary Table
+| Area         | File(s)                | Main Responsibilities                                  |
+|--------------|------------------------|--------------------------------------------------------|
+| UI/SPA       | index.html, main.js    | All UI, state, navigation, API calls, rendering        |
+| Auth         | api/auth.php           | Login, logout, session check                           |
+| Products     | api/products.php       | Catalog, variations, categories, tags                  |
+| Checkout     | api/checkout.php       | Cart, order creation, split payments, fees/discounts   |
+| Orders       | api/orders.php         | Order listing, filtering, details                      |
+| Reports      | api/reports.php        | Sales analytics, daily/summary, payment breakdown      |
+| PDF Export   | api/export-pdf.php     | PDF report generation (server/client fallback)         |
+| Stock        | api/stock.php          | Stock/variation details, updates                       |
+| Drawer       | api/drawer.php         | Cash drawer open/close/status, session tracking        |
+| Sessions     | api/sessions.php       | Drawer session history                                 |
+| Refunds      | api/refund.php         | Returns, exchanges, refunds                            |
+| Settings     | api/settings.php       | Store/receipt config                                   |
+| Docs/Log     | @project-details.mdc   | Full documentation, architecture, data flow            |
+|              | @build-log.mdc         | Feature tracking, roadmap                              |
+
+### Architecture Diagram
+
+```mermaid
+flowchart TD
+    subgraph Frontend
+        A[index.html] --> B[main.js]
+        B -->|API Calls| C1[auth.php]
+        B -->|API Calls| C2[products.php]
+        B -->|API Calls| C3[checkout.php]
+        B -->|API Calls| C4[orders.php]
+        B -->|API Calls| C5[reports.php]
+        B -->|API Calls| C6[export-pdf.php]
+        B -->|API Calls| C7[stock.php]
+        B -->|API Calls| C8[drawer.php]
+        B -->|API Calls| C9[sessions.php]
+        B -->|API Calls| C10[refund.php]
+        B -->|API Calls| C11[settings.php]
+    end
+    subgraph Backend
+        C1
+        C2
+        C3
+        C4
+        C5
+        C6
+        C7
+        C8
+        C9
+        C10
+        C11
+    end
+    subgraph Docs
+        D1[@project-details.mdc]
+        D2[@build-log.mdc]
+    end
+```
+
+## Project Overview
+
+**JPOS** is a modern Point of Sale (POS) system built as a web application that integrates with WordPress and WooCommerce. It's designed for retail businesses to handle in-store transactions, inventory management, and sales reporting.
+
+## Architecture & Technology Stack
+
+### Frontend
+- **Single Page Application (SPA)** built with vanilla JavaScript
+- **UI Framework**: Tailwind CSS for styling
+- **Charts**: Chart.js for data visualization
+- **Icons**: Font Awesome
+- **No build tools** - everything is served directly from the browser
+
+### Backend
+- **PHP** with WordPress/WooCommerce integration
+- **Database**: MySQL (via WordPress)
+- **Authentication**: WordPress user system with WooCommerce permissions
+- **File Structure**: RESTful API endpoints in `/api/` directory
+
+## Project Structure
+
+```
+jpos/
+├── index.html              # Main application entry point (574 lines)
+├── @build-log.mdc          # Development roadmap and feature tracking
+├── @project-details.mdc    # This file - comprehensive project documentation
+├── api/                    # Backend API endpoints
+│   ├── auth.php           # Authentication (login/logout/status) - 63 lines
+│   ├── products.php       # Product catalog and inventory - 150 lines
+│   ├── checkout.php       # Transaction processing - 178 lines
+│   ├── orders.php         # Order management - 122 lines
+│   ├── reports.php        # Sales analytics and reporting - 124 lines
+│   ├── stock.php          # Inventory management - 128 lines
+│   ├── sessions.php       # User session tracking - 45 lines
+│   ├── drawer.php         # Cash drawer management - 117 lines
+│   ├── refund.php         # Returns and refunds - 111 lines
+│   ├── settings.php       # Store configuration - 62 lines
+│   └── export-pdf.php     # PDF report generation - 265 lines
+└── assets/
+    └── js/
+        └── main.js        # Main application logic (2,357 lines)
+```
+
+## Core Features
+
+### 1. **Point of Sale (POS)**
+- **Product Catalog**: Search, filter by category/tag, stock status
+- **Variable Products**: Support for sizes, colors, SKUs, pricing
+- **Shopping Cart**: Add/remove items, quantity management
+- **Payment Methods**: Cash, Card, Linx with split payment support
+- **Fees & Discounts**: Flat or percentage-based, simultaneous application
+- **Receipt Generation**: Printable receipts with store branding
+- **Cart Management**: Hold carts, restore, delete functionality
+
+### 2. **Inventory Management**
+- **Real-time Stock Tracking**: Live stock level updates
+- **Stock Management**: Edit quantities, manage variations
+- **Product Variations**: Size, color, SKU management
+- **Low Stock Alerts**: Visual indicators for out-of-stock items
+
+### 3. **Order Management**
+- **Order Viewing**: All orders (POS and online) with filtering
+- **Order Search**: Search by order ID for quick access
+- **Returns & Refunds**: Process returns with new sales
+- **Order Status**: Track completion and processing status
+- **Order Source**: Distinguish between POS and online orders
+
+### 4. **Reporting & Analytics**
+- **Sales Reports**: Revenue, order counts, averages
+- **Payment Breakdown**: Cash vs Card/Linx revenue separation
+- **Daily Tracking**: 30-day sales history with charts
+- **PDF Export**: Server-side PDF generation with TCPDF
+- **Chart Visualization**: Revenue and order trends
+
+### 5. **Cash Drawer Management**
+- **Drawer Status**: Open/closed state tracking
+- **Starting Cash**: Record opening amounts
+- **End-of-Day**: Count and reconcile final amounts
+- **Session Tracking**: Track drawer sessions by user
+
+### 6. **User Management**
+- **WordPress Authentication**: Leverages existing user system
+- **Role-based Access**: WooCommerce management permissions
+- **Session Management**: Secure login/logout handling
+- **User Display**: Show current user in interface
+
+## Technical Implementation
+
+### Frontend Architecture (main.js - 2,357 lines)
+
+#### State Management
+```javascript
+const appState = { 
+    user: null, 
+    drawer: { isOpen: false, data: null }, 
+    settings: {}, 
+    sessions: [], 
+    stockProduct: null, 
+    stockList: [], 
+    editingStockProduct: null, 
+    charts: {}, 
+    paymentMethod: 'Cash',
+    fee: { amount: '', label: '', amountType: 'flat' },
+    discount: { amount: '', label: '', amountType: 'flat' },
+    feeDiscount: { type: null, amount: '', label: '', amountType: 'flat' },
+    return_from_order_id: null,
+    return_from_order_items: [],
+    splitPayments: null,
+};
+```
+
+#### Key Functions
+- **Authentication**: `checkAuthStatus()`, `handleLogin()`, `handleLogout()`
+- **Product Management**: `renderProducts()`, `handleProductClick()`, `showVariationModal()`
+- **Cart Operations**: `addToCart()`, `updateCartQuantity()`, `renderCart()`, `clearCart()`
+- **Transaction Processing**: `processTransaction()`, `openSplitPaymentModal()`
+- **Reporting**: `fetchReportsData()`, `renderReports()`, `exportReportsToPDF()`
+- **Inventory**: `renderStockList()`, `openStockEditModal()`, `handleStockEditSave()`
+
+### Backend Architecture
+
+#### Authentication (auth.php)
+- WordPress user authentication
+- WooCommerce permission checking
+- Session management
+- Status checking endpoints
+
+#### Product Management (products.php)
+- WooCommerce product queries
+- Variation handling
+- Category and tag filtering
+- Image URL generation
+- Stock status aggregation
+
+#### Transaction Processing (checkout.php)
+- WooCommerce order creation
+- Payment method handling
+- Fee/discount application
+- Split payment support
+- Receipt data generation
+- Transaction rollback on errors
+
+#### Reporting (reports.php)
+- Sales summary queries
+- Payment method breakdown
+- Daily revenue tracking
+- 30-day historical data
+- Timezone handling (UTC-4)
+
+## Data Flow
+
+### 1. **Authentication Flow**
+```
+User Login → WordPress Auth → PHP Session → JavaScript State → UI Update
+```
+
+### 2. **Product Loading**
+```
+WooCommerce DB → PHP API Query → JSON Response → JavaScript Rendering → UI Display
+```
+
+### 3. **Transaction Processing**
+```
+JavaScript Cart → PHP Checkout API → WooCommerce Order → Database Save → Receipt Generation
+```
+
+### 4. **Reporting**
+```
+PHP Database Queries → JSON Data → JavaScript Charts → UI Visualization → PDF Export
+```
+
+## Build Process
+
+**This project does NOT use traditional build tools.** Instead:
+
+1. **Development**: Direct file editing - no compilation needed
+2. **Deployment**: Files are served directly by the web server
+3. **Dependencies**: Loaded via CDN (Tailwind CSS, Chart.js, Font Awesome)
+4. **Minification**: None - files are served as-is for easier debugging
+5. **Version Control**: Track changes in `@build-log.mdc`
+
+## Key Technical Decisions
+
+### 1. **No Build System**
+- **Pros**: Simple deployment, easy debugging, no compilation time
+- **Cons**: No minification, no bundling, larger file sizes
+
+### 2. **WordPress Integration**
+- **Pros**: Leverages existing WooCommerce infrastructure, user management
+- **Cons**: Tightly coupled to WordPress, limited flexibility
+
+### 3. **Vanilla JavaScript**
+- **Pros**: No framework dependencies, easier maintenance, smaller footprint
+- **Cons**: More manual DOM manipulation, no reactive updates
+
+### 4. **RESTful API**
+- **Pros**: Clean separation, easy to test, scalable
+- **Cons**: Multiple HTTP requests, no real-time updates
+
+### 5. **Real-time Updates**
+- **Pros**: Simple implementation, reliable
+- **Cons**: Manual refresh required, no automatic updates
+
+## Development Workflow
+
+1. **Feature Development**: Edit files directly
+2. **Testing**: Refresh browser to see changes
+3. **Deployment**: Upload files to web server
+4. **Version Control**: Track changes in `@build-log.mdc`
+
+## Recent Features (from build log)
+
+### Completed Features (2024-06-10)
+1. **Split Payment Option** - Multiple payment methods per transaction
+2. **Product Visibility** - Private WooCommerce items visible in POS
+3. **Time Display** - Consistent timezone handling (UTC-4)
+4. **Order Details** - Discount visibility in order details
+5. **Receipt Printing** - Discount text color changed to black for better visibility
+6. **Fee & Discount Application** - Both can be applied simultaneously
+7. **Reports** - Payment method separation (Cash vs Card/Linx)
+8. **POS Refresh Button** - Reload data without losing cart
+9. **Hold Cart Feature** - Temporarily save customer bills for later completion
+10. **Order Search** - Instant search for refunds/returns by order ID
+11. **Orders Filter** - Filter for online orders and display order source
+
+## Security Considerations
+
+1. **Authentication**: WordPress-based with WooCommerce permissions
+2. **Input Sanitization**: PHP sanitization functions used
+3. **SQL Injection**: Prepared statements and WordPress functions
+4. **XSS Prevention**: Output escaping in templates
+5. **CSRF Protection**: WordPress nonces (can be enhanced)
+
+## Performance Considerations
+
+1. **Database Queries**: Optimized with proper indexing
+2. **Image Loading**: CDN-based for faster loading
+3. **Caching**: No built-in caching (could be improved)
+4. **Bundle Size**: Large main.js file (2,357 lines)
+5. **Network Requests**: Multiple API calls (could be batched)
+
+## Deployment Requirements
+
+1. **Web Server**: Apache/Nginx with PHP support
+2. **PHP Version**: 7.4+ (WordPress requirement)
+3. **WordPress**: Latest version with WooCommerce plugin
+4. **Database**: MySQL 5.7+ (WordPress requirement)
+5. **SSL**: Recommended for production security
+
+## Future Enhancement Opportunities
+
+1. **Real-time Updates**: WebSocket implementation for live data
+2. **Offline Support**: Service worker for offline functionality
+3. **Mobile App**: PWA or native mobile application
+4. **Advanced Analytics**: More detailed reporting and insights
+5. **Multi-location Support**: Multiple store management
+6. **Inventory Alerts**: Automated low stock notifications
+7. **Customer Management**: Customer profiles and loyalty programs
+8. **Advanced Permissions**: Role-based feature access
+
+## Troubleshooting Common Issues
+
+1. **Authentication Failures**: Check WordPress user permissions
+2. **Product Loading Issues**: Verify WooCommerce product status
+3. **Transaction Errors**: Check database connectivity and permissions
+4. **Receipt Printing**: Ensure printer drivers are installed
+5. **Performance Issues**: Consider database optimization and caching
+
+## UI/UX Details
+- Payment method 'Link' is now labeled as 'Other' in both the checkout modal dropdown and on receipts for improved clarity and consistency.
+
+---
+
+*Last updated: 2024-06-10*
+*Total lines of code: ~3,500+ (Frontend: 2,357 + Backend: ~1,200)*
+
+---
+
+*Last updated: 2024-06-10*
+*Total lines of code: ~3,500+ (Frontend: 2,357 + Backend: ~1,200)*

@@ -1,0 +1,56 @@
+# POS Build Log / Roadmap
+
+## Codebase Mapping (2024-06-11)
+
+- The entire codebase has been mapped and documented in detail as of 2024-06-11.
+- See @project-details.mdc for a comprehensive architectural and file-level overview.
+- All major flows, API endpoints, and frontend/backend responsibilities are now fully documented.
+
+## Planned Features & Fixes
+
+1. **Checkout: Split Payment Option**
+   - Add ability to split payments between multiple methods during checkout.
+
+2. **Product Visibility: Private Items** _(Complete - 2024-06-10)_
+   - Ensure private WooCommerce items are visible in the POS interface.
+
+3. **Time Display** _(Complete - 2024-06-09)_
+   - Update/change how time is displayed in the POS as needed.
+
+4. **Order Details: Discount Visibility** _(Complete - 2024-06-10)_
+   - Show discounts applied at checkout when viewing order details in the POS.
+
+5. **Receipt Printing: Discount Color** _(Complete - 2024-06-09)_
+   - Change discount text color from green to black for better printer visibility.
+
+6. **Fee & Discount Application** _(Complete - 2024-06-09)_
+   - Allow both fee and discount to be applied simultaneously (currently only one is allowed).
+
+7. **Reports: Payment Method Separation** _(Complete - 2024-06-10)_
+   - Clearly separate cash and link (card/online) payments in reports for easier error tracking.
+
+8. **POS Refresh Button** _(Complete - 2024-06-09)_
+   - Add a refresh button to the POS UI to reload data without losing the cart.
+
+9. **Hold Cart Feature** _(Complete - 2024-06-10)_
+   - Add a 'Hold' button to temporarily save a customer's bill/cart for later completion. (Includes held cart details modal)
+
+10. **Order Search for Refunds/Returns** _(Complete - 2024-06-10)_
+    - Add a search bar in the order tab for refunds/returns to quickly find orders by ID (instead of scrolling). (Now instant and client-side)
+
+11. **Time Zone Consistency** _(Complete - 2024-06-09)_
+   - Update all time displays to use the UTC-4 timezone for accuracy and consistency.
+
+12. **Orders: Online Orders Filter** _(Complete - 2024-06-10)_
+   - Add filter for online orders in the orders section and display order source (POS vs Online).
+
+## Recent UI/UX Updates (2024-07-17)
+
+- Changed payment method label from 'Link' to 'Other' in both the checkout modal dropdown and on receipts for clarity and consistency.
+
+---
+
+*Last updated: 2024-06-10*
+
+
+*Last updated: 2024-06-10*
