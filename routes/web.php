@@ -23,4 +23,10 @@ Route::view('profile', 'profile')
     ->middleware(['auth'])
     ->name('profile');
 
+// POS Routes
+Route::middleware(['auth'])->group(function () {
+    Route::get('/pos', \App\Livewire\Pos\PosTerminal::class)->name('pos.terminal');
+    Route::get('/pos/checkout', \App\Livewire\Pos\Checkout::class)->name('pos.checkout');
+});
+
 require __DIR__.'/auth.php';
