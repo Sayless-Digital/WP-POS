@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\InventoryController;
 use App\Http\Controllers\Api\CashDrawerController;
+use App\Http\Controllers\WooCommerceWebhookController;
 
 /*
 |--------------------------------------------------------------------------
@@ -184,6 +185,23 @@ Route::prefix('v1')->middleware(['auth:sanctum'])->group(function () {
         Route::get('/top-customers', [\App\Http\Controllers\Api\ReportController::class, 'topCustomers']);
         Route::get('/top-products', [\App\Http\Controllers\Api\ReportController::class, 'topProducts']);
     });
+
+    // WooCommerce Sync Management
+    Route::prefix('woocommerce')->group(function () {
+        Route::post('/test-connection', [\App\Http\Controllers\Api\WooCommerceSyncController::class, 'testConnection']);
+        Route::post('/sync/products', [\App\Http\Controllers\Api\WooCommerceSyncController::class, 'syncProducts']);
+        Route::post('/sync/orders', [\App\Http\Controllers\Api\WooCommerceSyncController::class, 'syncOrders']);
+        Route::post('/sync/customers', [\App\Http\Controllers\Api\WooCommerceSyncController::class, 'syncCustomers']);
+        Route::post('/sync/inventory', [\App\Http\Controllers\Api\WooCommerceSyncController::class, 'syncInventory']);
+        Route::post('/sync/all', [\App\Http\Controllers\Api\WooCommerceSyncController::class, 'syncAll']);
+        Route::get('/sync/status', [\App\Http\Controllers\Api\WooCommerceSyncController::class, 'syncStatus']);
+    });
+});
+
+// WooCommerce Webhooks (no authentication required)
+Route::prefix('webhooks/woocommerce')->group(function () {
+    Route::post('/{topic}', [WooCommerceWebhookController::class, 'handle'])
+        ->where('topic', '.*');
 });
 
 // Rate limiting for API routes

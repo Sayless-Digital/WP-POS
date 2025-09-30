@@ -215,18 +215,67 @@ class PosTerminal extends Component
     }
     
     /**
-     * Apply cart-level discount
+     * Open discount modal
      */
-    public function applyCartDiscount()
+    public function openDiscountModal()
     {
-        $this->saveCartToSession();
-        $this->showDiscountModal = false;
-        $this->dispatch('discount-applied', message: 'Cart discount applied');
+        $summary = $this->cartSummary;
+        $this->showDiscountModal = true;
+        $this->dispatch('open-discount-modal',
+            cartSubtotal: $summary['subtotal'],
+            currentDiscount: $this->cartDiscount,
+            discountType: $this->discountType
+        );
     }
     
     /**
-     * Select customer
+     * Listen for discount applied event
      */
+    #[On('discount-applied')]
+    public function applyCartDiscount(array $data)
+    {
+        $this->cartDiscount = $data['amount'];
+        $this->discountType = $data['type'];
+        $this->saveCartToSession();
+        $this->showDiscountModal = false;
+        $this->dispatch('success', message: 'Cart discount applied');
+    }
+    
+    /**
+     * Listen for discount removed event
+     */
+    #[On('discount-removed')]
+    public function removeCartDiscount()
+    {
+        $this->cartDiscount = 0;
+        $this->discountType = 'fixed';
+        $this->saveCartToSession();
+        $this->showDiscountModal = false;
+        $this->dispatch('success', message: 'Discount removed');
+    }
+    
+    /**
+     * Open customer modal
+     */
+    public function openCustomerModal()
+    {
+        $this->showCustomerModal = true;
+        $this->dispatch('open-customer-search-modal');
+    }
+    
+    /**
+     * Open held orders modal
+     */
+    public function openHeldOrdersModal()
+    {
+        $this->showHeldOrdersModal = true;
+        $this->dispatch('open-held-orders-modal');
+    }
+    
+    /**
+     * Listen for customer selected event
+     */
+    #[On('customer-selected')]
     public function selectCustomer(?int $customerId)
     {
         $this->customerId = $customerId;
@@ -242,7 +291,7 @@ class PosTerminal extends Component
                     $this->cartDiscount = $groupDiscount;
                     $this->discountType = 'percentage';
                     $this->saveCartToSession();
-                    $this->dispatch('discount-applied', message: 'Customer group discount applied');
+                    $this->dispatch('success', message: 'Customer group discount applied');
                 }
             }
         }
@@ -259,19 +308,22 @@ class PosTerminal extends Component
         }
         
         try {
+            // Calculate totals
+            $summary = $this->cartSummary;
+            
             $heldOrder = \App\Models\HeldOrder::create([
                 'user_id' => auth()->id(),
                 'customer_id' => $this->customerId,
-                'cart_data' => [
-                    'items' => $this->cart,
-                    'discount' => $this->cartDiscount,
-                    'discount_type' => $this->discountType,
-                ],
+                'items' => $this->cart,
+                'subtotal' => $summary['subtotal'],
+                'tax_amount' => $summary['tax'],
+                'discount_amount' => $summary['discount'],
+                'total' => $summary['total'],
                 'notes' => $this->notes,
             ]);
             
             $this->clearCart();
-            $this->dispatch('order-held', message: 'Order held successfully');
+            $this->dispatch('order-held', message: 'Order held successfully', reference: $heldOrder->reference);
         } catch (\Exception $e) {
             $this->dispatch('error', message: 'Failed to hold order: ' . $e->getMessage());
         }
@@ -286,9 +338,9 @@ class PosTerminal extends Component
         try {
             $heldOrder = \App\Models\HeldOrder::findOrFail($heldOrderId);
             
-            $this->cart = $heldOrder->cart_data['items'] ?? [];
-            $this->cartDiscount = $heldOrder->cart_data['discount'] ?? 0;
-            $this->discountType = $heldOrder->cart_data['discount_type'] ?? 'fixed';
+            $this->cart = $heldOrder->items;
+            $this->cartDiscount = $heldOrder->discount_amount;
+            $this->discountType = 'fixed';
             $this->customerId = $heldOrder->customer_id;
             $this->notes = $heldOrder->notes ?? '';
             
