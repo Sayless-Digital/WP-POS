@@ -11,6 +11,43 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 ini_set('log_errors', 1);
 
+// Check PHP requirements
+$requiredExtensions = ['pdo', 'pdo_mysql', 'openssl', 'mbstring', 'tokenizer', 'xml', 'ctype', 'json', 'bcmath', 'curl'];
+$missingExtensions = [];
+foreach ($requiredExtensions as $ext) {
+    if (!extension_loaded($ext)) {
+        $missingExtensions[] = $ext;
+    }
+}
+
+if (!empty($missingExtensions)) {
+    die('
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>PHP Requirements Error</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            body { font-family: system-ui; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #f8fafc; }
+            .card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-align: center; max-width: 500px; }
+            .error { color: #dc2626; font-weight: 600; margin-bottom: 1rem; }
+            .extensions { text-align: left; background: #fef2f2; padding: 1rem; border-radius: 6px; margin: 1rem 0; }
+        </style>
+    </head>
+    <body>
+        <div class="card">
+            <h1>❌ PHP Requirements Error</h1>
+            <p class="error">Missing required PHP extensions:</p>
+            <div class="extensions">
+                ' . implode(', ', $missingExtensions) . '
+            </div>
+            <p>Please contact your hosting provider to enable these PHP extensions.</p>
+        </div>
+    </body>
+    </html>
+    ');
+}
+
 // Check if already installed
 if (file_exists(__DIR__ . '/../.env') && !isset($_GET['force'])) {
     $envContent = file_get_contents(__DIR__ . '/../.env');
@@ -236,32 +273,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $originalDir = getcwd();
             chdir(__DIR__ . '/..');
             
-            // Run artisan commands with better error handling
-            $commands = [
-                'migrate --force' => 'Database migration',
-                'db:seed --force' => 'Database seeding',
-                'storage:link' => 'Storage linking'
-            ];
+            // Check if exec() is available and not disabled
+            $disabledFunctions = ini_get('disable_functions');
+            $execAvailable = function_exists('exec') && 
+                           (empty($disabledFunctions) || !in_array('exec', explode(',', $disabledFunctions)));
             
-            foreach ($commands as $command => $description) {
-                $output = [];
-                $returnVar = 0;
-                exec("php artisan {$command} 2>&1", $output, $returnVar);
+            if ($execAvailable) {
+                // Run artisan commands with exec if available
+                $commands = [
+                    'migrate --force' => 'Database migration',
+                    'db:seed --force' => 'Database seeding',
+                    'storage:link' => 'Storage linking'
+                ];
                 
-                if ($returnVar !== 0) {
-                    throw new Exception("{$description} failed: " . implode("\n", $output));
+                foreach ($commands as $command => $description) {
+                    $output = [];
+                    $returnVar = 0;
+                    exec("php artisan {$command} 2>&1", $output, $returnVar);
+                    
+                    if ($returnVar !== 0) {
+                        throw new Exception("{$description} failed: " . implode("\n", $output));
+                    }
                 }
+            } else {
+                // Alternative: Use direct PHP execution for shared hosting
+                $this->runArtisanCommandsDirectly();
             }
             
             // Create admin user
             $admin = $_SESSION['data']['admin'];
-            $output = [];
-            $returnVar = 0;
-            exec('php artisan db:seed --class=AdminUserSeeder --name="' . $admin['name'] . '" --email="' . $admin['email'] . '" --password="' . $admin['password'] . '" 2>&1', $output, $returnVar);
-            
-            if ($returnVar !== 0) {
-                // Admin user creation is not critical, just log it
-                error_log('Admin user creation failed: ' . implode("\n", $output));
+            if ($execAvailable) {
+                $output = [];
+                $returnVar = 0;
+                exec('php artisan db:seed --class=AdminUserSeeder --name="' . $admin['name'] . '" --email="' . $admin['email'] . '" --password="' . $admin['password'] . '" 2>&1', $output, $returnVar);
+                
+                if ($returnVar !== 0) {
+                    // Admin user creation is not critical, just log it
+                    error_log('Admin user creation failed: ' . implode("\n", $output));
+                }
+            } else {
+                // Alternative: Create admin user directly
+                $this->createAdminUserDirectly($admin);
             }
             
             // Return to original directory
@@ -307,6 +359,53 @@ if (isset($_SESSION['installed'])) {
     </body>
     </html>
     ');
+}
+
+// Helper functions for shared hosting compatibility
+function runArtisanCommandsDirectly() {
+    try {
+        // Bootstrap Laravel application
+        require_once __DIR__ . '/../bootstrap/app.php';
+        
+        // Run migrations directly
+        Artisan::call('migrate', ['--force' => true]);
+        
+        // Run database seeding
+        Artisan::call('db:seed', ['--force' => true]);
+        
+        // Create storage link
+        try {
+            Artisan::call('storage:link');
+        } catch (Exception $e) {
+            // Storage link might fail if already exists, that's ok
+            error_log('Storage link warning: ' . $e->getMessage());
+        }
+        
+    } catch (Exception $e) {
+        throw new Exception('Direct command execution failed: ' . $e->getMessage());
+    }
+}
+
+function createAdminUserDirectly($admin) {
+    try {
+        // Bootstrap Laravel application
+        require_once __DIR__ . '/../bootstrap/app.php';
+        
+        // Create admin user directly using the User model
+        $user = new \App\Models\User();
+        $user->name = $admin['name'];
+        $user->email = $admin['email'];
+        $user->password = \Illuminate\Support\Facades\Hash::make($admin['password']);
+        $user->email_verified_at = now();
+        $user->save();
+        
+        // Assign admin role
+        $user->assignRole('admin');
+        
+    } catch (Exception $e) {
+        // Admin user creation is not critical, just log it
+        error_log('Direct admin user creation failed: ' . $e->getMessage());
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -392,6 +491,15 @@ if (isset($_SESSION['installed'])) {
             <div class="step <?php echo $step == 4 ? 'active' : ($step > 4 ? 'completed' : ''); ?>">4. WooCommerce</div>
             <div class="step <?php echo $step == 5 ? 'active' : ''; ?>">5. Install</div>
         </div>
+        
+        <?php if ($step === 1): ?>
+        <div style="background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 6px; padding: 1rem; margin-bottom: 1rem; font-size: 0.875rem;">
+            <strong>ℹ️ System Information:</strong><br>
+            PHP Version: <?php echo PHP_VERSION; ?><br>
+            Exec Function: <?php echo function_exists('exec') && !in_array('exec', explode(',', ini_get('disable_functions'))) ? '✅ Available' : '❌ Disabled (using alternative method)'; ?><br>
+            Server: <?php echo $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown'; ?>
+        </div>
+        <?php endif; ?>
         
         <div class="content">
             <?php if (isset($_SESSION['error'])): ?>
