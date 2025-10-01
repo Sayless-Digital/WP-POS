@@ -64,6 +64,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
     
+    if (isset($_POST['test_wc'])) {
+        // Test WooCommerce connection
+        $url = rtrim($_POST['wc_url'] ?? '', '/');
+        $key = $_POST['wc_key'] ?? '';
+        $secret = $_POST['wc_secret'] ?? '';
+        
+        try {
+            $endpoint = $url . '/wp-json/wc/v3/system_status';
+            $auth = base64_encode($key . ':' . $secret);
+            
+            $ch = curl_init();
+            curl_setopt_array($ch, [
+                CURLOPT_URL => $endpoint,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER => [
+                    'Authorization: Basic ' . $auth,
+                    'Content-Type: application/json'
+                ],
+                CURLOPT_TIMEOUT => 30,
+                CURLOPT_SSL_VERIFYPEER => true
+            ]);
+            
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            
+            if ($httpCode === 200) {
+                $_SESSION['wc_tested'] = true;
+                $_SESSION['wc_success'] = 'WooCommerce connection successful!';
+            } else {
+                $_SESSION['wc_tested'] = false;
+                $_SESSION['wc_error'] = 'Connection failed (HTTP ' . $httpCode . ')';
+            }
+        } catch (Exception $e) {
+            $_SESSION['wc_tested'] = false;
+            $_SESSION['wc_error'] = 'Connection failed: ' . $e->getMessage();
+        }
+        header('Location: ' . $_SERVER['PHP_SELF']);
+        exit;
+    }
+    
     if (isset($_POST['next'])) {
         // Save data
         if ($step === 1) {
@@ -83,10 +124,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($step === 2) {
             $_SESSION['data']['app'] = [
                 'name' => $_POST['app_name'] ?? 'WP-POS',
-                'url' => $_POST['app_url'] ?? '',
-                'admin_name' => $_POST['admin_name'] ?? '',
-                'admin_email' => $_POST['admin_email'] ?? '',
-                'admin_password' => $_POST['admin_password'] ?? ''
+                'url' => $_POST['app_url'] ?? ''
+            ];
+        } elseif ($step === 3) {
+            $_SESSION['data']['admin'] = [
+                'name' => $_POST['admin_name'] ?? '',
+                'email' => $_POST['admin_email'] ?? '',
+                'password' => $_POST['admin_password'] ?? ''
+            ];
+        } elseif ($step === 4) {
+            $_SESSION['data']['wc'] = [
+                'enabled' => isset($_POST['wc_enabled']) ? 'true' : 'false',
+                'url' => $_POST['wc_url'] ?? '',
+                'key' => $_POST['wc_key'] ?? '',
+                'secret' => $_POST['wc_secret'] ?? ''
             ];
         }
         
@@ -108,6 +159,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $envContent = file_get_contents(__DIR__ . '/../.env.example');
             $db = $_SESSION['data']['db'];
             $app = $_SESSION['data']['app'];
+            $wc = $_SESSION['data']['wc'] ?? ['enabled' => 'false', 'url' => '', 'key' => '', 'secret' => ''];
             
             $envContent = str_replace([
                 'APP_NAME=Laravel',
@@ -125,6 +177,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'DB_PASSWORD=' . $db['password']
             ], $envContent);
             
+            // Add WooCommerce settings
+            if ($wc['enabled'] === 'true') {
+                $envContent .= "\n# WooCommerce Integration\n";
+                $envContent .= "WOOCOMMERCE_URL=" . $wc['url'] . "\n";
+                $envContent .= "WOOCOMMERCE_CONSUMER_KEY=" . $wc['key'] . "\n";
+                $envContent .= "WOOCOMMERCE_CONSUMER_SECRET=" . $wc['secret'] . "\n";
+            }
+            
             file_put_contents(__DIR__ . '/../.env', $envContent);
             
             // Generate app key
@@ -139,7 +199,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exec('php artisan storage:link 2>&1', $output);
             
             // Create admin user
-            exec('php artisan db:seed --class=AdminUserSeeder --name="' . $app['admin_name'] . '" --email="' . $app['admin_email'] . '" --password="' . $app['admin_password'] . '" 2>&1', $output);
+            $admin = $_SESSION['data']['admin'];
+            exec('php artisan db:seed --class=AdminUserSeeder --name="' . $admin['name'] . '" --email="' . $admin['email'] . '" --password="' . $admin['password'] . '" 2>&1', $output);
             
             // Lock installer
             file_put_contents(__DIR__ . '/.installed', date('Y-m-d H:i:s'));
@@ -213,13 +274,15 @@ if (isset($_SESSION['installed'])) {
     <div class="container">
         <div class="header">
             <h1>🛒 WP-POS Installer</h1>
-            <p>Simple 3-step installation</p>
+            <p>Simple 5-step installation</p>
         </div>
         
         <div class="progress">
             <div class="step <?php echo $step >= 1 ? 'active' : ''; ?>">1. Database</div>
             <div class="step <?php echo $step >= 2 ? 'active' : ''; ?>">2. Settings</div>
-            <div class="step <?php echo $step >= 3 ? 'active' : ''; ?>">3. Install</div>
+            <div class="step <?php echo $step >= 3 ? 'active' : ''; ?>">3. Admin</div>
+            <div class="step <?php echo $step >= 4 ? 'active' : ''; ?>">4. WooCommerce</div>
+            <div class="step <?php echo $step >= 5 ? 'active' : ''; ?>">5. Install</div>
         </div>
         
         <div class="content">
@@ -276,18 +339,6 @@ if (isset($_SESSION['installed'])) {
                         <label>App URL</label>
                         <input type="url" name="app_url" value="<?php echo htmlspecialchars($_SESSION['data']['app']['url'] ?? 'http://' . $_SERVER['HTTP_HOST'] . dirname($_SERVER['REQUEST_URI'])); ?>" required>
                     </div>
-                    <div class="form-group">
-                        <label>Admin Name</label>
-                        <input type="text" name="admin_name" value="<?php echo htmlspecialchars($_SESSION['data']['app']['admin_name'] ?? ''); ?>" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Admin Email</label>
-                        <input type="email" name="admin_email" value="<?php echo htmlspecialchars($_SESSION['data']['app']['admin_email'] ?? ''); ?>" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Admin Password</label>
-                        <input type="password" name="admin_password" value="<?php echo htmlspecialchars($_SESSION['data']['app']['admin_password'] ?? ''); ?>" required>
-                    </div>
                     <div class="buttons">
                         <button type="submit" name="back" class="btn btn-secondary">← Back</button>
                         <button type="submit" name="next" class="btn btn-primary">Next →</button>
@@ -295,13 +346,84 @@ if (isset($_SESSION['installed'])) {
                 </form>
                 
             <?php elseif ($step === 3): ?>
+                <h2>Admin Account</h2>
+                <p>Create your administrator account to access the system.</p>
+                <form method="POST">
+                    <div class="form-group">
+                        <label>Admin Name</label>
+                        <input type="text" name="admin_name" value="<?php echo htmlspecialchars($_SESSION['data']['admin']['name'] ?? ''); ?>" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Admin Email</label>
+                        <input type="email" name="admin_email" value="<?php echo htmlspecialchars($_SESSION['data']['admin']['email'] ?? ''); ?>" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Admin Password</label>
+                        <input type="password" name="admin_password" value="<?php echo htmlspecialchars($_SESSION['data']['admin']['password'] ?? ''); ?>" required>
+                    </div>
+                    <div class="buttons">
+                        <button type="submit" name="back" class="btn btn-secondary">← Back</button>
+                        <button type="submit" name="next" class="btn btn-primary">Next →</button>
+                    </div>
+                </form>
+                
+            <?php elseif ($step === 4): ?>
+                <h2>WooCommerce Integration</h2>
+                <p>Connect your POS system with WooCommerce (optional).</p>
+                
+                <?php if (isset($_SESSION['wc_success'])): ?>
+                    <div style="background: #d1fae5; color: #065f46; padding: 0.75rem; border-radius: 6px; margin-bottom: 1rem;">
+                        ✅ <?php echo htmlspecialchars($_SESSION['wc_success']); unset($_SESSION['wc_success']); ?>
+                    </div>
+                <?php endif; ?>
+                
+                <?php if (isset($_SESSION['wc_error'])): ?>
+                    <div style="background: #fee2e2; color: #991b1b; padding: 0.75rem; border-radius: 6px; margin-bottom: 1rem;">
+                        ❌ <?php echo htmlspecialchars($_SESSION['wc_error']); unset($_SESSION['wc_error']); ?>
+                    </div>
+                <?php endif; ?>
+                
+                <form method="POST">
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" name="wc_enabled" <?php echo ($_SESSION['data']['wc']['enabled'] ?? 'false') === 'true' ? 'checked' : ''; ?> onchange="toggleWcFields()">
+                            Enable WooCommerce Integration
+                        </label>
+                    </div>
+                    
+                    <div id="wc-fields" style="<?php echo ($_SESSION['data']['wc']['enabled'] ?? 'false') === 'true' ? '' : 'display: none;'; ?>">
+                        <div class="form-group">
+                            <label>WooCommerce Store URL</label>
+                            <input type="url" name="wc_url" value="<?php echo htmlspecialchars($_SESSION['data']['wc']['url'] ?? ''); ?>" placeholder="https://yourstore.com">
+                        </div>
+                        <div class="form-group">
+                            <label>Consumer Key</label>
+                            <input type="text" name="wc_key" value="<?php echo htmlspecialchars($_SESSION['data']['wc']['key'] ?? ''); ?>" placeholder="ck_...">
+                        </div>
+                        <div class="form-group">
+                            <label>Consumer Secret</label>
+                            <input type="password" name="wc_secret" value="<?php echo htmlspecialchars($_SESSION['data']['wc']['secret'] ?? ''); ?>" placeholder="cs_...">
+                        </div>
+                        <div style="text-align: center; margin: 1rem 0;">
+                            <button type="submit" name="test_wc" class="btn btn-secondary">🔍 Test Connection</button>
+                        </div>
+                    </div>
+                    
+                    <div class="buttons">
+                        <button type="submit" name="back" class="btn btn-secondary">← Back</button>
+                        <button type="submit" name="next" class="btn btn-primary">Next →</button>
+                    </div>
+                </form>
+                
+            <?php elseif ($step === 5): ?>
                 <h2>Ready to Install</h2>
                 <p>Review your settings and click Install to complete the setup.</p>
                 
                 <div style="background: #f1f5f9; padding: 1rem; border-radius: 6px; margin: 1rem 0;">
                     <strong>Database:</strong> <?php echo htmlspecialchars($_SESSION['data']['db']['database']); ?><br>
                     <strong>App Name:</strong> <?php echo htmlspecialchars($_SESSION['data']['app']['name']); ?><br>
-                    <strong>Admin:</strong> <?php echo htmlspecialchars($_SESSION['data']['app']['admin_email']); ?>
+                    <strong>Admin:</strong> <?php echo htmlspecialchars($_SESSION['data']['admin']['email']); ?><br>
+                    <strong>WooCommerce:</strong> <?php echo ($_SESSION['data']['wc']['enabled'] ?? 'false') === 'true' ? 'Enabled' : 'Disabled'; ?>
                 </div>
                 
                 <form method="POST">
@@ -313,5 +435,18 @@ if (isset($_SESSION['installed'])) {
             <?php endif; ?>
         </div>
     </div>
+    
+    <script>
+        function toggleWcFields() {
+            const checkbox = document.querySelector('input[name="wc_enabled"]');
+            const fields = document.getElementById('wc-fields');
+            
+            if (checkbox.checked) {
+                fields.style.display = 'block';
+            } else {
+                fields.style.display = 'none';
+            }
+        }
+    </script>
 </body>
 </html>
