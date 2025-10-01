@@ -42,14 +42,8 @@ if (!isset($_SESSION['install_step'])) {
     $_SESSION['install_data'] = [];
 }
 
-// Handle step navigation
-if (isset($_POST['next_step'])) {
-    $_SESSION['install_step'] = (int)$_POST['next_step'];
-}
-
-if (isset($_POST['prev_step'])) {
-    $_SESSION['install_step'] = (int)$_POST['prev_step'];
-}
+// Step navigation is now handled by individual step files
+// This prevents conflicts and data loss
 
 $currentStep = $_SESSION['install_step'];
 

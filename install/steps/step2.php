@@ -53,6 +53,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Get saved values
 $savedData = $_SESSION['install_data']['database'] ?? [];
+
+// Debug: Show what's in session (remove this after testing)
+if (isset($_GET['debug'])) {
+    echo '<div style="background: #f0f0f0; padding: 10px; margin: 10px 0; border: 1px solid #ccc;">';
+    echo '<strong>Debug - Session Data:</strong><br>';
+    echo '<pre>' . print_r($_SESSION, true) . '</pre>';
+    echo '</div>';
+}
 ?>
 
 <h2 class="step-title">Database Configuration</h2>
