@@ -201,8 +201,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'DB_PASSWORD=' . $db['password']
             ], $envContent);
             
-            // Add WooCommerce settings
-            if ($wc['enabled'] === 'true') {
+            // Remove any existing WooCommerce settings to prevent duplicates
+            $envContent = preg_replace('/\n# WooCommerce Integration.*?(?=\n[A-Z_]|$)/s', '', $envContent);
+            $envContent = preg_replace('/\nWOOCOMMERCE_URL=.*?\n/', '', $envContent);
+            $envContent = preg_replace('/\nWOOCOMMERCE_CONSUMER_KEY=.*?\n/', '', $envContent);
+            $envContent = preg_replace('/\nWOOCOMMERCE_CONSUMER_SECRET=.*?\n/', '', $envContent);
+            
+            // Add WooCommerce settings only if enabled and configured
+            if ($wc['enabled'] === 'true' && !empty($wc['url']) && !empty($wc['key']) && !empty($wc['secret'])) {
                 $envContent .= "\n# WooCommerce Integration\n";
                 $envContent .= "WOOCOMMERCE_URL=" . $wc['url'] . "\n";
                 $envContent .= "WOOCOMMERCE_CONSUMER_KEY=" . $wc['key'] . "\n";
