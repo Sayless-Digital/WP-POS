@@ -250,7 +250,7 @@ if (isset($_SESSION['installed'])) {
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: system-ui; background: #f8fafc; min-height: 100vh; padding: 1rem; }
-        .container { max-width: 500px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; }
+        .container { max-width: 90%; width: 100%; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; }
         .header { background: #3b82f6; color: white; padding: 1.5rem; text-align: center; }
         .header h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
         .progress { display: flex; padding: 1rem; background: #f1f5f9; }
@@ -268,6 +268,31 @@ if (isset($_SESSION['installed'])) {
         .btn-success { background: #10b981; color: white; }
         .btn:disabled { background: #e5e7eb; color: #9ca3af; cursor: not-allowed; }
         .error { background: #fee2e2; color: #991b1b; padding: 0.75rem; border-radius: 6px; margin-bottom: 1rem; }
+        
+        /* Responsive design */
+        @media (min-width: 768px) {
+            .container { max-width: 600px; }
+            .header h1 { font-size: 1.75rem; }
+        }
+        
+        @media (min-width: 1024px) {
+            .container { max-width: 700px; }
+            .header h1 { font-size: 2rem; }
+            .content { padding: 2.5rem; }
+        }
+        
+        @media (max-width: 480px) {
+            .container { max-width: 95%; }
+            .header { padding: 1rem; }
+            .header h1 { font-size: 1.25rem; }
+            .content { padding: 1.5rem; }
+            .progress { padding: 0.75rem; flex-wrap: wrap; }
+            .step { font-size: 0.7rem; min-width: 60px; }
+        }
+        
+        @media (max-width: 360px) {
+            .step { font-size: 0.65rem; min-width: 50px; }
+        }
     </style>
 </head>
 <body>
