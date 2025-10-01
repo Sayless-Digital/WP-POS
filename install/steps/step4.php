@@ -38,6 +38,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['admin_validated'] = true;
     }
     
+    // Handle back navigation
+    if (isset($_POST['prev_step'])) {
+        $_SESSION['install_step'] = 3;
+        header('Location: ' . $_SERVER['PHP_SELF']);
+        exit;
+    }
+    
     // Proceed to next step if admin data is valid
     if (isset($_POST['next_step']) && isset($_SESSION['admin_validated']) && $_SESSION['admin_validated']) {
         $_SESSION['install_step'] = 5;
@@ -107,12 +114,15 @@ $savedData = $_SESSION['install_data']['admin'] ?? [];
 <script>
 document.getElementById('adminForm').addEventListener('submit', function(e) {
     const nextStep = e.submitter.name === 'next_step';
+    const backStep = e.submitter.name === 'prev_step';
+    
+    // Only validate for next step, not back step
     if (nextStep && !<?php echo isset($_SESSION['admin_validated']) && $_SESSION['admin_validated'] ? 'true' : 'false'; ?>) {
         e.preventDefault();
         alert('Please fill in all required fields correctly!');
     }
     
-    // Password match validation
+    // Password match validation - only for next step
     if (nextStep) {
         const password = document.getElementById('admin_password').value;
         const confirm = document.getElementById('admin_password_confirm').value;

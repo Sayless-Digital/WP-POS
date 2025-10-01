@@ -57,6 +57,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['woocommerce_tested'] = true; // Mark as "tested" so we can proceed
     }
     
+    // Handle back navigation
+    if (isset($_POST['prev_step'])) {
+        $_SESSION['install_step'] = 4;
+        header('Location: ' . $_SERVER['PHP_SELF']);
+        exit;
+    }
+    
     // Proceed to next step if WooCommerce is configured or skipped
     if (isset($_POST['next_step']) && (isset($_SESSION['woocommerce_tested']) && $_SESSION['woocommerce_tested'])) {
         $_SESSION['install_step'] = 6;
@@ -169,9 +176,11 @@ $wasSkipped = $_SESSION['woocommerce_skipped'] ?? false;
 <script>
 document.getElementById('wooForm').addEventListener('submit', function(e) {
     const submitter = e.submitter;
+    const nextStep = submitter.name === 'next_step';
+    const backStep = submitter.name === 'prev_step';
     
-    // Validate next step
-    if (submitter.name === 'next_step') {
+    // Only validate for next step, not back step
+    if (nextStep) {
         const tested = <?php echo isset($_SESSION['woocommerce_tested']) && $_SESSION['woocommerce_tested'] ? 'true' : 'false'; ?>;
         
         if (!tested) {

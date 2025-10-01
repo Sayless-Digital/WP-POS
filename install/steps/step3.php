@@ -51,6 +51,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
     
+    // Handle back navigation
+    if (isset($_POST['prev_step'])) {
+        $_SESSION['install_step'] = 2;
+        header('Location: ' . $_SERVER['PHP_SELF']);
+        exit;
+    }
+    
     // Proceed to next step if config is saved successfully
     if (isset($_POST['next_step']) && isset($_SESSION['config_saved']) && $_SESSION['config_saved']) {
         $_SESSION['install_step'] = 4;
@@ -128,6 +135,9 @@ $currentUrl = str_replace('/install', '', $currentUrl);
 <script>
 document.getElementById('configForm').addEventListener('submit', function(e) {
     const nextStep = e.submitter.name === 'next_step';
+    const backStep = e.submitter.name === 'prev_step';
+    
+    // Only validate for next step, not back step
     if (nextStep && !<?php echo isset($_SESSION['config_saved']) && $_SESSION['config_saved'] ? 'true' : 'false'; ?>) {
         e.preventDefault();
         alert('Please fill in all required fields and try again!');

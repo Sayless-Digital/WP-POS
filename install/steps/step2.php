@@ -36,6 +36,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
     
+    // Handle back navigation
+    if (isset($_POST['prev_step'])) {
+        $_SESSION['install_step'] = 1;
+        header('Location: ' . $_SERVER['PHP_SELF']);
+        exit;
+    }
+    
     // Proceed to next step if connection is tested and valid
     if (isset($_POST['next_step']) && isset($_SESSION['database_tested']) && $_SESSION['database_tested']) {
         $_SESSION['install_step'] = 3;
@@ -118,6 +125,9 @@ $savedData = $_SESSION['install_data']['database'] ?? [];
 <script>
 document.getElementById('databaseForm').addEventListener('submit', function(e) {
     const nextStep = e.submitter.name === 'next_step';
+    const backStep = e.submitter.name === 'prev_step';
+    
+    // Only validate for next step, not back step
     if (nextStep && !<?php echo isset($_SESSION['database_tested']) && $_SESSION['database_tested'] ? 'true' : 'false'; ?>) {
         e.preventDefault();
         alert('Please test the database connection first!');
