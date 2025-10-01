@@ -6,6 +6,11 @@
 
 session_start();
 
+// Enable error reporting for debugging
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('log_errors', 1);
+
 // Check if already installed
 if (file_exists(__DIR__ . '/../.env') && !isset($_GET['force'])) {
     $envContent = file_get_contents(__DIR__ . '/../.env');
@@ -165,6 +170,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['install'])) {
         // Run installation
         try {
+            // Enable error reporting for debugging
+            error_reporting(E_ALL);
+            ini_set('display_errors', 1);
+            
+            // Check if .env.example exists
+            if (!file_exists(__DIR__ . '/../.env.example')) {
+                throw new Exception('.env.example file not found. Please ensure Laravel is properly installed.');
+            }
+            
             // Create .env file
             $envContent = file_get_contents(__DIR__ . '/../.env.example');
             $db = $_SESSION['data']['db'];
@@ -195,32 +209,70 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $envContent .= "WOOCOMMERCE_CONSUMER_SECRET=" . $wc['secret'] . "\n";
             }
             
-            file_put_contents(__DIR__ . '/../.env', $envContent);
+            // Write .env file
+            if (file_put_contents(__DIR__ . '/../.env', $envContent) === false) {
+                throw new Exception('Failed to write .env file. Check file permissions.');
+            }
             
             // Generate app key
             $key = 'base64:' . base64_encode(random_bytes(32));
             $envContent = str_replace('APP_KEY=', 'APP_KEY=' . $key, $envContent);
-            file_put_contents(__DIR__ . '/../.env', $envContent);
+            if (file_put_contents(__DIR__ . '/../.env', $envContent) === false) {
+                throw new Exception('Failed to update .env file with app key.');
+            }
             
-            // Run artisan commands
+            // Check if artisan exists
+            if (!file_exists(__DIR__ . '/../artisan')) {
+                throw new Exception('Artisan file not found. Please ensure Laravel is properly installed.');
+            }
+            
+            // Change to project directory
+            $originalDir = getcwd();
             chdir(__DIR__ . '/..');
-            exec('php artisan migrate --force 2>&1', $output);
-            exec('php artisan db:seed --force 2>&1', $output);
-            exec('php artisan storage:link 2>&1', $output);
+            
+            // Run artisan commands with better error handling
+            $commands = [
+                'migrate --force' => 'Database migration',
+                'db:seed --force' => 'Database seeding',
+                'storage:link' => 'Storage linking'
+            ];
+            
+            foreach ($commands as $command => $description) {
+                $output = [];
+                $returnVar = 0;
+                exec("php artisan {$command} 2>&1", $output, $returnVar);
+                
+                if ($returnVar !== 0) {
+                    throw new Exception("{$description} failed: " . implode("\n", $output));
+                }
+            }
             
             // Create admin user
             $admin = $_SESSION['data']['admin'];
-            exec('php artisan db:seed --class=AdminUserSeeder --name="' . $admin['name'] . '" --email="' . $admin['email'] . '" --password="' . $admin['password'] . '" 2>&1', $output);
+            $output = [];
+            $returnVar = 0;
+            exec('php artisan db:seed --class=AdminUserSeeder --name="' . $admin['name'] . '" --email="' . $admin['email'] . '" --password="' . $admin['password'] . '" 2>&1', $output, $returnVar);
+            
+            if ($returnVar !== 0) {
+                // Admin user creation is not critical, just log it
+                error_log('Admin user creation failed: ' . implode("\n", $output));
+            }
+            
+            // Return to original directory
+            chdir($originalDir);
             
             // Lock installer
-            file_put_contents(__DIR__ . '/.installed', date('Y-m-d H:i:s'));
+            if (file_put_contents(__DIR__ . '/.installed', date('Y-m-d H:i:s')) === false) {
+                throw new Exception('Failed to lock installer. Check file permissions.');
+            }
             
             $_SESSION['installed'] = true;
             header('Location: ' . $_SERVER['PHP_SELF']);
             exit;
             
         } catch (Exception $e) {
-            $_SESSION['error'] = $e->getMessage();
+            $_SESSION['error'] = 'Installation failed: ' . $e->getMessage();
+            error_log('Installer error: ' . $e->getMessage());
         }
     }
 }
