@@ -44,6 +44,26 @@ $step = $_SESSION['step'];
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['test_db'])) {
+        // Test database connection
+        $host = $_POST['db_host'] ?? 'localhost';
+        $database = $_POST['db_database'] ?? '';
+        $username = $_POST['db_username'] ?? 'root';
+        $password = $_POST['db_password'] ?? '';
+        
+        try {
+            $pdo = new PDO("mysql:host=$host;dbname=$database", $username, $password);
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $_SESSION['db_tested'] = true;
+            $_SESSION['db_success'] = 'Database connection successful!';
+        } catch (PDOException $e) {
+            $_SESSION['db_tested'] = false;
+            $_SESSION['db_error'] = 'Connection failed: ' . $e->getMessage();
+        }
+        header('Location: ' . $_SERVER['PHP_SELF']);
+        exit;
+    }
+    
     if (isset($_POST['next'])) {
         // Save data
         if ($step === 1) {
@@ -53,6 +73,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'username' => $_POST['db_username'] ?? 'root',
                 'password' => $_POST['db_password'] ?? ''
             ];
+            
+            // Check if database was tested
+            if (!isset($_SESSION['db_tested']) || !$_SESSION['db_tested']) {
+                $_SESSION['error'] = 'Please test database connection first';
+                header('Location: ' . $_SERVER['PHP_SELF']);
+                exit;
+            }
         } elseif ($step === 2) {
             $_SESSION['data']['app'] = [
                 'name' => $_POST['app_name'] ?? 'WP-POS',
@@ -178,6 +205,7 @@ if (isset($_SESSION['installed'])) {
         .btn-primary { background: #3b82f6; color: white; }
         .btn-secondary { background: #e5e7eb; color: #374151; }
         .btn-success { background: #10b981; color: white; }
+        .btn:disabled { background: #e5e7eb; color: #9ca3af; cursor: not-allowed; }
         .error { background: #fee2e2; color: #991b1b; padding: 0.75rem; border-radius: 6px; margin-bottom: 1rem; }
     </style>
 </head>
@@ -201,6 +229,19 @@ if (isset($_SESSION['installed'])) {
             
             <?php if ($step === 1): ?>
                 <h2>Database Configuration</h2>
+                
+                <?php if (isset($_SESSION['db_success'])): ?>
+                    <div style="background: #d1fae5; color: #065f46; padding: 0.75rem; border-radius: 6px; margin-bottom: 1rem;">
+                        ✅ <?php echo htmlspecialchars($_SESSION['db_success']); unset($_SESSION['db_success']); ?>
+                    </div>
+                <?php endif; ?>
+                
+                <?php if (isset($_SESSION['db_error'])): ?>
+                    <div style="background: #fee2e2; color: #991b1b; padding: 0.75rem; border-radius: 6px; margin-bottom: 1rem;">
+                        ❌ <?php echo htmlspecialchars($_SESSION['db_error']); unset($_SESSION['db_error']); ?>
+                    </div>
+                <?php endif; ?>
+                
                 <form method="POST">
                     <div class="form-group">
                         <label>Database Host</label>
@@ -219,7 +260,8 @@ if (isset($_SESSION['installed'])) {
                         <input type="password" name="db_password" value="<?php echo htmlspecialchars($_SESSION['data']['db']['password'] ?? ''); ?>">
                     </div>
                     <div class="buttons">
-                        <button type="submit" name="next" class="btn btn-primary">Next →</button>
+                        <button type="submit" name="test_db" class="btn btn-secondary">🔍 Test Connection</button>
+                        <button type="submit" name="next" class="btn btn-primary" <?php echo !isset($_SESSION['db_tested']) || !$_SESSION['db_tested'] ? 'disabled' : ''; ?>>Next →</button>
                     </div>
                 </form>
                 
