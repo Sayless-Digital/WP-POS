@@ -152,6 +152,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
     
+    if (isset($_POST['jump_to_step'])) {
+        $jumpTo = (int)$_POST['jump_to_step'];
+        // Only allow jumping to completed steps or current step
+        if ($jumpTo >= 1 && $jumpTo <= $step) {
+            $_SESSION['step'] = $jumpTo;
+        }
+        header('Location: ' . $_SERVER['PHP_SELF']);
+        exit;
+    }
+    
     if (isset($_POST['install'])) {
         // Run installation
         try {
@@ -254,8 +264,10 @@ if (isset($_SESSION['installed'])) {
         .header { background: #3b82f6; color: white; padding: 1.5rem; text-align: center; }
         .header h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
         .progress { display: flex; padding: 1rem; background: #f1f5f9; }
-        .step { flex: 1; text-align: center; font-size: 0.875rem; color: #64748b; }
+        .step { flex: 1; text-align: center; font-size: 0.875rem; color: #64748b; cursor: pointer; padding: 0.5rem; border-radius: 4px; transition: all 0.3s ease; }
         .step.active { color: #3b82f6; font-weight: 600; }
+        .step:hover { background: #e5e7eb; color: #374151; }
+        .step.active:hover { background: #dbeafe; color: #3b82f6; }
         .content { padding: 2rem; }
         .form-group { margin-bottom: 1rem; }
         .form-group label { display: block; margin-bottom: 0.25rem; font-weight: 500; color: #374151; }
@@ -472,6 +484,37 @@ if (isset($_SESSION['installed'])) {
                 fields.style.display = 'none';
             }
         }
+        
+        function jumpToStep(stepNumber) {
+            // Only allow jumping to completed steps or current step
+            const currentStep = <?php echo $step; ?>;
+            if (stepNumber <= currentStep) {
+                // Create a form to submit the step change
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.style.display = 'none';
+                
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'jump_to_step';
+                input.value = stepNumber;
+                
+                form.appendChild(input);
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+        
+        // Add click handlers to step elements
+        document.addEventListener('DOMContentLoaded', function() {
+            const steps = document.querySelectorAll('.step');
+            steps.forEach((step, index) => {
+                const stepNumber = index + 1;
+                step.addEventListener('click', function() {
+                    jumpToStep(stepNumber);
+                });
+            });
+        });
     </script>
 </body>
 </html>
