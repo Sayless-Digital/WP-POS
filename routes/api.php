@@ -40,9 +40,6 @@ Route::prefix('v1')->group(function () {
 // Offline Mode API Routes (minimal authentication for PWA)
 Route::middleware(['auth:sanctum'])->group(function () {
     // Connection check
-    Route::head('/ping', function () {
-        return response()->json(['status' => 'ok']);
-    });
     
     Route::get('/ping', function () {
         return response()->json(['status' => 'ok', 'timestamp' => now()->toISOString()]);

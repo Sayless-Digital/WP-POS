@@ -13,6 +13,12 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+// Installer Route - serves the standalone installer
+Route::any('/install/{any?}', function () {
+    require base_path('install/index.php');
+    return response('', 200);
+})->where('any', '.*');
+
 Route::view('/', 'welcome');
 
 Route::view('dashboard', 'dashboard')
