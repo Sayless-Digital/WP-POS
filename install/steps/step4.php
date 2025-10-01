@@ -7,29 +7,42 @@ $error = null;
 $success = null;
 
 // Handle form submission
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_admin'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $adminName = $_POST['admin_name'] ?? '';
     $adminEmail = $_POST['admin_email'] ?? '';
     $adminPassword = $_POST['admin_password'] ?? '';
     $adminPasswordConfirm = $_POST['admin_password_confirm'] ?? '';
     
+    // Always save the data first
+    $_SESSION['install_data']['admin'] = [
+        'name' => $adminName,
+        'email' => $adminEmail,
+        'password' => $adminPassword,
+    ];
+    
     // Validation
     if (empty($adminName) || empty($adminEmail) || empty($adminPassword)) {
         $error = 'All fields are required';
+        $_SESSION['admin_validated'] = false;
     } elseif (!filter_var($adminEmail, FILTER_VALIDATE_EMAIL)) {
         $error = 'Please enter a valid email address';
+        $_SESSION['admin_validated'] = false;
     } elseif (strlen($adminPassword) < 8) {
         $error = 'Password must be at least 8 characters long';
+        $_SESSION['admin_validated'] = false;
     } elseif ($adminPassword !== $adminPasswordConfirm) {
         $error = 'Passwords do not match';
+        $_SESSION['admin_validated'] = false;
     } else {
-        // Save admin data for final step
-        $_SESSION['install_data']['admin'] = [
-            'name' => $adminName,
-            'email' => $adminEmail,
-            'password' => $adminPassword,
-        ];
         $success = 'Admin account details saved!';
+        $_SESSION['admin_validated'] = true;
+    }
+    
+    // Proceed to next step if admin data is valid
+    if (isset($_POST['next_step']) && isset($_SESSION['admin_validated']) && $_SESSION['admin_validated']) {
+        $_SESSION['install_step'] = 5;
+        header('Location: ' . $_SERVER['PHP_SELF']);
+        exit;
     }
 }
 
@@ -81,16 +94,12 @@ $savedData = $_SESSION['install_data']['admin'] ?? [];
         <strong>🔒 Security Tip:</strong> Use a strong password with a mix of uppercase, lowercase, numbers, and special characters. You can change this password later from your profile settings.
     </div>
 
-    <button type="submit" name="create_admin" value="1" class="btn btn-secondary" style="width: 100%; margin-bottom: 20px;">
-        👤 Save Admin Details
-    </button>
-
     <div class="buttons">
         <button type="submit" name="prev_step" value="3" class="btn btn-secondary">
             ← Back
         </button>
-        <button type="submit" name="next_step" value="5" class="btn btn-primary" <?php echo !$success ? 'disabled' : ''; ?>>
-            Next: Complete Installation →
+        <button type="submit" name="next_step" value="5" class="btn btn-primary" <?php echo !isset($_SESSION['admin_validated']) || !$_SESSION['admin_validated'] ? 'disabled' : ''; ?>>
+            Next: WooCommerce Setup →
         </button>
     </div>
 </form>
@@ -98,13 +107,13 @@ $savedData = $_SESSION['install_data']['admin'] ?? [];
 <script>
 document.getElementById('adminForm').addEventListener('submit', function(e) {
     const nextStep = e.submitter.name === 'next_step';
-    if (nextStep && !<?php echo $success ? 'true' : 'false'; ?>) {
+    if (nextStep && !<?php echo isset($_SESSION['admin_validated']) && $_SESSION['admin_validated'] ? 'true' : 'false'; ?>) {
         e.preventDefault();
-        alert('Please save the admin details first!');
+        alert('Please fill in all required fields correctly!');
     }
     
     // Password match validation
-    if (e.submitter.name === 'create_admin') {
+    if (nextStep) {
         const password = document.getElementById('admin_password').value;
         const confirm = document.getElementById('admin_password_confirm').value;
         

@@ -7,68 +7,62 @@ $error = null;
 $success = null;
 $testResult = null;
 
-// Handle connection test
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['test_connection'])) {
-    $wooUrl = $_POST['woo_url'] ?? '';
-    $wooConsumerKey = $_POST['woo_consumer_key'] ?? '';
-    $wooConsumerSecret = $_POST['woo_consumer_secret'] ?? '';
-    
-    if (empty($wooUrl) || empty($wooConsumerKey) || empty($wooConsumerSecret)) {
-        $error = 'Please fill in all WooCommerce credentials to test the connection';
-    } else {
-        // Validate URL format
-        if (!filter_var($wooUrl, FILTER_VALIDATE_URL)) {
-            $error = 'Please enter a valid WooCommerce store URL';
-        } else {
-            // Test the connection
-            $testResult = $installer->testWooCommerceConnection($wooUrl, $wooConsumerKey, $wooConsumerSecret);
-            
-            if ($testResult['success']) {
-                $success = 'Connection successful! Your WooCommerce credentials are valid.';
-                $_SESSION['woocommerce_tested'] = true;
-            } else {
-                $error = 'Connection failed: ' . $testResult['message'];
-                $_SESSION['woocommerce_tested'] = false;
-            }
-        }
-    }
-}
-
-// Handle form submission for saving data
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_woocommerce'])) {
+// Handle form submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $wooUrl = $_POST['woo_url'] ?? '';
     $wooConsumerKey = $_POST['woo_consumer_key'] ?? '';
     $wooConsumerSecret = $_POST['woo_consumer_secret'] ?? '';
     $wooSyncEnabled = isset($_POST['woo_sync_enabled']) ? '1' : '0';
     
-    // Validation
-    if (empty($wooUrl) || empty($wooConsumerKey) || empty($wooConsumerSecret)) {
-        $error = 'All WooCommerce fields are required';
-    } elseif (!filter_var($wooUrl, FILTER_VALIDATE_URL)) {
-        $error = 'Please enter a valid WooCommerce store URL';
-    } elseif (!isset($_SESSION['woocommerce_tested']) || !$_SESSION['woocommerce_tested']) {
-        $error = 'Please test the connection first before saving';
-    } else {
-        // Save WooCommerce data for final step
-        $_SESSION['install_data']['woocommerce'] = [
-            'url' => rtrim($wooUrl, '/'), // Remove trailing slash
-            'consumer_key' => $wooConsumerKey,
-            'consumer_secret' => $wooConsumerSecret,
-            'sync_enabled' => $wooSyncEnabled,
-        ];
-        $success = 'WooCommerce configuration saved successfully!';
-    }
-}
-
-// Handle skip
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['skip_woocommerce'])) {
+    // Always save the data first
     $_SESSION['install_data']['woocommerce'] = [
-        'url' => '',
-        'consumer_key' => '',
-        'consumer_secret' => '',
-        'sync_enabled' => '0',
+        'url' => rtrim($wooUrl, '/'), // Remove trailing slash
+        'consumer_key' => $wooConsumerKey,
+        'consumer_secret' => $wooConsumerSecret,
+        'sync_enabled' => $wooSyncEnabled,
     ];
-    $_SESSION['woocommerce_skipped'] = true;
+    
+    // Handle connection test
+    if (isset($_POST['test_connection'])) {
+        if (empty($wooUrl) || empty($wooConsumerKey) || empty($wooConsumerSecret)) {
+            $error = 'Please fill in all WooCommerce credentials to test the connection';
+        } else {
+            // Validate URL format
+            if (!filter_var($wooUrl, FILTER_VALIDATE_URL)) {
+                $error = 'Please enter a valid WooCommerce store URL';
+            } else {
+                // Test the connection
+                $testResult = $installer->testWooCommerceConnection($wooUrl, $wooConsumerKey, $wooConsumerSecret);
+                
+                if ($testResult['success']) {
+                    $success = 'Connection successful! Your WooCommerce credentials are valid.';
+                    $_SESSION['woocommerce_tested'] = true;
+                } else {
+                    $error = 'Connection failed: ' . $testResult['message'];
+                    $_SESSION['woocommerce_tested'] = false;
+                }
+            }
+        }
+    }
+    
+    // Handle skip
+    if (isset($_POST['skip_woocommerce'])) {
+        $_SESSION['install_data']['woocommerce'] = [
+            'url' => '',
+            'consumer_key' => '',
+            'consumer_secret' => '',
+            'sync_enabled' => '0',
+        ];
+        $_SESSION['woocommerce_skipped'] = true;
+        $_SESSION['woocommerce_tested'] = true; // Mark as "tested" so we can proceed
+    }
+    
+    // Proceed to next step if WooCommerce is configured or skipped
+    if (isset($_POST['next_step']) && (isset($_SESSION['woocommerce_tested']) && $_SESSION['woocommerce_tested'])) {
+        $_SESSION['install_step'] = 6;
+        header('Location: ' . $_SERVER['PHP_SELF']);
+        exit;
+    }
 }
 
 // Get saved values
@@ -152,25 +146,21 @@ $wasSkipped = $_SESSION['woocommerce_skipped'] ?? false;
         <button type="submit" name="test_connection" value="1" class="btn btn-secondary" style="flex: 1;">
             🔍 Test Connection
         </button>
-        <button type="submit" name="save_woocommerce" value="1" class="btn btn-primary" style="flex: 1;">
-            💾 Save Configuration
+        <button type="submit" name="skip_woocommerce" value="1" class="btn btn-secondary" style="flex: 1;">
+            ⏭️ Skip Setup
         </button>
     </div>
 
     <div class="alert alert-info">
-        <strong>💡 Note:</strong> Testing the connection is required before saving. If you don't have WooCommerce credentials yet, you can skip this step and configure it later from the Settings page.
+        <strong>💡 Note:</strong> Test the connection to verify your credentials, or skip this step to configure WooCommerce later from the Settings page.
     </div>
-
-    <button type="submit" name="skip_woocommerce" value="1" class="btn btn-secondary" style="width: 100%; margin-bottom: 20px;">
-        ⏭️ Skip WooCommerce Setup
-    </button>
 
     <div class="buttons">
         <button type="submit" name="prev_step" value="4" class="btn btn-secondary">
             ← Back
         </button>
         <button type="submit" name="next_step" value="6" class="btn btn-primary" 
-                <?php echo (!$success && !$wasSkipped) ? 'disabled' : ''; ?>>
+                <?php echo !isset($_SESSION['woocommerce_tested']) || !$_SESSION['woocommerce_tested'] ? 'disabled' : ''; ?>>
             Next: Complete Installation →
         </button>
     </div>
@@ -182,12 +172,11 @@ document.getElementById('wooForm').addEventListener('submit', function(e) {
     
     // Validate next step
     if (submitter.name === 'next_step') {
-        const hasSuccess = <?php echo $success ? 'true' : 'false'; ?>;
-        const wasSkipped = <?php echo $wasSkipped ? 'true' : 'false'; ?>;
+        const tested = <?php echo isset($_SESSION['woocommerce_tested']) && $_SESSION['woocommerce_tested'] ? 'true' : 'false'; ?>;
         
-        if (!hasSuccess && !wasSkipped) {
+        if (!tested) {
             e.preventDefault();
-            alert('Please save the WooCommerce configuration or skip this step!');
+            alert('Please test the WooCommerce connection or skip this step!');
         }
     }
     
@@ -203,22 +192,11 @@ document.getElementById('wooForm').addEventListener('submit', function(e) {
         }
     }
     
-    // Validate save
-    if (submitter.name === 'save_woocommerce') {
-        const tested = <?php echo isset($_SESSION['woocommerce_tested']) && $_SESSION['woocommerce_tested'] ? 'true' : 'false'; ?>;
-        
-        if (!tested) {
-            e.preventDefault();
-            alert('Please test the connection first!');
-        }
-    }
-    
-    // Show loading state for test and save buttons
-    if (submitter.name === 'test_connection' || submitter.name === 'save_woocommerce') {
+    // Show loading state for test button
+    if (submitter.name === 'test_connection') {
         submitter.disabled = true;
         const originalText = submitter.innerHTML;
-        submitter.innerHTML = '<div class="loading" style="display: inline-block; margin-right: 5px;"></div> ' + 
-                             (submitter.name === 'test_connection' ? 'Testing...' : 'Saving...');
+        submitter.innerHTML = '<div class="loading" style="display: inline-block; margin-right: 5px;"></div> Testing...';
         
         // Re-enable after a timeout if form doesn't submit
         setTimeout(() => {
