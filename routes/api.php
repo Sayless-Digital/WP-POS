@@ -169,7 +169,7 @@ Route::prefix('v1')->middleware(['auth:sanctum'])->group(function () {
     });
 
     // Product Categories (simple CRUD)
-    Route::apiResource('categories', \App\Http\Controllers\Api\ProductCategoryController::class);
+    // Route::apiResource("categories", \App\Http\Controllers\Api\ProductCategoryController::class);
 
     // Product Variants (simple CRUD)
     Route::apiResource('variants', \App\Http\Controllers\Api\ProductVariantController::class);
