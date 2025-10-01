@@ -9,46 +9,30 @@ $success = null;
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $appName = $_POST['app_name'] ?? 'WP-POS';
-    $appUrl = $_POST['app_url'] ?? '';
     $appEnv = $_POST['app_env'] ?? 'production';
     $appDebug = $_POST['app_debug'] ?? 'false';
-    
-    // Always save the data first
-    $_SESSION['install_data']['config'] = [
-        'app_name' => $appName,
-        'app_url' => rtrim($appUrl, '/'),
-        'app_env' => $appEnv,
-        'app_debug' => $appDebug,
-    ];
+    $appUrl = $_POST['app_url'] ?? '';
     
     // Validate URL
-    if (empty($appUrl) || !filter_var($appUrl, FILTER_VALIDATE_URL)) {
-        $error = 'Please enter a valid application URL';
-    } else {
-        // Merge with database config
-        $configData = array_merge(
-            $_SESSION['install_data']['database'] ?? [],
-            $_SESSION['install_data']['config']
-        );
-        
-        // Create .env file
-        $result = $installer->createEnvFile($configData);
-        
-        if ($result['success']) {
-            // Generate app key
-            $keyResult = $installer->generateAppKey();
-            
-            if ($keyResult['success']) {
-                $success = 'Configuration saved successfully!';
-                $_SESSION['config_saved'] = true;
-            } else {
-                $error = 'Failed to generate application key: ' . $keyResult['message'];
-                $_SESSION['config_saved'] = false;
-            }
+    if (!empty($appUrl)) {
+        if (!filter_var($appUrl, FILTER_VALIDATE_URL)) {
+            $error = 'Please enter a valid application URL';
         } else {
-            $error = $result['message'];
-            $_SESSION['config_saved'] = false;
+            // Ensure URL doesn't end with slash
+            $appUrl = rtrim($appUrl, '/');
         }
+    }
+    
+    if (!$error) {
+        // Save configuration data
+        $_SESSION['install_data']['configuration'] = [
+            'app_name' => $appName,
+            'app_env' => $appEnv,
+            'app_debug' => $appDebug,
+            'app_url' => $appUrl,
+        ];
+        
+        $success = 'Configuration saved successfully!';
     }
     
     // Handle back navigation
@@ -58,89 +42,184 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
     
-    // Proceed to next step if config is saved successfully
-    if (isset($_POST['next_step']) && isset($_SESSION['config_saved']) && $_SESSION['config_saved']) {
+    // Proceed to next step
+    if (isset($_POST['next_step']) && !$error) {
         $_SESSION['install_step'] = 4;
         header('Location: ' . $_SERVER['PHP_SELF']);
         exit;
     }
 }
 
-// Get saved values or detect current URL
-$savedData = $_SESSION['install_data']['config'] ?? [];
-$currentUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://" . $_SERVER['HTTP_HOST'];
-$currentUrl = str_replace('/install', '', $currentUrl);
+// Get saved values
+$savedData = $_SESSION['install_data']['configuration'] ?? [];
+
+// Auto-detect application URL if not set
+if (empty($savedData['app_url'])) {
+    $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'];
+    $path = dirname($_SERVER['REQUEST_URI']);
+    $savedData['app_url'] = $protocol . '://' . $host . str_replace('/install', '', $path);
+}
 ?>
 
-<h2 class="step-title">Application Configuration</h2>
-<p class="step-description">Configure your WP-POS application settings.</p>
+<div class="step-content fade-in">
+    <h2 class="step-title">Application Configuration</h2>
+    <p class="step-description">Configure your WP-POS application settings.</p>
 
-<?php if ($error): ?>
-    <div class="alert alert-error">
-        <strong>❌ Error:</strong> <?php echo htmlspecialchars($error); ?>
-    </div>
-<?php endif; ?>
+    <?php if ($error): ?>
+        <div class="alert alert-error">
+            <div class="alert-icon">❌</div>
+            <div class="alert-content">
+                <div class="alert-title">Configuration Error</div>
+                <div class="alert-message"><?php echo htmlspecialchars($error); ?></div>
+            </div>
+        </div>
+    <?php endif; ?>
 
-<?php if ($success): ?>
-    <div class="alert alert-success">
-        <strong>✅ Success:</strong> <?php echo htmlspecialchars($success); ?>
-    </div>
-<?php endif; ?>
+    <?php if ($success): ?>
+        <div class="alert alert-success">
+            <div class="alert-icon">✅</div>
+            <div class="alert-content">
+                <div class="alert-title">Configuration Saved</div>
+                <div class="alert-message"><?php echo htmlspecialchars($success); ?></div>
+            </div>
+        </div>
+    <?php endif; ?>
 
-<form method="POST" id="configForm">
-    <div class="form-group">
-        <label for="app_name">Application Name *</label>
-        <input type="text" id="app_name" name="app_name" value="<?php echo htmlspecialchars($savedData['app_name'] ?? 'WP-POS'); ?>" required>
-        <small>The name of your POS system</small>
-    </div>
+    <form method="POST" class="installer-form">
+        <div class="form-section">
+            <h3 class="section-title">Basic Settings</h3>
+            
+            <div class="form-group">
+                <label for="app_name">Application Name *</label>
+                <input type="text" id="app_name" name="app_name" 
+                       value="<?php echo htmlspecialchars($savedData['app_name'] ?? 'WP-POS'); ?>" 
+                       required data-tooltip="This will appear in browser tabs and emails">
+                <small>The name of your POS system</small>
+            </div>
 
-    <div class="form-group">
-        <label for="app_url">Application URL *</label>
-        <input type="url" id="app_url" name="app_url" value="<?php echo htmlspecialchars($savedData['app_url'] ?? $currentUrl); ?>" required>
-        <small>The full URL where your POS will be accessible (e.g., https://pos.yourstore.com)</small>
-    </div>
+            <div class="form-group">
+                <label for="app_url">Application URL *</label>
+                <input type="url" id="app_url" name="app_url" 
+                       value="<?php echo htmlspecialchars($savedData['app_url'] ?? ''); ?>" 
+                       required data-tooltip="The full URL where your application will be accessible">
+                <small>The full URL where your POS system will be accessible</small>
+            </div>
+        </div>
 
-    <div class="form-group">
-        <label for="app_env">Environment *</label>
-        <select id="app_env" name="app_env" required>
-            <option value="production" <?php echo ($savedData['app_env'] ?? 'production') === 'production' ? 'selected' : ''; ?>>Production</option>
-            <option value="local" <?php echo ($savedData['app_env'] ?? '') === 'local' ? 'selected' : ''; ?>>Local/Development</option>
-        </select>
-        <small>Select 'Production' for live server, 'Local' for development</small>
-    </div>
+        <div class="form-section">
+            <h3 class="section-title">Environment Settings</h3>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="app_env">Environment *</label>
+                    <select id="app_env" name="app_env" required data-tooltip="Choose the environment for your application">
+                        <option value="production" <?php echo ($savedData['app_env'] ?? 'production') === 'production' ? 'selected' : ''; ?>>Production</option>
+                        <option value="staging" <?php echo ($savedData['app_env'] ?? '') === 'staging' ? 'selected' : ''; ?>>Staging</option>
+                        <option value="local" <?php echo ($savedData['app_env'] ?? '') === 'local' ? 'selected' : ''; ?>>Local Development</option>
+                    </select>
+                    <small>Environment affects error reporting and caching</small>
+                </div>
 
-    <div class="form-group">
-        <label for="app_debug">Debug Mode *</label>
-        <select id="app_debug" name="app_debug" required>
-            <option value="false" <?php echo ($savedData['app_debug'] ?? 'false') === 'false' ? 'selected' : ''; ?>>Disabled (Recommended)</option>
-            <option value="true" <?php echo ($savedData['app_debug'] ?? '') === 'true' ? 'selected' : ''; ?>>Enabled</option>
-        </select>
-        <small>Keep disabled in production for security</small>
-    </div>
+                <div class="form-group">
+                    <label for="app_debug">Debug Mode *</label>
+                    <select id="app_debug" name="app_debug" required data-tooltip="Enable detailed error messages (not recommended for production)">
+                        <option value="false" <?php echo ($savedData['app_debug'] ?? 'false') === 'false' ? 'selected' : ''; ?>>Disabled (Recommended)</option>
+                        <option value="true" <?php echo ($savedData['app_debug'] ?? '') === 'true' ? 'selected' : ''; ?>>Enabled</option>
+                    </select>
+                    <small>Show detailed error messages</small>
+                </div>
+            </div>
+        </div>
 
-    <div class="alert alert-info">
-        <strong>ℹ️ Note:</strong> These settings will be saved to your .env file. You can change them later by editing the .env file directly.
-    </div>
+        <div class="configuration-info">
+            <h4>Configuration Details</h4>
+            <div class="info-grid">
+                <div class="info-item">
+                    <strong>Production Environment</strong>
+                    <p>Optimized for live use with error logging and caching enabled.</p>
+                </div>
+                <div class="info-item">
+                    <strong>Debug Mode</strong>
+                    <p>Disabled by default for security. Only enable for troubleshooting.</p>
+                </div>
+                <div class="info-item">
+                    <strong>Application URL</strong>
+                    <p>Used for generating links and API endpoints in your application.</p>
+                </div>
+                <div class="info-item">
+                    <strong>Environment Variables</strong>
+                    <p>These settings will be saved to your .env configuration file.</p>
+                </div>
+            </div>
+        </div>
 
-    <div class="buttons">
-        <button type="submit" name="prev_step" value="2" class="btn btn-secondary">
-            ← Back
-        </button>
-        <button type="submit" name="next_step" value="4" class="btn btn-primary" <?php echo !isset($_SESSION['config_saved']) || !$_SESSION['config_saved'] ? 'disabled' : ''; ?>>
-            Next: Admin Account →
-        </button>
-    </div>
-</form>
+        <div class="button-group">
+            <button type="submit" name="prev_step" value="2" class="btn btn-secondary">
+                ← Back
+            </button>
+            <button type="submit" name="next_step" value="4" class="btn btn-primary">
+                Next: Admin Account →
+            </button>
+        </div>
+    </form>
+</div>
 
-<script>
-document.getElementById('configForm').addEventListener('submit', function(e) {
-    const nextStep = e.submitter.name === 'next_step';
-    const backStep = e.submitter.name === 'prev_step';
-    
-    // Only validate for next step, not back step
-    if (nextStep && !<?php echo isset($_SESSION['config_saved']) && $_SESSION['config_saved'] ? 'true' : 'false'; ?>) {
-        e.preventDefault();
-        alert('Please fill in all required fields and try again!');
+<style>
+.form-section {
+    margin-bottom: 2rem;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.configuration-info {
+    background: var(--gray-50);
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 2rem;
+}
+
+.configuration-info h4 {
+    margin-bottom: 1rem;
+    color: var(--gray-800);
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.info-item {
+    background: white;
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--gray-200);
+}
+
+.info-item strong {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--gray-800);
+}
+
+.info-item p {
+    font-size: 0.9rem;
+    color: var(--gray-600);
+    margin: 0;
+}
+
+@media (max-width: 768px) {
+    .form-row {
+        grid-template-columns: 1fr;
     }
-});
-</script>
+    
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>

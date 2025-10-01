@@ -3,9 +3,9 @@
  * Step 6: Complete Installation
  */
 
+$error = null;
+$success = null;
 $installationComplete = false;
-$errors = [];
-$steps = [];
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -15,281 +15,550 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Location: ' . $_SERVER['PHP_SELF']);
         exit;
     }
-}
-
-// Handle installation
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['run_installation'])) {
-    set_time_limit(300); // 5 minutes
     
-    // Step 1: Run migrations
-    $steps[] = ['name' => 'Running database migrations...', 'status' => 'running'];
-    $result = $installer->runArtisan('migrate --force');
-    if ($result['success']) {
-        $steps[count($steps) - 1]['status'] = 'success';
-        $steps[count($steps) - 1]['message'] = 'Database tables created successfully';
-    } else {
-        $steps[count($steps) - 1]['status'] = 'error';
-        $steps[count($steps) - 1]['message'] = $result['message'];
-        $errors[] = 'Migration failed: ' . $result['message'];
-    }
-    
-    // Step 2: Seed database
-    if (empty($errors)) {
-        $steps[] = ['name' => 'Seeding initial data...', 'status' => 'running'];
-        $result = $installer->runArtisan('db:seed --force');
-        if ($result['success']) {
-            $steps[count($steps) - 1]['status'] = 'success';
-            $steps[count($steps) - 1]['message'] = 'Initial data seeded successfully';
-        } else {
-            $steps[count($steps) - 1]['status'] = 'warning';
-            $steps[count($steps) - 1]['message'] = 'Some seeders may have failed (this is usually okay)';
-        }
-    }
-    
-    // Step 3: Create admin user (manual SQL insert)
-    if (empty($errors) && isset($_SESSION['install_data']['admin'])) {
-        $steps[] = ['name' => 'Creating admin user...', 'status' => 'running'];
-        
+    // Start installation process
+    if (isset($_POST['start_installation'])) {
         try {
-            $dbData = $_SESSION['install_data']['database'];
-            $adminData = $_SESSION['install_data']['admin'];
+            $installer->clearMessages();
             
-            $pdo = new PDO(
-                "mysql:host={$dbData['db_host']};port={$dbData['db_port']};dbname={$dbData['db_database']}",
-                $dbData['db_username'],
-                $dbData['db_password']
+            // Step 1: Create .env file
+            $envData = array_merge(
+                $_SESSION['install_data']['database'] ?? [],
+                $_SESSION['install_data']['configuration'] ?? []
             );
             
-            $hashedPassword = password_hash($adminData['password'], PASSWORD_BCRYPT);
-            $now = date('Y-m-d H:i:s');
-            
-            $stmt = $pdo->prepare("INSERT INTO users (name, email, password, email_verified_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)");
-            $stmt->execute([
-                $adminData['name'],
-                $adminData['email'],
-                $hashedPassword,
-                $now,
-                $now,
-                $now
-            ]);
-            
-            $steps[count($steps) - 1]['status'] = 'success';
-            $steps[count($steps) - 1]['message'] = 'Admin user created successfully';
-        } catch (Exception $e) {
-            $steps[count($steps) - 1]['status'] = 'error';
-            $steps[count($steps) - 1]['message'] = $e->getMessage();
-            $errors[] = 'Failed to create admin user: ' . $e->getMessage();
-        }
-    }
-    
-    // Step 3.5: Save WooCommerce configuration to .env
-    if (empty($errors) && isset($_SESSION['install_data']['woocommerce'])) {
-        $steps[] = ['name' => 'Configuring WooCommerce integration...', 'status' => 'running'];
-        
-        try {
-            $wooData = $_SESSION['install_data']['woocommerce'];
-            $envFile = dirname(__DIR__, 2) . '/.env';
-            
-            if (file_exists($envFile)) {
-                $envContent = file_get_contents($envFile);
-                
-                // Add WooCommerce configuration
-                $wooConfig = "\n# WooCommerce Integration\n";
-                $wooConfig .= "WOOCOMMERCE_URL=" . $wooData['url'] . "\n";
-                $wooConfig .= "WOOCOMMERCE_CONSUMER_KEY=" . $wooData['consumer_key'] . "\n";
-                $wooConfig .= "WOOCOMMERCE_CONSUMER_SECRET=" . $wooData['consumer_secret'] . "\n";
-                $wooConfig .= "WOOCOMMERCE_SYNC_ENABLED=" . $wooData['sync_enabled'] . "\n";
-                
-                // Append to .env file
-                file_put_contents($envFile, $envContent . $wooConfig);
-                
-                $steps[count($steps) - 1]['status'] = 'success';
-                if (!empty($wooData['url'])) {
-                    $steps[count($steps) - 1]['message'] = 'WooCommerce integration configured';
-                } else {
-                    $steps[count($steps) - 1]['message'] = 'WooCommerce integration skipped';
-                }
-            } else {
-                $steps[count($steps) - 1]['status'] = 'warning';
-                $steps[count($steps) - 1]['message'] = '.env file not found, skipping WooCommerce config';
+            $result = $installer->createEnvFile($envData);
+            if (!$result['success']) {
+                throw new Exception($result['message']);
             }
+            $installer->addSuccess('Environment file created');
+            
+            // Step 2: Generate application key
+            $result = $installer->generateAppKey();
+            if (!$result['success']) {
+                throw new Exception($result['message']);
+            }
+            $installer->addSuccess('Application key generated');
+            
+            // Step 3: Run database migrations
+            $result = $installer->runArtisan('migrate --force');
+            if (!$result['success']) {
+                throw new Exception('Migration failed: ' . $result['message']);
+            }
+            $installer->addSuccess('Database migrations completed');
+            
+            // Step 4: Seed database
+            $result = $installer->runArtisan('db:seed --force');
+            if (!$result['success']) {
+                throw new Exception('Database seeding failed: ' . $result['message']);
+            }
+            $installer->addSuccess('Database seeded with initial data');
+            
+            // Step 5: Create admin user
+            $adminData = $_SESSION['install_data']['admin'] ?? [];
+            if (!empty($adminData)) {
+                $result = $installer->createAdminUser(
+                    $adminData['admin_name'],
+                    $adminData['admin_email'],
+                    $adminData['admin_password']
+                );
+                if (!$result['success']) {
+                    throw new Exception('Admin user creation failed: ' . $result['message']);
+                }
+                $installer->addSuccess('Admin user created successfully');
+            }
+            
+            // Step 6: Create storage link
+            $result = $installer->runArtisan('storage:link');
+            if (!$result['success']) {
+                $installer->addWarning('Storage link creation failed: ' . $result['message']);
+            } else {
+                $installer->addSuccess('Storage link created');
+            }
+            
+            // Step 7: Optimize application
+            $optimizeCommands = [
+                'config:cache' => 'Configuration cached',
+                'route:cache' => 'Routes cached',
+                'view:cache' => 'Views cached'
+            ];
+            
+            foreach ($optimizeCommands as $command => $message) {
+                $result = $installer->runArtisan($command);
+                if ($result['success']) {
+                    $installer->addSuccess($message);
+                } else {
+                    $installer->addWarning($message . ' failed: ' . $result['message']);
+                }
+            }
+            
+            // Step 8: Lock installer
+            if ($installer->lockInstaller()) {
+                $installer->addSuccess('Installer locked successfully');
+            } else {
+                $installer->addWarning('Could not lock installer');
+            }
+            
+            $installationComplete = true;
+            $success = 'Installation completed successfully!';
+            
         } catch (Exception $e) {
-            $steps[count($steps) - 1]['status'] = 'warning';
-            $steps[count($steps) - 1]['message'] = 'WooCommerce config warning: ' . $e->getMessage();
+            $error = $e->getMessage();
+            $installer->addError($error);
         }
-    }
-    
-    // Step 4: Create storage link
-    if (empty($errors)) {
-        $steps[] = ['name' => 'Creating storage link...', 'status' => 'running'];
-        $result = $installer->runArtisan('storage:link');
-        $steps[count($steps) - 1]['status'] = 'success';
-        $steps[count($steps) - 1]['message'] = 'Storage link created';
-    }
-    
-    // Step 5: Optimize application
-    if (empty($errors)) {
-        $steps[] = ['name' => 'Optimizing application...', 'status' => 'running'];
-        $installer->runArtisan('config:cache');
-        $installer->runArtisan('route:cache');
-        $installer->runArtisan('view:cache');
-        $steps[count($steps) - 1]['status'] = 'success';
-        $steps[count($steps) - 1]['message'] = 'Application optimized';
-    }
-    
-    // Mark installation as complete
-    if (empty($errors)) {
-        $installer->lockInstaller();
-        $installationComplete = true;
-        
-        // Clear session
-        session_destroy();
     }
 }
+
+// Get installation data for review
+$databaseData = $_SESSION['install_data']['database'] ?? [];
+$configData = $_SESSION['install_data']['configuration'] ?? [];
+$adminData = $_SESSION['install_data']['admin'] ?? [];
+$wcData = $_SESSION['install_data']['woocommerce'] ?? [];
+
+$messages = $installer->getMessages();
 ?>
 
-<h2 class="step-title">Complete Installation</h2>
-<p class="step-description">Ready to finalize your WP-POS installation. This will set up the database and create your admin account.</p>
+<div class="step-content fade-in">
+    <h2 class="step-title">Complete Installation</h2>
+    <p class="step-description">Review your settings and complete the WP-POS installation.</p>
 
-<?php if (!empty($errors)): ?>
-    <div class="alert alert-error">
-        <strong>❌ Installation Failed</strong>
-        <ul style="margin: 10px 0 0 20px;">
-            <?php foreach ($errors as $error): ?>
-                <li><?php echo htmlspecialchars($error); ?></li>
-            <?php endforeach; ?>
-        </ul>
-    </div>
-<?php endif; ?>
-
-<?php if ($installationComplete): ?>
-    <div class="alert alert-success">
-        <strong>🎉 Installation Complete!</strong> Your WP-POS system is now ready to use.
-    </div>
-    
-    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-        <h3 style="margin: 0 0 15px 0; color: #1f2937;">Your Login Credentials</h3>
-        <p style="margin: 5px 0;"><strong>Email:</strong> <?php echo htmlspecialchars($_SESSION['install_data']['admin']['email'] ?? 'N/A'); ?></p>
-        <p style="margin: 5px 0;"><strong>Password:</strong> (the password you set)</p>
-        <p style="margin: 15px 0 0 0; font-size: 14px; color: #6b7280;">
-            <strong>⚠️ Important:</strong> Please save these credentials in a secure location.
-        </p>
-    </div>
-    
-    <div class="alert alert-info">
-        <strong>🚀 Next Steps:</strong>
-        <ol style="margin: 10px 0 0 20px;">
-            <li>Log in to your admin panel</li>
-            <li>Configure your store settings</li>
-            <li>Add products and categories</li>
-            <li>Set up WooCommerce integration (optional)</li>
-            <li>Start processing sales!</li>
-        </ol>
-    </div>
-    
-    <div class="buttons">
-        <div></div>
-        <a href="../" class="btn btn-success" style="text-align: center;">
-            🎯 Go to Dashboard
-        </a>
-    </div>
-    
-<?php elseif (!empty($steps)): ?>
-    <h3 style="margin: 20px 0;">Installation Progress</h3>
-    <ul class="requirement-list">
-        <?php foreach ($steps as $step): ?>
-            <li class="requirement-item <?php echo $step['status'] === 'success' ? 'success' : ($step['status'] === 'error' ? 'error' : 'warning'); ?>">
-                <div>
-                    <strong><?php echo htmlspecialchars($step['name']); ?></strong>
-                    <?php if (isset($step['message'])): ?>
-                        <br><small><?php echo htmlspecialchars($step['message']); ?></small>
-                    <?php endif; ?>
-                </div>
-                <div class="status-icon">
-                    <?php if ($step['status'] === 'success'): ?>
-                        ✅
-                    <?php elseif ($step['status'] === 'error'): ?>
-                        ❌
-                    <?php elseif ($step['status'] === 'running'): ?>
-                        <div class="loading"></div>
-                    <?php else: ?>
-                        ⚠️
-                    <?php endif; ?>
-                </div>
-            </li>
-        <?php endforeach; ?>
-    </ul>
-    
-    <?php if (!empty($errors)): ?>
-        <div class="buttons">
-            <form method="POST" style="width: 100%;">
-                <button type="submit" name="prev_step" value="5" class="btn btn-secondary">
-                    ← Back to Fix Issues
-                </button>
-            </form>
+    <?php if ($error): ?>
+        <div class="alert alert-error">
+            <div class="alert-icon">❌</div>
+            <div class="alert-content">
+                <div class="alert-title">Installation Failed</div>
+                <div class="alert-message"><?php echo htmlspecialchars($error); ?></div>
+            </div>
         </div>
     <?php endif; ?>
-    
-<?php else: ?>
-    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-        <h3 style="margin: 0 0 15px 0; color: #1f2937;">Installation Summary</h3>
-        <ul style="list-style: none; padding: 0;">
-            <li style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">
-                <strong>Application:</strong> <?php echo htmlspecialchars($_SESSION['install_data']['config']['app_name'] ?? 'WP-POS'); ?>
-            </li>
-            <li style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">
-                <strong>URL:</strong> <?php echo htmlspecialchars($_SESSION['install_data']['config']['app_url'] ?? 'N/A'); ?>
-            </li>
-            <li style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">
-                <strong>Database:</strong> <?php echo htmlspecialchars($_SESSION['install_data']['database']['db_database'] ?? 'N/A'); ?>
-            </li>
-            <li style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">
-                <strong>Admin Email:</strong> <?php echo htmlspecialchars($_SESSION['install_data']['admin']['email'] ?? 'N/A'); ?>
-            </li>
-            <li style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">
-                <strong>Environment:</strong> <?php echo htmlspecialchars($_SESSION['install_data']['config']['app_env'] ?? 'production'); ?>
-            </li>
-            <li style="padding: 8px 0;">
-                <strong>WooCommerce:</strong>
-                <?php
-                $wooData = $_SESSION['install_data']['woocommerce'] ?? [];
-                if (!empty($wooData['url'])) {
-                    echo 'Configured (' . htmlspecialchars($wooData['url']) . ')';
-                } else {
-                    echo 'Not configured (can be set up later)';
-                }
-                ?>
-            </li>
-        </ul>
-    </div>
-    
-    <div class="alert alert-info">
-        <strong>⏱️ This may take a few minutes.</strong> Please do not close this window or refresh the page during installation.
-    </div>
-    
-    <form method="POST" id="installForm">
-        <button type="submit" name="run_installation" value="1" class="btn btn-success" style="width: 100%; font-size: 16px; padding: 15px;">
-            🚀 Run Installation
-        </button>
-        
-        <div class="buttons" style="margin-top: 20px;">
-            <button type="submit" name="prev_step" value="5" class="btn btn-secondary">
-                ← Back
-            </button>
-            <div></div>
+
+    <?php if ($success): ?>
+        <div class="alert alert-success">
+            <div class="alert-icon">✅</div>
+            <div class="alert-content">
+                <div class="alert-title">Installation Complete!</div>
+                <div class="alert-message"><?php echo htmlspecialchars($success); ?></div>
+            </div>
         </div>
-    </form>
+    <?php endif; ?>
+
+    <?php if (!empty($messages['errors'])): ?>
+        <div class="alert alert-error">
+            <div class="alert-icon">❌</div>
+            <div class="alert-content">
+                <div class="alert-title">Installation Errors</div>
+                <div class="alert-message">
+                    <ul style="margin: 0; padding-left: 1rem;">
+                        <?php foreach ($messages['errors'] as $error): ?>
+                            <li><?php echo htmlspecialchars($error); ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    <?php endif; ?>
+
+    <?php if (!empty($messages['warnings'])): ?>
+        <div class="alert alert-warning">
+            <div class="alert-icon">⚠️</div>
+            <div class="alert-content">
+                <div class="alert-title">Installation Warnings</div>
+                <div class="alert-message">
+                    <ul style="margin: 0; padding-left: 1rem;">
+                        <?php foreach ($messages['warnings'] as $warning): ?>
+                            <li><?php echo htmlspecialchars($warning); ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    <?php endif; ?>
+
+    <?php if (!empty($messages['success'])): ?>
+        <div class="alert alert-success">
+            <div class="alert-icon">✅</div>
+            <div class="alert-content">
+                <div class="alert-title">Installation Progress</div>
+                <div class="alert-message">
+                    <ul style="margin: 0; padding-left: 1rem;">
+                        <?php foreach ($messages['success'] as $success): ?>
+                            <li><?php echo htmlspecialchars($success); ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    <?php endif; ?>
+
+    <?php if (!$installationComplete): ?>
+        <!-- Installation Review -->
+        <div class="installation-review">
+            <h3 class="section-title">Installation Summary</h3>
+            
+            <div class="review-sections">
+                <div class="review-section">
+                    <h4>Database Configuration</h4>
+                    <div class="review-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Host:</span>
+                            <span class="detail-value"><?php echo htmlspecialchars($databaseData['db_host'] ?? 'Not set'); ?></span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Port:</span>
+                            <span class="detail-value"><?php echo htmlspecialchars($databaseData['db_port'] ?? 'Not set'); ?></span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Database:</span>
+                            <span class="detail-value"><?php echo htmlspecialchars($databaseData['db_database'] ?? 'Not set'); ?></span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Username:</span>
+                            <span class="detail-value"><?php echo htmlspecialchars($databaseData['db_username'] ?? 'Not set'); ?></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="review-section">
+                    <h4>Application Settings</h4>
+                    <div class="review-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Name:</span>
+                            <span class="detail-value"><?php echo htmlspecialchars($configData['app_name'] ?? 'Not set'); ?></span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">URL:</span>
+                            <span class="detail-value"><?php echo htmlspecialchars($configData['app_url'] ?? 'Not set'); ?></span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Environment:</span>
+                            <span class="detail-value"><?php echo htmlspecialchars($configData['app_env'] ?? 'Not set'); ?></span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Debug Mode:</span>
+                            <span class="detail-value"><?php echo ($configData['app_debug'] ?? 'false') === 'true' ? 'Enabled' : 'Disabled'; ?></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="review-section">
+                    <h4>Admin Account</h4>
+                    <div class="review-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Name:</span>
+                            <span class="detail-value"><?php echo htmlspecialchars($adminData['admin_name'] ?? 'Not set'); ?></span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Email:</span>
+                            <span class="detail-value"><?php echo htmlspecialchars($adminData['admin_email'] ?? 'Not set'); ?></span>
+                        </div>
+                    </div>
+                </div>
+
+                <?php if (!empty($wcData) && $wcData['wc_enabled'] === 'true'): ?>
+                <div class="review-section">
+                    <h4>WooCommerce Integration</h4>
+                    <div class="review-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Store URL:</span>
+                            <span class="detail-value"><?php echo htmlspecialchars($wcData['wc_url'] ?? 'Not set'); ?></span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Consumer Key:</span>
+                            <span class="detail-value"><?php echo htmlspecialchars(substr($wcData['wc_consumer_key'] ?? '', 0, 8) . '...'); ?></span>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <form method="POST" class="installer-form">
+            <div class="button-group">
+                <button type="submit" name="prev_step" value="5" class="btn btn-secondary">
+                    ← Back
+                </button>
+                <button type="submit" name="start_installation" value="1" class="btn btn-success" id="installBtn">
+                    🚀 Start Installation
+                </button>
+            </div>
+        </form>
+
+    <?php else: ?>
+        <!-- Installation Complete -->
+        <div class="installation-complete">
+            <div class="complete-icon">🎉</div>
+            <h3>Installation Complete!</h3>
+            <p>Your WP-POS system has been successfully installed and configured.</p>
+            
+            <div class="next-steps">
+                <h4>What's Next?</h4>
+                <div class="steps-grid">
+                    <div class="step-item">
+                        <div class="step-icon">🔐</div>
+                        <div class="step-content">
+                            <strong>Login to Admin Panel</strong>
+                            <p>Use your admin credentials to access the system</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-icon">⚙️</div>
+                        <div class="step-content">
+                            <strong>Configure Settings</strong>
+                            <p>Set up your store details and preferences</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-icon">📦</div>
+                        <div class="step-content">
+                            <strong>Add Products</strong>
+                            <p>Start adding your inventory items</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-icon">👥</div>
+                        <div class="step-content">
+                            <strong>Create Users</strong>
+                            <p>Add staff members and set permissions</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="access-info">
+                <h4>Access Your System</h4>
+                <div class="access-buttons">
+                    <a href="../" class="btn btn-primary">
+                        🏠 Go to Application
+                    </a>
+                    <a href="../login" class="btn btn-secondary">
+                        🔐 Admin Login
+                    </a>
+                </div>
+            </div>
+
+            <div class="security-notice">
+                <h4>Security Recommendations</h4>
+                <ul>
+                    <li>Delete the installer directory for security</li>
+                    <li>Set proper file permissions on your server</li>
+                    <li>Enable HTTPS in production</li>
+                    <li>Regularly backup your database</li>
+                    <li>Keep your system updated</li>
+                </ul>
+            </div>
+        </div>
+    <?php endif; ?>
+</div>
+
+<style>
+.installation-review {
+    background: var(--gray-50);
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 2rem;
+}
+
+.review-sections {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.review-section {
+    background: white;
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--gray-200);
+}
+
+.review-section h4 {
+    margin-bottom: 1rem;
+    color: var(--gray-800);
+    border-bottom: 1px solid var(--gray-200);
+    padding-bottom: 0.5rem;
+}
+
+.review-details {
+    display: grid;
+    gap: 0.5rem;
+}
+
+.detail-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--gray-100);
+}
+
+.detail-item:last-child {
+    border-bottom: none;
+}
+
+.detail-label {
+    font-weight: 500;
+    color: var(--gray-600);
+}
+
+.detail-value {
+    color: var(--gray-800);
+    font-family: monospace;
+    font-size: 0.9rem;
+}
+
+.installation-complete {
+    text-align: center;
+    padding: 2rem;
+}
+
+.complete-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+}
+
+.installation-complete h3 {
+    font-size: 2rem;
+    color: var(--success-color);
+    margin-bottom: 1rem;
+}
+
+.installation-complete p {
+    font-size: 1.1rem;
+    color: var(--gray-600);
+    margin-bottom: 2rem;
+}
+
+.next-steps {
+    background: var(--gray-50);
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 2rem;
+    text-align: left;
+}
+
+.next-steps h4 {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    color: var(--gray-800);
+}
+
+.steps-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.step-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    background: white;
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--gray-200);
+}
+
+.step-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.step-content strong {
+    display: block;
+    margin-bottom: 0.25rem;
+    color: var(--gray-800);
+}
+
+.step-content p {
+    font-size: 0.9rem;
+    color: var(--gray-600);
+    margin: 0;
+}
+
+.access-info {
+    background: #dbeafe;
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 2rem;
+    border-left: 4px solid var(--info-color);
+}
+
+.access-info h4 {
+    margin-bottom: 1rem;
+    color: #1e40af;
+}
+
+.access-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.security-notice {
+    background: #fef3c7;
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    border-left: 4px solid var(--warning-color);
+    text-align: left;
+}
+
+.security-notice h4 {
+    margin-bottom: 1rem;
+    color: #92400e;
+}
+
+.security-notice ul {
+    margin: 0;
+    padding-left: 1.5rem;
+}
+
+.security-notice li {
+    margin-bottom: 0.5rem;
+    color: #92400e;
+}
+
+@media (max-width: 768px) {
+    .steps-grid {
+        grid-template-columns: 1fr;
+    }
     
-    <script>
-    document.getElementById('installForm').addEventListener('submit', function(e) {
-        if (e.submitter.name === 'run_installation') {
-            if (!confirm('Ready to install? This will create database tables and set up your admin account.')) {
+    .access-buttons {
+        flex-direction: column;
+    }
+    
+    .review-sections {
+        gap: 1rem;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const installBtn = document.getElementById('installBtn');
+    
+    if (installBtn) {
+        installBtn.addEventListener('click', function(e) {
+            if (!confirm('Are you sure you want to start the installation? This process cannot be undone.')) {
                 e.preventDefault();
-            } else {
-                e.submitter.disabled = true;
-                e.submitter.innerHTML = '<div class="loading" style="display: inline-block; margin-right: 10px;"></div> Installing...';
+                return;
             }
-        }
-    });
-    </script>
-<?php endif; ?>
+            
+            // Show loading state
+            installBtn.disabled = true;
+            installBtn.innerHTML = '<span class="loading-spinner"></span> Installing...';
+            
+            // Add progress indicator
+            const progressDiv = document.createElement('div');
+            progressDiv.className = 'alert alert-info';
+            progressDiv.innerHTML = `
+                <div class="alert-icon">⏳</div>
+                <div class="alert-content">
+                    <div class="alert-title">Installation in Progress</div>
+                    <div class="alert-message">Please wait while we set up your WP-POS system...</div>
+                </div>
+            `;
+            
+            const content = document.querySelector('.step-content');
+            content.insertBefore(progressDiv, content.firstChild);
+        });
+    }
+});
+</script>

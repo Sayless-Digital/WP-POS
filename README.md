@@ -13,14 +13,18 @@
 
 ### 🚀 Quick Deploy
 ```bash
-# Option 1: Docker (Recommended)
+# Option 1: Web Installer (Easiest)
+# Upload files to server, then visit: https://yoursite.com/install
+# Follow the beautiful 6-step installation wizard
+
+# Option 2: Docker (Recommended)
 docker-compose up -d --build
 
-# Option 2: Automated Script
+# Option 3: Automated Script
 chmod +x scripts/deploy.sh
 ./scripts/deploy.sh
 
-# Option 3: Traditional Server
+# Option 4: Traditional Server
 # See DEPLOYMENT_GUIDE.md for detailed steps
 ```
 
@@ -139,6 +143,23 @@ This project includes comprehensive documentation organized into focused guides:
 2. Implement features using [Implementation_Guide.md](Implementation_Guide.md)
 3. Integrate WooCommerce via [WooCommerce_Integration.md](WooCommerce_Integration.md)
 4. Deploy using [Deployment_Hostinger_Guide.md](Deployment_Hostinger_Guide.md)
+
+---
+
+## 🛠️ Modern Web Installer
+
+**NEW!** WP-POS now includes a beautiful, modern web-based installer that makes deployment incredibly easy:
+
+- **🎨 Beautiful UI** - Modern gradient design with smooth animations
+- **📱 Mobile-Friendly** - Responsive design that works on all devices  
+- **🔍 Smart Validation** - Real-time form validation and connection testing
+- **🛡️ Secure Setup** - Automated security configuration and admin creation
+- **🔗 WooCommerce Integration** - Optional online store connection during setup
+- **📊 Progress Tracking** - Visual progress bar and step-by-step guidance
+
+**Access:** Upload files to your server and visit `https://yoursite.com/install`
+
+📖 **Read [`install/README.md`](install/README.md) for complete installer documentation**
 
 ---
 
