@@ -154,8 +154,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     if (isset($_POST['jump_to_step'])) {
         $jumpTo = (int)$_POST['jump_to_step'];
-        // Only allow jumping to completed steps or current step
-        if ($jumpTo >= 1 && $jumpTo <= $step) {
+        // Allow jumping to any step (1-5)
+        if ($jumpTo >= 1 && $jumpTo <= 5) {
             $_SESSION['step'] = $jumpTo;
         }
         header('Location: ' . $_SERVER['PHP_SELF']);
@@ -265,10 +265,12 @@ if (isset($_SESSION['installed'])) {
         .header h1 { font-size: 1.5rem; margin-bottom: 0.25rem; font-weight: 700; }
         .header p { font-size: 0.875rem; opacity: 0.9; margin: 0; }
         .progress { display: flex; padding: 0.75rem 1rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
-        .step { flex: 1; text-align: center; font-size: 0.8rem; color: #64748b; cursor: pointer; padding: 0.5rem 0.25rem; border-radius: 6px; transition: all 0.2s ease; font-weight: 500; }
+        .step { flex: 1; text-align: center; font-size: 0.8rem; color: #64748b; cursor: pointer; padding: 0.5rem 0.25rem; border-radius: 6px; transition: all 0.2s ease; font-weight: 500; margin: 0 0.25rem; }
         .step.active { color: #3b82f6; font-weight: 600; background: #dbeafe; }
+        .step.completed { color: #10b981; font-weight: 600; }
         .step:hover { background: #e2e8f0; color: #374151; }
         .step.active:hover { background: #bfdbfe; color: #3b82f6; }
+        .step.completed:hover { background: #d1fae5; color: #10b981; }
         .content { padding: 1.5rem 2rem; }
         .content h2 { font-size: 1.25rem; font-weight: 600; color: #1f2937; margin-bottom: 0.5rem; }
         .content p { color: #6b7280; font-size: 0.875rem; margin-bottom: 1.5rem; }
@@ -326,11 +328,11 @@ if (isset($_SESSION['installed'])) {
         </div>
         
         <div class="progress">
-            <div class="step <?php echo $step >= 1 ? 'active' : ''; ?>">1. Database</div>
-            <div class="step <?php echo $step >= 2 ? 'active' : ''; ?>">2. Settings</div>
-            <div class="step <?php echo $step >= 3 ? 'active' : ''; ?>">3. Admin</div>
-            <div class="step <?php echo $step >= 4 ? 'active' : ''; ?>">4. WooCommerce</div>
-            <div class="step <?php echo $step >= 5 ? 'active' : ''; ?>">5. Install</div>
+            <div class="step <?php echo $step == 1 ? 'active' : ($step > 1 ? 'completed' : ''); ?>">1. Database</div>
+            <div class="step <?php echo $step == 2 ? 'active' : ($step > 2 ? 'completed' : ''); ?>">2. Settings</div>
+            <div class="step <?php echo $step == 3 ? 'active' : ($step > 3 ? 'completed' : ''); ?>">3. Admin</div>
+            <div class="step <?php echo $step == 4 ? 'active' : ($step > 4 ? 'completed' : ''); ?>">4. WooCommerce</div>
+            <div class="step <?php echo $step == 5 ? 'active' : ''; ?>">5. Install</div>
         </div>
         
         <div class="content">
@@ -433,8 +435,8 @@ if (isset($_SESSION['installed'])) {
                 
                 <form method="POST">
                     <div class="form-group">
-                        <label>
-                            <input type="checkbox" name="wc_enabled" <?php echo ($_SESSION['data']['wc']['enabled'] ?? 'false') === 'true' ? 'checked' : ''; ?> onchange="toggleWcFields()">
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                            <input type="checkbox" name="wc_enabled" <?php echo ($_SESSION['data']['wc']['enabled'] ?? 'false') === 'true' ? 'checked' : ''; ?> onchange="toggleWcFields()" style="margin: 0;">
                             Enable WooCommerce Integration
                         </label>
                     </div>
@@ -497,23 +499,20 @@ if (isset($_SESSION['installed'])) {
         }
         
         function jumpToStep(stepNumber) {
-            // Only allow jumping to completed steps or current step
-            const currentStep = <?php echo $step; ?>;
-            if (stepNumber <= currentStep) {
-                // Create a form to submit the step change
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.style.display = 'none';
-                
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = 'jump_to_step';
-                input.value = stepNumber;
-                
-                form.appendChild(input);
-                document.body.appendChild(form);
-                form.submit();
-            }
+            // Allow jumping to any step
+            // Create a form to submit the step change
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.style.display = 'none';
+            
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'jump_to_step';
+            input.value = stepNumber;
+            
+            form.appendChild(input);
+            document.body.appendChild(form);
+            form.submit();
         }
         
         // Add click handlers to step elements
