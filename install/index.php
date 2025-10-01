@@ -261,49 +261,60 @@ if (isset($_SESSION['installed'])) {
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: system-ui; background: #f8fafc; min-height: 100vh; padding: 1rem; }
         .container { max-width: 90%; width: 100%; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; }
-        .header { background: #3b82f6; color: white; padding: 1.5rem; text-align: center; }
-        .header h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
-        .progress { display: flex; padding: 1rem; background: #f1f5f9; }
-        .step { flex: 1; text-align: center; font-size: 0.875rem; color: #64748b; cursor: pointer; padding: 0.5rem; border-radius: 4px; transition: all 0.3s ease; }
-        .step.active { color: #3b82f6; font-weight: 600; }
-        .step:hover { background: #e5e7eb; color: #374151; }
-        .step.active:hover { background: #dbeafe; color: #3b82f6; }
-        .content { padding: 2rem; }
-        .form-group { margin-bottom: 1rem; }
-        .form-group label { display: block; margin-bottom: 0.25rem; font-weight: 500; color: #374151; }
-        .form-group input { width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.875rem; }
-        .form-group input:focus { outline: none; border-color: #3b82f6; }
-        .buttons { display: flex; gap: 1rem; margin-top: 2rem; }
-        .btn { flex: 1; padding: 0.75rem; border: none; border-radius: 6px; font-weight: 500; cursor: pointer; }
+        .header { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 1.5rem 2rem; text-align: center; }
+        .header h1 { font-size: 1.5rem; margin-bottom: 0.25rem; font-weight: 700; }
+        .header p { font-size: 0.875rem; opacity: 0.9; margin: 0; }
+        .progress { display: flex; padding: 0.75rem 1rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+        .step { flex: 1; text-align: center; font-size: 0.8rem; color: #64748b; cursor: pointer; padding: 0.5rem 0.25rem; border-radius: 6px; transition: all 0.2s ease; font-weight: 500; }
+        .step.active { color: #3b82f6; font-weight: 600; background: #dbeafe; }
+        .step:hover { background: #e2e8f0; color: #374151; }
+        .step.active:hover { background: #bfdbfe; color: #3b82f6; }
+        .content { padding: 1.5rem 2rem; }
+        .content h2 { font-size: 1.25rem; font-weight: 600; color: #1f2937; margin-bottom: 0.5rem; }
+        .content p { color: #6b7280; font-size: 0.875rem; margin-bottom: 1.5rem; }
+        .form-group { margin-bottom: 1.25rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: #374151; font-size: 0.875rem; }
+        .form-group input { width: 100%; padding: 0.75rem 1rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.875rem; transition: all 0.2s ease; }
+        .form-group input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+        .buttons { display: flex; gap: 0.75rem; margin-top: 2rem; }
+        .btn { flex: 1; padding: 0.75rem 1.5rem; border: none; border-radius: 8px; font-weight: 500; cursor: pointer; font-size: 0.875rem; transition: all 0.2s ease; }
         .btn-primary { background: #3b82f6; color: white; }
-        .btn-secondary { background: #e5e7eb; color: #374151; }
+        .btn-primary:hover { background: #2563eb; transform: translateY(-1px); }
+        .btn-secondary { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+        .btn-secondary:hover { background: #e5e7eb; transform: translateY(-1px); }
         .btn-success { background: #10b981; color: white; }
-        .btn:disabled { background: #e5e7eb; color: #9ca3af; cursor: not-allowed; }
-        .error { background: #fee2e2; color: #991b1b; padding: 0.75rem; border-radius: 6px; margin-bottom: 1rem; }
+        .btn-success:hover { background: #059669; transform: translateY(-1px); }
+        .btn:disabled { background: #f3f4f6; color: #9ca3af; cursor: not-allowed; transform: none; }
+        .btn:disabled:hover { transform: none; }
+        .error { background: #fef2f2; color: #dc2626; padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1rem; border-left: 4px solid #dc2626; font-size: 0.875rem; }
         
         /* Responsive design */
         @media (min-width: 768px) {
             .container { max-width: 600px; }
             .header h1 { font-size: 1.75rem; }
+            .content { padding: 2rem 2.5rem; }
         }
         
         @media (min-width: 1024px) {
             .container { max-width: 700px; }
             .header h1 { font-size: 2rem; }
-            .content { padding: 2.5rem; }
+            .content { padding: 2.5rem 3rem; }
         }
         
         @media (max-width: 480px) {
             .container { max-width: 95%; }
-            .header { padding: 1rem; }
+            .header { padding: 1rem 1.5rem; }
             .header h1 { font-size: 1.25rem; }
-            .content { padding: 1.5rem; }
-            .progress { padding: 0.75rem; flex-wrap: wrap; }
-            .step { font-size: 0.7rem; min-width: 60px; }
+            .content { padding: 1rem 1.5rem; }
+            .progress { padding: 0.5rem 0.75rem; flex-wrap: wrap; }
+            .step { font-size: 0.7rem; min-width: 60px; padding: 0.4rem 0.2rem; }
+            .buttons { gap: 0.5rem; }
+            .btn { padding: 0.75rem 1rem; font-size: 0.8rem; }
         }
         
         @media (max-width: 360px) {
             .step { font-size: 0.65rem; min-width: 50px; }
+            .content { padding: 0.75rem 1rem; }
         }
     </style>
 </head>
