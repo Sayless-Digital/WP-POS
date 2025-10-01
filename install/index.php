@@ -394,7 +394,7 @@ if (isset($_SESSION['installed'])) {
                 
             <?php elseif ($step === 4): ?>
                 <h2>WooCommerce Integration</h2>
-                <p>Connect your POS system with WooCommerce (optional).</p>
+                <p>Optional WooCommerce connection.</p>
                 
                 <?php if (isset($_SESSION['wc_success'])): ?>
                     <div style="background: #d1fae5; color: #065f46; padding: 0.75rem; border-radius: 6px; margin-bottom: 1rem;">
