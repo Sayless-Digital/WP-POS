@@ -276,7 +276,7 @@ if (isset($_SESSION['installed'])) {
         .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: #374151; font-size: 0.875rem; }
         .form-group input { width: 100%; padding: 0.75rem 1rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.875rem; transition: all 0.2s ease; }
         .form-group input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
-        .buttons { display: flex; gap: 0.75rem; margin-top: 2rem; }
+        .buttons { display: flex; gap: 1rem; margin-top: 2rem; }
         .btn { flex: 1; padding: 0.75rem 1.5rem; border: none; border-radius: 8px; font-weight: 500; cursor: pointer; font-size: 0.875rem; transition: all 0.2s ease; }
         .btn-primary { background: #3b82f6; color: white; }
         .btn-primary:hover { background: #2563eb; transform: translateY(-1px); }
@@ -308,7 +308,7 @@ if (isset($_SESSION['installed'])) {
             .content { padding: 1rem 1.5rem; }
             .progress { padding: 0.5rem 0.75rem; flex-wrap: wrap; }
             .step { font-size: 0.7rem; min-width: 60px; padding: 0.4rem 0.2rem; }
-            .buttons { gap: 0.5rem; }
+            .buttons { gap: 0.75rem; }
             .btn { padding: 0.75rem 1rem; font-size: 0.8rem; }
         }
         
