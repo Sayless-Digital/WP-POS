@@ -7,6 +7,16 @@ $installationComplete = false;
 $errors = [];
 $steps = [];
 
+// Handle form submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Handle back navigation
+    if (isset($_POST['prev_step'])) {
+        $_SESSION['install_step'] = 5;
+        header('Location: ' . $_SERVER['PHP_SELF']);
+        exit;
+    }
+}
+
 // Handle installation
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['run_installation'])) {
     set_time_limit(300); // 5 minutes

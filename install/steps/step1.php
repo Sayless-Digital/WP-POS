@@ -3,6 +3,23 @@
  * Step 1: System Requirements Check
  */
 
+// Handle form submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Handle back navigation (shouldn't happen on step 1, but just in case)
+    if (isset($_POST['prev_step'])) {
+        $_SESSION['install_step'] = 1; // Stay on step 1
+        header('Location: ' . $_SERVER['PHP_SELF']);
+        exit;
+    }
+    
+    // Proceed to next step
+    if (isset($_POST['next_step'])) {
+        $_SESSION['install_step'] = 2;
+        header('Location: ' . $_SERVER['PHP_SELF']);
+        exit;
+    }
+}
+
 $requirements = $installer->checkRequirements();
 $allRequired = true;
 
