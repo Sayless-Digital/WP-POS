@@ -37,45 +37,10 @@ Route::prefix('v1')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
 });
 
-// Offline Mode API Routes (minimal authentication for PWA)
+// Connection check endpoint
 Route::middleware(['auth:sanctum'])->group(function () {
-    // Connection check
-    
     Route::get('/ping', function () {
         return response()->json(['status' => 'ok', 'timestamp' => now()->toISOString()]);
-    });
-    
-    // Product cache for offline mode
-    Route::get('/products/cache', function (\App\Services\OfflineSyncService $syncService) {
-        return response()->json($syncService->getProductCache());
-    });
-    
-    // Sync offline orders
-    Route::post('/orders/sync', function (Request $request, \App\Services\OfflineSyncService $syncService) {
-        $result = $syncService->syncOfflineOrder($request->all());
-        
-        return response()->json($result, $result['success'] ? 200 : 500);
-    });
-    
-    // Sync inventory updates
-    Route::post('/inventory/sync', function (Request $request, \App\Services\OfflineSyncService $syncService) {
-        $result = $syncService->syncInventoryUpdate($request->all());
-        
-        return response()->json($result, $result['success'] ? 200 : 500);
-    });
-    
-    // Get product by barcode (offline fallback)
-    Route::get('/products/by-barcode/{barcode}', function ($barcode) {
-        $product = \App\Models\Product::whereHas('barcodes', function($query) use ($barcode) {
-            $query->where('barcode', $barcode);
-        })->with('inventory')->first();
-        
-        return response()->json(['product' => $product]);
-    });
-    
-    // Get sync statistics
-    Route::get('/offline/stats', function (\App\Services\OfflineSyncService $syncService) {
-        return response()->json($syncService->getSyncStats());
     });
 });
 

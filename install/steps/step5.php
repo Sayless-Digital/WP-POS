@@ -1,237 +1,230 @@
 <?php
 /**
- * Step 5: Complete Installation
+ * Step 5: WooCommerce Configuration (Optional)
  */
 
-$installationComplete = false;
-$errors = [];
-$steps = [];
+$error = null;
+$success = null;
+$testResult = null;
 
-// Handle installation
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['run_installation'])) {
-    set_time_limit(300); // 5 minutes
+// Handle connection test
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['test_connection'])) {
+    $wooUrl = $_POST['woo_url'] ?? '';
+    $wooConsumerKey = $_POST['woo_consumer_key'] ?? '';
+    $wooConsumerSecret = $_POST['woo_consumer_secret'] ?? '';
     
-    // Step 1: Run migrations
-    $steps[] = ['name' => 'Running database migrations...', 'status' => 'running'];
-    $result = $installer->runArtisan('migrate --force');
-    if ($result['success']) {
-        $steps[count($steps) - 1]['status'] = 'success';
-        $steps[count($steps) - 1]['message'] = 'Database tables created successfully';
+    if (empty($wooUrl) || empty($wooConsumerKey) || empty($wooConsumerSecret)) {
+        $error = 'Please fill in all WooCommerce credentials to test the connection';
     } else {
-        $steps[count($steps) - 1]['status'] = 'error';
-        $steps[count($steps) - 1]['message'] = $result['message'];
-        $errors[] = 'Migration failed: ' . $result['message'];
-    }
-    
-    // Step 2: Seed database
-    if (empty($errors)) {
-        $steps[] = ['name' => 'Seeding initial data...', 'status' => 'running'];
-        $result = $installer->runArtisan('db:seed --force');
-        if ($result['success']) {
-            $steps[count($steps) - 1]['status'] = 'success';
-            $steps[count($steps) - 1]['message'] = 'Initial data seeded successfully';
+        // Validate URL format
+        if (!filter_var($wooUrl, FILTER_VALIDATE_URL)) {
+            $error = 'Please enter a valid WooCommerce store URL';
         } else {
-            $steps[count($steps) - 1]['status'] = 'warning';
-            $steps[count($steps) - 1]['message'] = 'Some seeders may have failed (this is usually okay)';
-        }
-    }
-    
-    // Step 3: Create admin user (manual SQL insert)
-    if (empty($errors) && isset($_SESSION['install_data']['admin'])) {
-        $steps[] = ['name' => 'Creating admin user...', 'status' => 'running'];
-        
-        try {
-            $dbData = $_SESSION['install_data']['database'];
-            $adminData = $_SESSION['install_data']['admin'];
+            // Test the connection
+            $testResult = $installer->testWooCommerceConnection($wooUrl, $wooConsumerKey, $wooConsumerSecret);
             
-            $pdo = new PDO(
-                "mysql:host={$dbData['db_host']};port={$dbData['db_port']};dbname={$dbData['db_database']}",
-                $dbData['db_username'],
-                $dbData['db_password']
-            );
-            
-            $hashedPassword = password_hash($adminData['password'], PASSWORD_BCRYPT);
-            $now = date('Y-m-d H:i:s');
-            
-            $stmt = $pdo->prepare("INSERT INTO users (name, email, password, email_verified_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)");
-            $stmt->execute([
-                $adminData['name'],
-                $adminData['email'],
-                $hashedPassword,
-                $now,
-                $now,
-                $now
-            ]);
-            
-            $steps[count($steps) - 1]['status'] = 'success';
-            $steps[count($steps) - 1]['message'] = 'Admin user created successfully';
-        } catch (Exception $e) {
-            $steps[count($steps) - 1]['status'] = 'error';
-            $steps[count($steps) - 1]['message'] = $e->getMessage();
-            $errors[] = 'Failed to create admin user: ' . $e->getMessage();
-        }
-    }
-    
-    // Step 4: Create storage link
-    if (empty($errors)) {
-        $steps[] = ['name' => 'Creating storage link...', 'status' => 'running'];
-        $result = $installer->runArtisan('storage:link');
-        $steps[count($steps) - 1]['status'] = 'success';
-        $steps[count($steps) - 1]['message'] = 'Storage link created';
-    }
-    
-    // Step 5: Optimize application
-    if (empty($errors)) {
-        $steps[] = ['name' => 'Optimizing application...', 'status' => 'running'];
-        $installer->runArtisan('config:cache');
-        $installer->runArtisan('route:cache');
-        $installer->runArtisan('view:cache');
-        $steps[count($steps) - 1]['status'] = 'success';
-        $steps[count($steps) - 1]['message'] = 'Application optimized';
-    }
-    
-    // Mark installation as complete
-    if (empty($errors)) {
-        $installer->lockInstaller();
-        $installationComplete = true;
-        
-        // Clear session
-        session_destroy();
-    }
-}
-?>
-
-<h2 class="step-title">Complete Installation</h2>
-<p class="step-description">Ready to finalize your WP-POS installation. This will set up the database and create your admin account.</p>
-
-<?php if (!empty($errors)): ?>
-    <div class="alert alert-error">
-        <strong>❌ Installation Failed</strong>
-        <ul style="margin: 10px 0 0 20px;">
-            <?php foreach ($errors as $error): ?>
-                <li><?php echo htmlspecialchars($error); ?></li>
-            <?php endforeach; ?>
-        </ul>
-    </div>
-<?php endif; ?>
-
-<?php if ($installationComplete): ?>
-    <div class="alert alert-success">
-        <strong>🎉 Installation Complete!</strong> Your WP-POS system is now ready to use.
-    </div>
-    
-    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-        <h3 style="margin: 0 0 15px 0; color: #1f2937;">Your Login Credentials</h3>
-        <p style="margin: 5px 0;"><strong>Email:</strong> <?php echo htmlspecialchars($_SESSION['install_data']['admin']['email'] ?? 'N/A'); ?></p>
-        <p style="margin: 5px 0;"><strong>Password:</strong> (the password you set)</p>
-        <p style="margin: 15px 0 0 0; font-size: 14px; color: #6b7280;">
-            <strong>⚠️ Important:</strong> Please save these credentials in a secure location.
-        </p>
-    </div>
-    
-    <div class="alert alert-info">
-        <strong>🚀 Next Steps:</strong>
-        <ol style="margin: 10px 0 0 20px;">
-            <li>Log in to your admin panel</li>
-            <li>Configure your store settings</li>
-            <li>Add products and categories</li>
-            <li>Set up WooCommerce integration (optional)</li>
-            <li>Start processing sales!</li>
-        </ol>
-    </div>
-    
-    <div class="buttons">
-        <div></div>
-        <a href="../" class="btn btn-success" style="text-align: center;">
-            🎯 Go to Dashboard
-        </a>
-    </div>
-    
-<?php elseif (!empty($steps)): ?>
-    <h3 style="margin: 20px 0;">Installation Progress</h3>
-    <ul class="requirement-list">
-        <?php foreach ($steps as $step): ?>
-            <li class="requirement-item <?php echo $step['status'] === 'success' ? 'success' : ($step['status'] === 'error' ? 'error' : 'warning'); ?>">
-                <div>
-                    <strong><?php echo htmlspecialchars($step['name']); ?></strong>
-                    <?php if (isset($step['message'])): ?>
-                        <br><small><?php echo htmlspecialchars($step['message']); ?></small>
-                    <?php endif; ?>
-                </div>
-                <div class="status-icon">
-                    <?php if ($step['status'] === 'success'): ?>
-                        ✅
-                    <?php elseif ($step['status'] === 'error'): ?>
-                        ❌
-                    <?php elseif ($step['status'] === 'running'): ?>
-                        <div class="loading"></div>
-                    <?php else: ?>
-                        ⚠️
-                    <?php endif; ?>
-                </div>
-            </li>
-        <?php endforeach; ?>
-    </ul>
-    
-    <?php if (!empty($errors)): ?>
-        <div class="buttons">
-            <form method="POST" style="width: 100%;">
-                <button type="submit" name="prev_step" value="4" class="btn btn-secondary">
-                    ← Back to Fix Issues
-                </button>
-            </form>
-        </div>
-    <?php endif; ?>
-    
-<?php else: ?>
-    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-        <h3 style="margin: 0 0 15px 0; color: #1f2937;">Installation Summary</h3>
-        <ul style="list-style: none; padding: 0;">
-            <li style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">
-                <strong>Application:</strong> <?php echo htmlspecialchars($_SESSION['install_data']['config']['app_name'] ?? 'WP-POS'); ?>
-            </li>
-            <li style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">
-                <strong>URL:</strong> <?php echo htmlspecialchars($_SESSION['install_data']['config']['app_url'] ?? 'N/A'); ?>
-            </li>
-            <li style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">
-                <strong>Database:</strong> <?php echo htmlspecialchars($_SESSION['install_data']['database']['db_database'] ?? 'N/A'); ?>
-            </li>
-            <li style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">
-                <strong>Admin Email:</strong> <?php echo htmlspecialchars($_SESSION['install_data']['admin']['email'] ?? 'N/A'); ?>
-            </li>
-            <li style="padding: 8px 0;">
-                <strong>Environment:</strong> <?php echo htmlspecialchars($_SESSION['install_data']['config']['app_env'] ?? 'production'); ?>
-            </li>
-        </ul>
-    </div>
-    
-    <div class="alert alert-info">
-        <strong>⏱️ This may take a few minutes.</strong> Please do not close this window or refresh the page during installation.
-    </div>
-    
-    <form method="POST" id="installForm">
-        <button type="submit" name="run_installation" value="1" class="btn btn-success" style="width: 100%; font-size: 16px; padding: 15px;">
-            🚀 Run Installation
-        </button>
-        
-        <div class="buttons" style="margin-top: 20px;">
-            <button type="submit" name="prev_step" value="4" class="btn btn-secondary">
-                ← Back
-            </button>
-            <div></div>
-        </div>
-    </form>
-    
-    <script>
-    document.getElementById('installForm').addEventListener('submit', function(e) {
-        if (e.submitter.name === 'run_installation') {
-            if (!confirm('Ready to install? This will create database tables and set up your admin account.')) {
-                e.preventDefault();
+            if ($testResult['success']) {
+                $success = 'Connection successful! Your WooCommerce credentials are valid.';
+                $_SESSION['woocommerce_tested'] = true;
             } else {
-                e.submitter.disabled = true;
-                e.submitter.innerHTML = '<div class="loading" style="display: inline-block; margin-right: 10px;"></div> Installing...';
+                $error = 'Connection failed: ' . $testResult['message'];
+                $_SESSION['woocommerce_tested'] = false;
             }
         }
-    });
-    </script>
+    }
+}
+
+// Handle form submission for saving data
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_woocommerce'])) {
+    $wooUrl = $_POST['woo_url'] ?? '';
+    $wooConsumerKey = $_POST['woo_consumer_key'] ?? '';
+    $wooConsumerSecret = $_POST['woo_consumer_secret'] ?? '';
+    $wooSyncEnabled = isset($_POST['woo_sync_enabled']) ? '1' : '0';
+    
+    // Validation
+    if (empty($wooUrl) || empty($wooConsumerKey) || empty($wooConsumerSecret)) {
+        $error = 'All WooCommerce fields are required';
+    } elseif (!filter_var($wooUrl, FILTER_VALIDATE_URL)) {
+        $error = 'Please enter a valid WooCommerce store URL';
+    } elseif (!isset($_SESSION['woocommerce_tested']) || !$_SESSION['woocommerce_tested']) {
+        $error = 'Please test the connection first before saving';
+    } else {
+        // Save WooCommerce data for final step
+        $_SESSION['install_data']['woocommerce'] = [
+            'url' => rtrim($wooUrl, '/'), // Remove trailing slash
+            'consumer_key' => $wooConsumerKey,
+            'consumer_secret' => $wooConsumerSecret,
+            'sync_enabled' => $wooSyncEnabled,
+        ];
+        $success = 'WooCommerce configuration saved successfully!';
+    }
+}
+
+// Handle skip
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['skip_woocommerce'])) {
+    $_SESSION['install_data']['woocommerce'] = [
+        'url' => '',
+        'consumer_key' => '',
+        'consumer_secret' => '',
+        'sync_enabled' => '0',
+    ];
+    $_SESSION['woocommerce_skipped'] = true;
+}
+
+// Get saved values
+$savedData = $_SESSION['install_data']['woocommerce'] ?? [];
+$wasSkipped = $_SESSION['woocommerce_skipped'] ?? false;
+?>
+
+<h2 class="step-title">WooCommerce Integration (Optional)</h2>
+<p class="step-description">Connect your WP-POS system with WooCommerce to synchronize products, inventory, and orders. You can skip this step and configure it later.</p>
+
+<?php if ($error): ?>
+    <div class="alert alert-error">
+        <strong>❌ Error:</strong> <?php echo htmlspecialchars($error); ?>
+    </div>
 <?php endif; ?>
+
+<?php if ($success): ?>
+    <div class="alert alert-success">
+        <strong>✅ Success:</strong> <?php echo htmlspecialchars($success); ?>
+    </div>
+<?php endif; ?>
+
+<?php if ($testResult && $testResult['success']): ?>
+    <div class="alert alert-success">
+        <strong>✅ Connection Test Successful!</strong><br>
+        <?php echo htmlspecialchars($testResult['message']); ?>
+    </div>
+<?php endif; ?>
+
+<?php if ($wasSkipped): ?>
+    <div class="alert alert-info">
+        <strong>ℹ️ WooCommerce Setup Skipped:</strong> You can configure WooCommerce integration later from the Settings page.
+    </div>
+<?php endif; ?>
+
+<form method="POST" id="wooForm">
+    <div class="alert alert-info" style="margin-bottom: 25px;">
+        <strong>📋 How to get your WooCommerce credentials:</strong><br>
+        1. Log in to your WordPress admin panel<br>
+        2. Go to <strong>WooCommerce → Settings → Advanced → REST API</strong><br>
+        3. Click <strong>"Add Key"</strong> and create new API credentials<br>
+        4. Set permissions to <strong>"Read/Write"</strong><br>
+        5. Copy the Consumer Key and Consumer Secret here
+    </div>
+
+    <div class="form-group">
+        <label for="woo_url">WooCommerce Store URL *</label>
+        <input type="url" id="woo_url" name="woo_url" 
+               value="<?php echo htmlspecialchars($savedData['url'] ?? ''); ?>" 
+               placeholder="https://yourstore.com">
+        <small>Your WooCommerce store URL (e.g., https://example.com)</small>
+    </div>
+
+    <div class="form-group">
+        <label for="woo_consumer_key">Consumer Key *</label>
+        <input type="text" id="woo_consumer_key" name="woo_consumer_key" 
+               value="<?php echo htmlspecialchars($savedData['consumer_key'] ?? ''); ?>" 
+               placeholder="ck_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+        <small>Your WooCommerce REST API Consumer Key</small>
+    </div>
+
+    <div class="form-group">
+        <label for="woo_consumer_secret">Consumer Secret *</label>
+        <input type="text" id="woo_consumer_secret" name="woo_consumer_secret" 
+               value="<?php echo htmlspecialchars($savedData['consumer_secret'] ?? ''); ?>" 
+               placeholder="cs_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+        <small>Your WooCommerce REST API Consumer Secret</small>
+    </div>
+
+    <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
+        <input type="checkbox" id="woo_sync_enabled" name="woo_sync_enabled" 
+               <?php echo (!isset($savedData['sync_enabled']) || $savedData['sync_enabled'] === '1') ? 'checked' : ''; ?> 
+               style="width: auto; margin: 0;">
+        <label for="woo_sync_enabled" style="margin: 0;">Enable automatic synchronization</label>
+    </div>
+    <small style="display: block; margin: -10px 0 20px 0; color: #6b7280;">
+        Products and inventory will sync automatically between WP-POS and WooCommerce
+    </small>
+
+    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+        <button type="submit" name="test_connection" value="1" class="btn btn-secondary" style="flex: 1;">
+            🔍 Test Connection
+        </button>
+        <button type="submit" name="save_woocommerce" value="1" class="btn btn-primary" style="flex: 1;">
+            💾 Save Configuration
+        </button>
+    </div>
+
+    <div class="alert alert-info">
+        <strong>💡 Note:</strong> Testing the connection is required before saving. If you don't have WooCommerce credentials yet, you can skip this step and configure it later from the Settings page.
+    </div>
+
+    <button type="submit" name="skip_woocommerce" value="1" class="btn btn-secondary" style="width: 100%; margin-bottom: 20px;">
+        ⏭️ Skip WooCommerce Setup
+    </button>
+
+    <div class="buttons">
+        <button type="submit" name="prev_step" value="4" class="btn btn-secondary">
+            ← Back
+        </button>
+        <button type="submit" name="next_step" value="6" class="btn btn-primary" 
+                <?php echo (!$success && !$wasSkipped) ? 'disabled' : ''; ?>>
+            Next: Complete Installation →
+        </button>
+    </div>
+</form>
+
+<script>
+document.getElementById('wooForm').addEventListener('submit', function(e) {
+    const submitter = e.submitter;
+    
+    // Validate next step
+    if (submitter.name === 'next_step') {
+        const hasSuccess = <?php echo $success ? 'true' : 'false'; ?>;
+        const wasSkipped = <?php echo $wasSkipped ? 'true' : 'false'; ?>;
+        
+        if (!hasSuccess && !wasSkipped) {
+            e.preventDefault();
+            alert('Please save the WooCommerce configuration or skip this step!');
+        }
+    }
+    
+    // Validate test connection
+    if (submitter.name === 'test_connection') {
+        const url = document.getElementById('woo_url').value.trim();
+        const key = document.getElementById('woo_consumer_key').value.trim();
+        const secret = document.getElementById('woo_consumer_secret').value.trim();
+        
+        if (!url || !key || !secret) {
+            e.preventDefault();
+            alert('Please fill in all WooCommerce credentials before testing!');
+        }
+    }
+    
+    // Validate save
+    if (submitter.name === 'save_woocommerce') {
+        const tested = <?php echo isset($_SESSION['woocommerce_tested']) && $_SESSION['woocommerce_tested'] ? 'true' : 'false'; ?>;
+        
+        if (!tested) {
+            e.preventDefault();
+            alert('Please test the connection first!');
+        }
+    }
+    
+    // Show loading state for test and save buttons
+    if (submitter.name === 'test_connection' || submitter.name === 'save_woocommerce') {
+        submitter.disabled = true;
+        const originalText = submitter.innerHTML;
+        submitter.innerHTML = '<div class="loading" style="display: inline-block; margin-right: 5px;"></div> ' + 
+                             (submitter.name === 'test_connection' ? 'Testing...' : 'Saving...');
+        
+        // Re-enable after a timeout if form doesn't submit
+        setTimeout(() => {
+            submitter.disabled = false;
+            submitter.innerHTML = originalText;
+        }, 5000);
+    }
+});
+</script>

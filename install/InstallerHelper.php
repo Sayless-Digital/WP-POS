@@ -114,6 +114,96 @@ class InstallerHelper
     }
     
     /**
+     * Test WooCommerce connection
+     */
+    public function testWooCommerceConnection($url, $consumer_key, $consumer_secret)
+    {
+        try {
+            // Ensure URL doesn't have trailing slash
+            $url = rtrim($url, '/');
+            
+            // Build the API endpoint
+            $endpoint = $url . '/wp-json/wc/v3/system_status';
+            
+            // Prepare authentication
+            $auth = base64_encode($consumer_key . ':' . $consumer_secret);
+            
+            // Initialize cURL
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $endpoint);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Authorization: Basic ' . $auth,
+                'Content-Type: application/json',
+            ]);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+            
+            // Execute request
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlError = curl_error($ch);
+            curl_close($ch);
+            
+            // Handle cURL errors
+            if ($response === false) {
+                if (strpos($curlError, 'SSL') !== false) {
+                    return [
+                        'success' => false,
+                        'message' => 'SSL certificate verification failed. Your store may not have a valid SSL certificate.'
+                    ];
+                }
+                return [
+                    'success' => false,
+                    'message' => 'Connection error: ' . $curlError
+                ];
+            }
+            
+            // Check HTTP response codes
+            if ($httpCode === 200) {
+                $data = json_decode($response, true);
+                if ($data && isset($data['environment'])) {
+                    return [
+                        'success' => true,
+                        'message' => 'Successfully connected to WooCommerce! Store: ' . ($data['environment']['site_url'] ?? $url)
+                    ];
+                }
+                return [
+                    'success' => true,
+                    'message' => 'Successfully connected to WooCommerce!'
+                ];
+            } elseif ($httpCode === 401 || $httpCode === 403) {
+                return [
+                    'success' => false,
+                    'message' => 'Authentication failed. Please check your Consumer Key and Consumer Secret.'
+                ];
+            } elseif ($httpCode === 404) {
+                return [
+                    'success' => false,
+                    'message' => 'WooCommerce REST API not found. Please ensure WooCommerce is installed and REST API is enabled.'
+                ];
+            } elseif ($httpCode >= 500) {
+                return [
+                    'success' => false,
+                    'message' => 'Server error (HTTP ' . $httpCode . '). The WooCommerce store may be experiencing issues.'
+                ];
+            } else {
+                return [
+                    'success' => false,
+                    'message' => 'Unexpected response (HTTP ' . $httpCode . '). Please verify your store URL and credentials.'
+                ];
+            }
+            
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ];
+        }
+    }
+    
+    /**
      * Create .env file
      */
     public function createEnvFile($data)

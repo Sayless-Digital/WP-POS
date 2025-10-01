@@ -372,6 +372,10 @@ $installer = new InstallerHelper();
             </div>
             <div class="progress-step <?php echo $currentStep >= 5 ? 'active' : ''; ?> <?php echo $currentStep > 5 ? 'completed' : ''; ?>">
                 <div class="progress-circle">5</div>
+                <div class="progress-label">WooCommerce</div>
+            </div>
+            <div class="progress-step <?php echo $currentStep >= 6 ? 'active' : ''; ?> <?php echo $currentStep > 6 ? 'completed' : ''; ?>">
+                <div class="progress-circle">6</div>
                 <div class="progress-label">Complete</div>
             </div>
         </div>

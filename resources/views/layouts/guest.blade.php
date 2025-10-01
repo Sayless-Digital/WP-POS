@@ -11,8 +11,22 @@
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
-        <!-- Scripts -->
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
+        <!-- Tailwind CSS -->
+        <script src="https://cdn.tailwindcss.com"></script>
+        
+        <!-- Axios -->
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.4/dist/axios.min.js"></script>
+        <script>
+            // Configure Axios
+            window.axios = axios;
+            window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
+            
+            // Get CSRF token from meta tag and set it as default header
+            const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            if (token) {
+                window.axios.defaults.headers.common['X-CSRF-TOKEN'] = token;
+            }
+        </script>
     </head>
     <body class="font-sans text-gray-900 antialiased">
         <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-gray-100">
