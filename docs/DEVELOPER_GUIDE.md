@@ -197,7 +197,7 @@ Retrieve product catalog with filtering options.
 
 ### Product Editor Endpoints
 
-#### GET /api/product-edit.php?action=get_product_details&id={product_id}
+#### GET /api/product-edit-simple.php?action=get_product_details&id={product_id}
 Retrieve comprehensive product details for editing.
 
 **Query Parameters:**
@@ -240,7 +240,7 @@ Retrieve comprehensive product details for editing.
 }
 ```
 
-#### GET /api/product-edit.php?action=get_tax_classes
+#### GET /api/product-edit-simple.php?action=get_tax_classes
 Retrieve available tax classes.
 
 **Response:**
@@ -255,7 +255,7 @@ Retrieve available tax classes.
 }
 ```
 
-#### POST /api/product-edit.php
+#### POST /api/product-edit-simple.php
 Update product with comprehensive data.
 
 **Request:**
@@ -621,3 +621,4 @@ For technical support or questions:
 - v1.5.15: Updated JSON highlighting to color values instead of keys for better readability
 - v1.5.16: Cleaned up debugging code and finalized product editor implementation
 - v1.5.17: Production-ready comprehensive product editor with value-highlighted JSON preview
+- v1.6.0: Complete product editing system with database-driven attribute suggestions, tabbed interface (Form/JSON views), WordPress-style tag-based attribute options management, and attribute isolation for multiple attributes

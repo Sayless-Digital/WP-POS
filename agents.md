@@ -7,10 +7,10 @@ JPOS is a modern, enterprise-grade point-of-sale system built on WordPress. The 
 ## Current System Status
 
 **Status**: ✅ PRODUCTION READY  
-**Last Updated**: December 19, 2024  
-**Version**: 1.5.17  
+**Last Updated**: January 2, 2025  
+**Version**: 1.6.0  
 **All Phases Completed**: Security, Architecture, Performance, Quality & Monitoring  
-**Latest Update**: Comprehensive Product Editor with JSON Preview - supports both simple and variable products with full text-based field editing and value-highlighted JSON preview
+**Latest Update**: Complete Product Editing System - comprehensive editor for both simple and variable products with database-driven attribute suggestions, tabbed interface (Form/JSON views), and WordPress-style tag-based attribute options management
 
 ## Architecture
 
@@ -237,14 +237,18 @@ JPOS implements a comprehensive routing system that maintains view state across 
 - **GET**: Retrieve product catalog with filtering
 - Support for search, category, and stock filters
 
-### Product Editor (`/api/product-edit.php`)
+### Product Editor (`/api/product-edit-simple.php`)
 - **GET**: Retrieve comprehensive product details for editing
 - **POST**: Update product with all text-based fields
 - **GET**: Get tax classes, categories, and tags
 - Support for both simple and variable products
-- JSON preview with syntax highlighting (values colored)
-- Meta data management
+- Database-driven attribute suggestions (no hardcoded lists)
+- WordPress-style tag-based attribute options management
+- Tabbed interface with Form View and JSON View
+- Custom JSON syntax highlighting (values colored)
+- Meta data management with accordion interface
 - Variation editing for variable products
+- Attribute isolation for multiple attributes
 
 ### Orders (`/api/orders.php`)
 - **GET**: Fetch orders with date/status/source filters

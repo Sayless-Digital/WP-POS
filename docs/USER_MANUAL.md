@@ -50,27 +50,41 @@ JPOS includes a comprehensive product editor that allows you to edit all text-ba
 2. Click on any product row or the edit button
 3. The comprehensive product editor will open in a modal
 
+#### Tabbed Interface
+The editor features two main views:
+- **Form View**: Traditional form interface for editing fields
+- **JSON View**: Real-time JSON preview with syntax highlighting
+
 #### Available Fields
 - **Basic Information**: Product name, SKU, barcode
 - **Pricing**: Regular price, sale price
 - **Status**: Published, draft, private
 - **Tax Settings**: Tax class and tax status
 - **Inventory**: Stock quantity, stock management settings
-- **Meta Data**: Custom fields and additional product information
+- **Meta Data**: Custom fields and additional product information (collapsible accordion)
+- **Attributes**: Product attributes with WordPress-style tag-based options management
 - **Variations**: For variable products, edit individual variation details
 
+#### Attribute Management
+- **Tag-based Interface**: Add/remove attribute options using tags
+- **Smart Search**: Type to search existing options from your database
+- **Database-driven**: All suggestions come from your actual product data (no hardcoded lists)
+- **Multiple Attributes**: Each attribute maintains its own isolated options
+- **Visual Feedback**: Green checkmarks show already-added options
+
 #### JSON Preview
-The editor includes a real-time JSON preview that shows:
+The JSON view includes:
 - All product data in a structured format
-- Syntax highlighting with colored values for easy reading
+- Custom syntax highlighting with colored values for easy reading
 - Live updates as you modify fields
 - Support for both simple and variable products
 
 #### Saving Changes
 1. Make your desired changes to any fields
-2. Review the JSON preview to verify your changes
-3. Click "Save Changes" to update the product
-4. The system will confirm successful updates
+2. Switch between Form View and JSON View as needed
+3. Review the JSON preview to verify your changes
+4. Click "Save Changes" to update the product
+5. The system will confirm successful updates
 
 ## Sales Process
 

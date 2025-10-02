@@ -1,6 +1,6 @@
-// JPOS v1.5.39 - Fixed multiple attributes isolation and improved debugging - CACHE BUST
+// JPOS v1.6.0 - Production-ready product editing system with database-driven attribute suggestions - CACHE BUST
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.5.39 loaded - Fixed multiple attributes isolation and improved debugging');
+    console.log('JPOS v1.6.0 loaded - Production-ready product editing system');
     // Initialize Routing Manager
     const routingManager = new RoutingManager();
 
@@ -2160,7 +2160,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div>
                         <label class="block text-xs text-slate-300 mb-1">Options</label>
                         <div class="bg-slate-600 border border-slate-500 rounded p-2 min-h-[40px]">
-                            <div id="attribute-options-${index}" class="flex flex-wrap gap-1 mb-2" data-attribute-index="${index}">
+                            <div id="attribute-options-${index}" class="flex flex-wrap gap-1 mb-2" data-attribute-index="${index}" data-attribute-name="${(attribute.friendly_name || attribute.name).toLowerCase()}">
                                 ${(attribute.friendly_options || attribute.options).map(option => `
                                     <span class="inline-flex items-center px-2 py-1 bg-blue-600 text-white text-xs rounded" data-option="${option}">
                                         ${option}
@@ -2362,92 +2362,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function showAttributeSuggestions(attributeIndex, query) {
-        console.log('showAttributeSuggestions called:', attributeIndex, query);
-        console.log('Looking for container with ID: attribute-option-suggestions-' + attributeIndex);
         const suggestionsContainer = document.getElementById(`attribute-option-suggestions-${attributeIndex}`);
-        console.log('suggestionsContainer:', suggestionsContainer);
         
         if (!query.trim()) {
             hideAttributeSuggestions(attributeIndex);
             return;
         }
         
-        // Common attribute options for suggestions
-        const commonOptions = {
-            'color': ['Red', 'Blue', 'Green', 'Yellow', 'Black', 'White', 'Gray', 'Brown', 'Pink', 'Purple', 'Orange'],
-            'size': ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Small', 'Medium', 'Large', 'Extra Large'],
-            'material': ['Cotton', 'Polyester', 'Wool', 'Silk', 'Leather', 'Denim', 'Linen', 'Cashmere'],
-            'brand': ['Nike', 'Adidas', 'Puma', 'Under Armour', 'Reebok', 'New Balance'],
-            'style': ['Casual', 'Formal', 'Sport', 'Vintage', 'Modern', 'Classic', 'Trendy']
-        };
-        
-        // Get attribute name to determine suggestions - find the specific attribute row
+        // Get attribute name from data attribute - much more reliable!
         const optionsContainer = document.getElementById(`attribute-options-${attributeIndex}`);
-        const attributeRow = optionsContainer.closest('.bg-slate-600');
+        const attributeName = optionsContainer.getAttribute('data-attribute-name') || '';
         
-        console.log('optionsContainer:', optionsContainer);
-        console.log('attributeRow found:', attributeRow);
+        // Get existing options from the current attribute (from database)
+        const existingOptions = Array.from(optionsContainer.querySelectorAll('span[data-option]')).map(el => el.getAttribute('data-option'));
         
-        // Try multiple selectors to find the attribute name input
-        let attributeNameInput = attributeRow.querySelector('input[readonly]');
-        if (!attributeNameInput) {
-            // Try finding the first readonly input in the row
-            attributeNameInput = attributeRow.querySelector('input[readonly=""]');
-        }
-        if (!attributeNameInput) {
-            // Try finding any input with readonly attribute
-            attributeNameInput = attributeRow.querySelector('input[readonly]');
-        }
-        if (!attributeNameInput) {
-            // Try finding the first input in the first grid column
-            attributeNameInput = attributeRow.querySelector('.grid > div:first-child input');
-        }
-        
-        const attributeName = attributeNameInput ? attributeNameInput.value.toLowerCase() : '';
-        
-        console.log('attributeName:', attributeName);
-        console.log('attributeRow:', attributeRow);
-        console.log('attributeNameInput:', attributeNameInput);
-        
-        // Debug: show all inputs in the row
-        const allInputs = attributeRow.querySelectorAll('input');
-        console.log('All inputs in row:', allInputs);
-        allInputs.forEach((input, index) => {
-            console.log(`Input ${index}:`, input, 'value:', input.value, 'readonly:', input.readOnly);
-        });
-        
-        let suggestions = [];
-        
-        // More specific matching logic
-        if (attributeName.includes('color') || attributeName.includes('colour')) {
-            suggestions = commonOptions.color;
-            console.log('Matched color, added:', commonOptions.color);
-        } else if (attributeName.includes('size')) {
-            suggestions = commonOptions.size;
-            console.log('Matched size, added:', commonOptions.size);
-        } else if (attributeName.includes('material') || attributeName.includes('fabric')) {
-            suggestions = commonOptions.material;
-            console.log('Matched material, added:', commonOptions.material);
-        } else if (attributeName.includes('brand') || attributeName.includes('manufacturer')) {
-            suggestions = commonOptions.brand;
-            console.log('Matched brand, added:', commonOptions.brand);
-        } else if (attributeName.includes('style') || attributeName.includes('type')) {
-            suggestions = commonOptions.style;
-            console.log('Matched style, added:', commonOptions.style);
-        } else {
-            // If no specific match, show all common options
-            suggestions = Object.values(commonOptions).flat();
-            console.log('No specific match, showing all options:', suggestions);
-        }
-        
-        console.log('Final suggestions before filtering:', suggestions);
+        // Use only existing options from the database - no hardcoded lists
+        const suggestions = existingOptions;
         
         // Filter suggestions based on query
         const filteredSuggestions = suggestions.filter(option => 
             option.toLowerCase().includes(query.toLowerCase())
         ).slice(0, 5);
         
-        console.log('filteredSuggestions:', filteredSuggestions);
         
         if (filteredSuggestions.length > 0) {
             // Get currently added options
@@ -2468,12 +2404,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 `;
             }).join('');
-            suggestionsContainer.classList.remove('hidden');
-            console.log('Suggestions shown');
-        } else {
-            hideAttributeSuggestions(attributeIndex);
-            console.log('No suggestions, hiding');
-        }
+                suggestionsContainer.classList.remove('hidden');
+            } else {
+                hideAttributeSuggestions(attributeIndex);
+            }
     }
 
     window.hideAttributeSuggestions = function(attributeIndex) {
