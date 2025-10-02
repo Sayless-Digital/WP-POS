@@ -1,6 +1,6 @@
-// JPOS v1.6.5 - Fixed actual variation display function to show parent product name and specific attributes - CACHE BUST
+// JPOS v1.6.6 - Enhanced variation attributes styling to match attribute options prominence - CACHE BUST
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.6.5 loaded - Fixed actual variation display function to show parent product name and specific attributes');
+    console.log('JPOS v1.6.6 loaded - Enhanced variation attributes styling to match attribute options prominence');
     // Initialize Routing Manager
     const routingManager = new RoutingManager();
 
@@ -2213,8 +2213,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const variationRow = document.createElement('div');
             variationRow.className = 'bg-slate-600 p-3 rounded border border-slate-500';
             
-            // Create specific attribute values display
-            const attributesText = Object.entries(variation.attributes || {})
+            // Create specific attribute values display with prominent styling
+            const attributesHtml = Object.entries(variation.attributes || {})
                 .map(([key, value]) => {
                     // Convert technical names to friendly names
                     let friendlyKey = key;
@@ -2223,17 +2223,22 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else if (key.startsWith('_')) {
                         friendlyKey = key.replace('_', '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
                     }
-                    return `${friendlyKey}: ${value}`;
+                    return `<span class="inline-flex items-center px-2 py-1 bg-blue-600 text-white text-xs rounded mr-1 mb-1">${friendlyKey}: ${value}</span>`;
                 })
-                .join(', ');
+                .join('');
             
             variationRow.innerHTML = `
                 <div class="flex justify-between items-start mb-3">
                     <div>
-                        <h4 class="font-semibold text-slate-200 text-sm">${variation.parent_name || 'Product'} Variation</h4>
-                        <p class="text-xs text-slate-400">ID: ${variation.id}${attributesText ? ` • ${attributesText}` : ''}</p>
+                        <h4 class="font-semibold text-slate-200 text-sm mb-2">${variation.parent_name || 'Product'} Variation</h4>
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-xs text-slate-400">ID: ${variation.id}</span>
+                            <span class="text-xs text-slate-400">Status: ${variation.status || 'publish'}</span>
+                        </div>
+                        <div class="flex flex-wrap gap-1">
+                            ${attributesHtml || '<span class="text-xs text-slate-500 italic">No attributes</span>'}
+                        </div>
                     </div>
-                    <span class="text-xs text-slate-400">Status: ${variation.status || 'publish'}</span>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-2">
                     <div>
