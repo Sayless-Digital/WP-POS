@@ -16,7 +16,7 @@ require_once __DIR__ . '/../wp-load.php';
     <!-- JPOS Routing Module -->
     <script src="assets/js/modules/routing.js"></script>
     <!-- JPOS Original JavaScript (temporarily reverting for debugging) -->
-    <script src="assets/js/main.js?v=1.5.2"></script>
+    <script src="assets/js/main.js?v=1.5.3"></script>
     <style>
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
@@ -43,7 +43,7 @@ require_once __DIR__ . '/../wp-load.php';
         }
 
         /* Ensure grid rows don't stretch */
-        #product-list, #stock-list-table tbody { grid-auto-rows: min-content; }
+        #product-list { grid-auto-rows: min-content; }
 
         /* Side menu transition */
         #side-menu { 
@@ -461,22 +461,17 @@ require_once __DIR__ . '/../wp-load.php';
                         <button data-value="private" data-state="inactive" class="px-3 py-1 text-sm rounded-md transition-colors">Private</button>
                     </div>
                 </header>
-                <main class="flex-grow overflow-y-auto p-4 bg-slate-800/90 rounded-xl border border-slate-700 flex flex-col gap-4">
-                    <div class="flex-grow overflow-y-auto">
-                        <table id="stock-list-table" class="w-full text-sm text-left">
-                            <thead class="sticky top-0 bg-slate-700 text-xs text-slate-300 uppercase">
-                                <tr>
-                                    <th class="p-3 w-16">Image</th>
-                                    <th class="p-3">Name</th>
-                                    <th class="p-3 w-40">SKU</th>
-                                    <th class="p-3 w-40">Type</th>
-                                    <th class="p-3 w-28 text-right">Price</th>
-                                    <th class="p-3 w-28 text-right">Total Stock</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
+                <main class="flex-grow flex flex-col overflow-y-auto">
+                    <div class="grid grid-cols-12 gap-4 sticky top-0 bg-slate-900 py-2 px-4 text-xs font-bold text-slate-400 uppercase border-b border-slate-700">
+                        <div class="col-span-1">Image</div>
+                        <div class="col-span-3">Name</div>
+                        <div class="col-span-2">SKU</div>
+                        <div class="col-span-1">Type</div>
+                        <div class="col-span-2 text-right">Price</div>
+                        <div class="col-span-2 text-right">Stock</div>
+                        <div class="col-span-1 text-center">Actions</div>
                     </div>
+                    <div id="stock-list" class="flex-grow p-2 space-y-2"></div>
                 </main>
             </section>
             

@@ -1,6 +1,6 @@
-// JPOS v1.5.2 - Fixed stock manager variable references - CACHE BUST
+// JPOS v1.5.3 - Updated stock manager table styling to match sessions/orders - CACHE BUST
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.5.2 loaded - Stock manager fixes applied');
+    console.log('JPOS v1.5.3 loaded - Stock manager table styling updated');
     // Initialize Routing Manager
     const routingManager = new RoutingManager();
 
@@ -1550,14 +1550,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderStockList() { 
-        const tbody = document.getElementById('stock-list-table').querySelector('tbody');
-        tbody.innerHTML = '';
+        const container = document.getElementById('stock-list');
+        container.innerHTML = '';
         const filterText = document.getElementById('stock-list-filter').value.toLowerCase();
         
         // Debug: Check if appState is properly initialized
         if (!appState || !appState.products || !appState.stockFilters) {
             console.error('JPOS: appState not properly initialized in renderStockList');
-            tbody.innerHTML = '<tr><td colspan="6" class="p-10 text-center text-red-400">Error: State not initialized</td></tr>';
+            container.innerHTML = '<div class="p-10 text-center text-red-400 col-span-12">Error: State not initialized</div>';
             return;
         }
         
@@ -1574,10 +1574,14 @@ document.addEventListener('DOMContentLoaded', () => {
             return textMatch && categoryMatch && tagMatch && stockMatch;
         });
 
-        if (filteredList.length === 0) { tbody.innerHTML = '<tr><td colspan="6" class="p-10 text-center text-slate-400">No products match your filter.</td></tr>'; return; }
+        if (filteredList.length === 0) { 
+            container.innerHTML = '<div class="p-10 text-center text-slate-400 col-span-12">No products match your filter.</div>'; 
+            return; 
+        }
+        
         filteredList.forEach(p => {
-            const row = document.createElement('tr');
-            row.className = 'border-b border-slate-700/50 hover:bg-slate-700/50 cursor-pointer';
+            const row = document.createElement('div');
+            row.className = 'grid grid-cols-12 gap-4 items-center bg-slate-800 hover:bg-slate-700/50 p-3 rounded-lg text-sm cursor-pointer';
             row.onclick = () => openStockEditModal(p.id);
             
             let stockDisplayHtml = '';
@@ -1590,12 +1594,26 @@ document.addEventListener('DOMContentLoaded', () => {
             let priceDisplay = p.type === 'variable' && p.min_price !== null ? `$${parseFloat(p.min_price).toFixed(2)}` : p.price ? `$${parseFloat(p.price || 0).toFixed(2)}` : 'N/A';
 
             const imageHtml = p.image_url ? 
-                `<img src="${p.image_url}" class="w-12 h-12 object-cover rounded-md" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` :
+                `<img src="${p.image_url}" class="w-10 h-10 object-cover rounded-lg" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` :
                 '';
-            const placeholderHtml = `<div class="w-12 h-12 bg-slate-700 rounded-md flex items-center justify-center text-slate-400 text-xs font-bold px-1 text-center" style="display: ${p.image_url ? 'none' : 'flex'}; line-height: 1.1;">${p.sku || 'N/A'}</div>`;
+            const placeholderHtml = `<div class="w-10 h-10 bg-slate-700 rounded-lg flex items-center justify-center text-slate-400 text-xs font-bold px-1 text-center" style="display: ${p.image_url ? 'none' : 'flex'}; line-height: 1.1;">${p.sku || 'N/A'}</div>`;
             
-            row.innerHTML = `<td class="p-2">${imageHtml}${placeholderHtml}</td><td class="p-3 font-semibold text-slate-200">${p.name}</td><td class="p-3 font-mono text-slate-400">${p.sku || 'N/A'}</td><td class="p-3 font-mono text-slate-400 capitalize">${p.type}</td><td class="p-3 font-mono text-right text-green-400 font-bold">${priceDisplay}</td><td class="p-3 font-mono text-right font-bold">${stockDisplayHtml}</td>`;
-            tbody.appendChild(row);
+            row.innerHTML = `
+                <div class="col-span-1 flex justify-center">
+                    ${imageHtml}${placeholderHtml}
+                </div>
+                <div class="col-span-3 font-semibold text-slate-200 truncate">${p.name}</div>
+                <div class="col-span-2 text-slate-400 font-mono text-xs truncate">${p.sku || 'N/A'}</div>
+                <div class="col-span-1 text-slate-400 text-xs capitalize">${p.type}</div>
+                <div class="col-span-2 text-right font-mono text-green-400 font-bold">${priceDisplay}</div>
+                <div class="col-span-2 text-right font-bold">${stockDisplayHtml}</div>
+                <div class="col-span-1 text-center">
+                    <button class="px-2 py-1 bg-indigo-600 text-xs rounded hover:bg-indigo-500 transition-colors" onclick="event.stopPropagation(); openStockEditModal(${p.id})">
+                        Edit
+                    </button>
+                </div>
+            `;
+            container.appendChild(row);
         });
     }
 
