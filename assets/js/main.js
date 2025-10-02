@@ -1,6 +1,6 @@
-// JPOS v1.7.0 - Enhanced existing attribute options to show active options and live updates - CACHE BUST
+// JPOS v1.7.1 - Fixed component import errors and cleaned up unused files - CACHE BUST
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.7.0 loaded - Enhanced existing attribute options to show active options and live updates');
+    console.log('JPOS v1.7.1 loaded - Fixed component import errors and cleaned up unused files');
     // Initialize Routing Manager
     const routingManager = new RoutingManager();
 
