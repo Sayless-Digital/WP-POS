@@ -197,16 +197,26 @@ class OptionsSearch extends BaseComponent {
         if (!this.optionsElement) return;
 
         this.optionsElement.innerHTML = this.props.existingOptions.map(option => `
-            <span class="inline-flex items-center px-2 py-1 bg-blue-600 text-white text-xs rounded">
+            <span class="inline-flex items-center px-2 py-1 bg-blue-600 text-white text-xs rounded" data-option="${option}">
                 ${option}
                 <button type="button" class="ml-1 text-blue-200 hover:text-white remove-option-btn" 
-                        onclick="window.optionsSearchRemoveOption('${option}')">
+                        data-option="${option}">
                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                     </svg>
                 </button>
             </span>
         `).join('');
+        
+        // Add event listeners for remove buttons
+        this.optionsElement.querySelectorAll('.remove-option-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const option = button.getAttribute('data-option');
+                this.props.onRemoveOption(option);
+                this.renderOptions();
+            });
+        });
     }
 
     // Public methods
@@ -225,7 +235,7 @@ class OptionsSearch extends BaseComponent {
     }
 }
 
-// Global functions for onclick handlers
+// Global functions for onclick handlers (now handled internally by components)
 window.optionsSearchSelectOption = function(option) {
     // Find the current options search instance
     for (let key in window) {
@@ -241,17 +251,6 @@ window.optionsSearchCreateOption = function(option) {
     for (let key in window) {
         if (key.startsWith('currentOptionsSearch_') && window[key]) {
             window[key].addOption(option);
-            break;
-        }
-    }
-};
-
-window.optionsSearchRemoveOption = function(option) {
-    // Find the current options search instance
-    for (let key in window) {
-        if (key.startsWith('currentOptionsSearch_') && window[key]) {
-            window[key].props.onRemoveOption(option);
-            window[key].renderOptions();
             break;
         }
     }

@@ -1,6 +1,6 @@
-// JPOS v1.7.3 - Replaced original attribute options search with component system - CACHE BUST
+// JPOS v1.7.4 - Moved remove button functionality into OptionsSearch component - CACHE BUST
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.7.3 loaded - Replaced original attribute options search with component system');
+    console.log('JPOS v1.7.4 loaded - Moved remove button functionality into OptionsSearch component');
     
     // Components are loaded via script tags in index.php
     // Initialize Routing Manager
@@ -681,16 +681,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Event listeners now handled by OptionsSearch components
         
-        // Event delegation for remove option buttons
-        document.addEventListener('click', function(e) {
-            if (e.target.closest('.remove-option-btn')) {
-                const button = e.target.closest('.remove-option-btn');
-                const optionSpan = button.closest('span[data-option]');
-                if (optionSpan) {
-                    optionSpan.remove();
-                }
-            }
-        });
+        // Remove button functionality now handled by OptionsSearch components
         
         // Add event listeners for form field changes to update JSON preview
         // Form input event listeners removed - JSON preview now only in JSON tab
