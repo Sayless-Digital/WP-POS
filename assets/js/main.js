@@ -1,6 +1,6 @@
-// JPOS v1.8.2 - Filter out existing attributes from add attribute suggestions - CACHE BUST
+// JPOS v1.8.3 - Fix options dropdown opening automatically - CACHE BUST
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.8.2 loaded - Filter out existing attributes from add attribute suggestions');
+    console.log('JPOS v1.8.3 loaded - Fix options dropdown opening automatically');
     // Initialize Routing Manager
     console.log('Initializing Routing Manager...');
     const routingManager = new RoutingManager();
@@ -2358,8 +2358,8 @@ document.addEventListener('DOMContentLoaded', () => {
         
         nameInput.addEventListener('input', function() {
             showNewAttributeNameSuggestions(this.value, attributeSuggestions, nameSuggestions);
-            // Refresh options when attribute name changes
-            showNewAttributeOptionSuggestions(optionInput.value, optionsContainer, optionSuggestions);
+            // Hide options suggestions when attribute name changes (only show on focus)
+            hideNewAttributeOptionSuggestions(optionSuggestions);
         });
         
         nameInput.addEventListener('keypress', function(e) {
@@ -2456,12 +2456,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const nameInput = document.getElementById('new-attribute-name-input');
         nameInput.value = name;
         hideNewAttributeNameSuggestions(suggestionsContainer);
-        // Refresh options when attribute name is selected
-        const optionInput = document.getElementById('new-attribute-option-input');
-        const optionsContainer = document.getElementById('new-attribute-options');
+        // Hide options suggestions when attribute name is selected (only show on focus)
         const optionSuggestions = document.getElementById('new-attribute-option-suggestions');
-        if (optionInput && optionsContainer && optionSuggestions) {
-            showNewAttributeOptionSuggestions(optionInput.value, optionsContainer, optionSuggestions);
+        if (optionSuggestions) {
+            hideNewAttributeOptionSuggestions(optionSuggestions);
         }
     }
     
