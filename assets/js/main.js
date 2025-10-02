@@ -1,6 +1,6 @@
-// JPOS v1.7.5 - Fixed component loading error and ensured clean cache - CACHE BUST
+// JPOS v1.7.6 - Fixed add attribute to show options only after attribute selection with attribute-specific options - CACHE BUST
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.7.5 loaded - Fixed component loading error and ensured clean cache');
+    console.log('JPOS v1.7.6 loaded - Fixed add attribute to show options only after attribute selection with attribute-specific options');
     // Initialize Routing Manager
     const routingManager = new RoutingManager();
 
@@ -2346,6 +2346,8 @@ document.addEventListener('DOMContentLoaded', () => {
         
         nameInput.addEventListener('input', function() {
             showNewAttributeNameSuggestions(this.value, attributeSuggestions, nameSuggestions);
+            // Refresh options when attribute name changes
+            showNewAttributeOptionSuggestions(optionInput.value, optionsContainer, optionSuggestions);
         });
         
         nameInput.addEventListener('keypress', function(e) {
@@ -2359,11 +2361,11 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Attribute options search functionality
         optionInput.addEventListener('focus', function() {
-            showNewAttributeOptionSuggestions(this.value, commonOptions, optionsContainer, optionSuggestions);
+            showNewAttributeOptionSuggestions(this.value, optionsContainer, optionSuggestions);
         });
         
         optionInput.addEventListener('input', function() {
-            showNewAttributeOptionSuggestions(this.value, commonOptions, optionsContainer, optionSuggestions);
+            showNewAttributeOptionSuggestions(this.value, optionsContainer, optionSuggestions);
         });
         
         optionInput.addEventListener('keypress', function(e) {
@@ -2431,25 +2433,61 @@ document.addEventListener('DOMContentLoaded', () => {
         const nameInput = document.getElementById('new-attribute-name-input');
         nameInput.value = name;
         hideNewAttributeNameSuggestions(suggestionsContainer);
+        // Refresh options when attribute name is selected
+        const optionInput = document.getElementById('new-attribute-option-input');
+        const optionsContainer = document.getElementById('new-attribute-options');
+        const optionSuggestions = document.getElementById('new-attribute-option-suggestions');
+        if (optionInput && optionsContainer && optionSuggestions) {
+            showNewAttributeOptionSuggestions(optionInput.value, optionsContainer, optionSuggestions);
+        }
     }
     
-    function showNewAttributeOptionSuggestions(query, commonOptions, optionsContainer, suggestionsContainer) {
+    function showNewAttributeOptionSuggestions(query, optionsContainer, suggestionsContainer) {
+        // Get the selected attribute name
+        const nameInput = document.getElementById('new-attribute-name-input');
+        const attributeName = nameInput ? nameInput.value.trim() : '';
+        
+        // Don't show options until an attribute is selected
+        if (!attributeName) {
+            hideNewAttributeOptionSuggestions(suggestionsContainer);
+            return;
+        }
+        
         // Get existing options from the container
         const existingOptions = Array.from(optionsContainer.querySelectorAll('span')).map(el => 
             el.textContent.trim().split('×')[0].trim()
         );
+        
+        // Get attribute-specific options based on the selected attribute name
+        let attributeOptions = [];
+        
+        // Map attribute names to their specific options (like existing attributes do)
+        if (attributeName.toLowerCase().includes('color')) {
+            attributeOptions = ['Red', 'Blue', 'Green', 'Yellow', 'Black', 'White', 'Gray', 'Brown', 'Pink', 'Purple', 'Orange'];
+        } else if (attributeName.toLowerCase().includes('size')) {
+            attributeOptions = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Small', 'Medium', 'Large', 'Extra Large'];
+        } else if (attributeName.toLowerCase().includes('material')) {
+            attributeOptions = ['Cotton', 'Polyester', 'Wool', 'Silk', 'Leather', 'Denim', 'Linen', 'Cashmere'];
+        } else if (attributeName.toLowerCase().includes('brand')) {
+            attributeOptions = ['Nike', 'Adidas', 'Puma', 'Under Armour', 'Reebok', 'New Balance'];
+        } else if (attributeName.toLowerCase().includes('style')) {
+            attributeOptions = ['Casual', 'Formal', 'Sport', 'Vintage', 'Modern', 'Classic', 'Trendy'];
+        } else {
+            // For unknown attributes, show common options
+            attributeOptions = ['Red', 'Blue', 'Green', 'Yellow', 'Black', 'White', 'Gray', 'Brown', 'Pink', 'Purple', 'Orange', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'Small', 'Medium', 'Large', 'Extra Large', 'Cotton', 'Polyester', 'Wool', 'Silk', 'Leather', 'Denim', 'Linen', 'Cashmere', 'Nike', 'Adidas', 'Puma', 'Under Armour', 'Reebok', 'New Balance', 'Casual', 'Formal', 'Sport', 'Vintage', 'Modern', 'Classic', 'Trendy'];
+        }
         
         // Always show suggestions container, filter based on query
         let filteredSuggestions;
         
         if (!query.trim()) {
             // Show all suggestions when no query, excluding already added options
-            filteredSuggestions = commonOptions.filter(option => 
+            filteredSuggestions = attributeOptions.filter(option => 
                 !existingOptions.includes(option)
             );
         } else {
             // Filter suggestions based on query and exclude already added options
-            filteredSuggestions = commonOptions.filter(option => 
+            filteredSuggestions = attributeOptions.filter(option => 
                 option.toLowerCase().includes(query.toLowerCase()) && 
                 !existingOptions.includes(option)
             );
@@ -2522,9 +2560,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Refresh suggestions to show updated state
             const input = document.getElementById('new-attribute-option-input');
             if (input) {
-                // Get common options from the addAttributeRow function scope
-                const commonOptions = ['Red', 'Blue', 'Green', 'Yellow', 'Black', 'White', 'Gray', 'Brown', 'Pink', 'Purple', 'Orange', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'Small', 'Medium', 'Large', 'Extra Large', 'Cotton', 'Polyester', 'Wool', 'Silk', 'Leather', 'Denim', 'Linen', 'Cashmere', 'Nike', 'Adidas', 'Puma', 'Under Armour', 'Reebok', 'New Balance', 'Casual', 'Formal', 'Sport', 'Vintage', 'Modern', 'Classic', 'Trendy'];
-                showNewAttributeOptionSuggestions(input.value, commonOptions, optionsContainer, suggestionsContainer);
+                showNewAttributeOptionSuggestions(input.value, optionsContainer, suggestionsContainer);
             }
         });
         
@@ -2540,9 +2576,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Refresh suggestions to show updated state
             const input = document.getElementById('new-attribute-option-input');
             if (input) {
-                // Get common options from the addAttributeRow function scope
-                const commonOptions = ['Red', 'Blue', 'Green', 'Yellow', 'Black', 'White', 'Gray', 'Brown', 'Pink', 'Purple', 'Orange', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'Small', 'Medium', 'Large', 'Extra Large', 'Cotton', 'Polyester', 'Wool', 'Silk', 'Leather', 'Denim', 'Linen', 'Cashmere', 'Nike', 'Adidas', 'Puma', 'Under Armour', 'Reebok', 'New Balance', 'Casual', 'Formal', 'Sport', 'Vintage', 'Modern', 'Classic', 'Trendy'];
-                showNewAttributeOptionSuggestions(input.value, commonOptions, optionsContainer, suggestionsContainer);
+                showNewAttributeOptionSuggestions(input.value, optionsContainer, suggestionsContainer);
             }
         }
     }
