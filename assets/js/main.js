@@ -1,6 +1,6 @@
-// JPOS v1.6.7 - Enhanced add attribute functionality with existing attribute selection and new attribute creation - CACHE BUST
+// JPOS v1.6.8 - Implemented tag-based search for adding attributes with same functionality as existing attributes - CACHE BUST
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.6.7 loaded - Enhanced add attribute functionality with existing attribute selection and new attribute creation');
+    console.log('JPOS v1.6.8 loaded - Implemented tag-based search for adding attributes with same functionality as existing attributes');
     // Initialize Routing Manager
     const routingManager = new RoutingManager();
 
@@ -2286,12 +2286,18 @@ document.addEventListener('DOMContentLoaded', () => {
         attributeRow.innerHTML = `
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
                 <div>
-                    <label class="block text-xs text-slate-300 mb-1">Select Existing or Create New</label>
-                    <select id="attribute-selector" class="w-full px-2 py-1 bg-slate-600 text-slate-200 rounded border border-slate-500 text-sm">
-                        <option value="">Choose an existing attribute...</option>
-                        ${existingOptions}
-                        <option value="new">+ Create New Attribute</option>
-                    </select>
+                    <label class="block text-xs text-slate-300 mb-1">Attribute Name</label>
+                    <div class="bg-slate-600 border border-slate-500 rounded p-2 min-h-[40px]">
+                        <div id="attribute-selection-tags" class="flex flex-wrap gap-1 mb-2">
+                            <!-- Selected attribute will appear here -->
+                        </div>
+                        <div class="relative">
+                            <input type="text" id="attribute-search-input" placeholder="Type to search attributes or create new..." class="w-full px-2 py-1 bg-slate-700 text-slate-200 rounded border border-slate-500 text-sm focus:border-blue-500 focus:outline-none">
+                            <div id="attribute-search-suggestions" class="absolute top-full left-0 right-0 bg-slate-700 border border-slate-500 rounded mt-1 max-h-32 overflow-y-auto hidden z-10">
+                                <!-- Suggestions will be populated here -->
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div>
                     <label class="block text-xs text-slate-300 mb-1">Type</label>
@@ -2302,24 +2308,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
-                <div id="attribute-name-container" class="hidden">
-                    <label class="block text-xs text-slate-300 mb-1">Attribute Name</label>
-                    <input type="text" id="attribute-name-input" placeholder="e.g., Color, Size" class="w-full px-2 py-1 bg-slate-600 text-slate-200 rounded border border-slate-500 text-sm">
-                </div>
                 <div>
                     <label class="block text-xs text-slate-300 mb-1">Options (comma-separated)</label>
                     <input type="text" placeholder="e.g., Red, Blue, Green" class="w-full px-2 py-1 bg-slate-600 text-slate-200 rounded border border-slate-500 text-sm">
                 </div>
-            </div>
-            <div class="flex items-center space-x-4 mb-3">
-                <label class="flex items-center">
-                    <input type="checkbox" class="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500">
-                    <span class="ml-2 text-xs text-slate-300">Visible</span>
-                </label>
-                <label class="flex items-center">
-                    <input type="checkbox" class="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500">
-                    <span class="ml-2 text-xs text-slate-300">Variation</span>
-                </label>
+                <div class="flex items-center space-x-4">
+                    <label class="flex items-center">
+                        <input type="checkbox" class="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500">
+                        <span class="ml-2 text-xs text-slate-300">Visible</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" class="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500">
+                        <span class="ml-2 text-xs text-slate-300">Variation</span>
+                    </label>
+                </div>
             </div>
             <div class="flex justify-end">
                 <button type="button" onclick="this.parentElement.parentElement.remove()" class="px-2 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-500">Remove</button>
@@ -2327,28 +2329,115 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
         container.appendChild(attributeRow);
         
-        // Add event listeners for the new functionality
-        const selector = attributeRow.querySelector('#attribute-selector');
+        // Add event listeners for the new search functionality
+        const searchInput = attributeRow.querySelector('#attribute-search-input');
+        const suggestionsContainer = attributeRow.querySelector('#attribute-search-suggestions');
+        const tagsContainer = attributeRow.querySelector('#attribute-selection-tags');
         const typeSelect = attributeRow.querySelector('#attribute-type');
-        const nameContainer = attributeRow.querySelector('#attribute-name-container');
-        const nameInput = attributeRow.querySelector('#attribute-name-input');
         
-        selector.addEventListener('change', function() {
-            const selectedOption = this.options[this.selectedIndex];
-            if (this.value === 'new') {
-                // Show name input for new attribute
-                nameContainer.classList.remove('hidden');
-                nameInput.required = true;
-            } else if (this.value) {
-                // Hide name input and set type based on selection
-                nameContainer.classList.add('hidden');
-                nameInput.required = false;
-                typeSelect.value = selectedOption.dataset.type || 'custom';
-            } else {
-                // Hide name input
-                nameContainer.classList.add('hidden');
-                nameInput.required = false;
+        // Store available attributes for this row
+        attributeRow.availableAttributes = availableAttributes;
+        
+        // Add search functionality similar to attribute options
+        searchInput.addEventListener('input', function() {
+            showAttributeSearchSuggestions(attributeRow, this.value);
+        });
+        
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const value = this.value.trim();
+                if (value) {
+                    addAttributeSelection(attributeRow, value, 'custom');
+                    this.value = '';
+                    hideAttributeSearchSuggestions(attributeRow);
+                }
+            } else if (e.key === 'Escape') {
+                hideAttributeSearchSuggestions(attributeRow);
             }
+        });
+        
+        // Hide suggestions when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!attributeRow.contains(e.target)) {
+                hideAttributeSearchSuggestions(attributeRow);
+            }
+        });
+    }
+
+    function showAttributeSearchSuggestions(attributeRow, query) {
+        const suggestionsContainer = attributeRow.querySelector('#attribute-search-suggestions');
+        
+        if (!query.trim()) {
+            hideAttributeSearchSuggestions(attributeRow);
+            return;
+        }
+        
+        const availableAttributes = attributeRow.availableAttributes || [];
+        
+        // Filter suggestions based on query
+        const filteredSuggestions = availableAttributes.filter(attr => 
+            attr.label.toLowerCase().includes(query.toLowerCase()) ||
+            attr.name.toLowerCase().includes(query.toLowerCase())
+        ).slice(0, 5);
+        
+        if (filteredSuggestions.length > 0) {
+            suggestionsContainer.innerHTML = filteredSuggestions.map(attr => {
+                return `
+                    <div class="px-3 py-2 text-sm text-slate-200 hover:bg-slate-600 cursor-pointer flex items-center justify-between" onclick="addAttributeSelection(this.closest('.bg-slate-600'), '${attr.slug}', '${attr.type}')">
+                        <span>${attr.label}</span>
+                        <span class="text-xs text-slate-400">${attr.type}</span>
+                    </div>
+                `;
+            }).join('');
+            suggestionsContainer.classList.remove('hidden');
+        } else {
+            // Show option to create new attribute
+            suggestionsContainer.innerHTML = `
+                <div class="px-3 py-2 text-sm text-blue-400 hover:bg-slate-600 cursor-pointer flex items-center" onclick="addAttributeSelection(this.closest('.bg-slate-600'), '${query}', 'custom')">
+                    <span>+ Create "${query}" as new attribute</span>
+                </div>
+            `;
+            suggestionsContainer.classList.remove('hidden');
+        }
+    }
+    
+    function hideAttributeSearchSuggestions(attributeRow) {
+        const suggestionsContainer = attributeRow.querySelector('#attribute-search-suggestions');
+        suggestionsContainer.classList.add('hidden');
+    }
+    
+    function addAttributeSelection(attributeRow, attributeSlug, attributeType) {
+        const tagsContainer = attributeRow.querySelector('#attribute-selection-tags');
+        const searchInput = attributeRow.querySelector('#attribute-search-input');
+        const typeSelect = attributeRow.querySelector('#attribute-type');
+        
+        // Clear existing selection
+        tagsContainer.innerHTML = '';
+        
+        // Add the selected attribute as a tag
+        const attributeTag = document.createElement('span');
+        attributeTag.className = 'inline-flex items-center px-2 py-1 bg-blue-600 text-white text-xs rounded';
+        attributeTag.innerHTML = `
+            ${attributeSlug}
+            <button type="button" class="ml-1 text-blue-200 hover:text-white remove-attribute-selection-btn">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        `;
+        tagsContainer.appendChild(attributeTag);
+        
+        // Set the type based on selection
+        typeSelect.value = attributeType;
+        
+        // Clear search input and hide suggestions
+        searchInput.value = '';
+        hideAttributeSearchSuggestions(attributeRow);
+        
+        // Add remove functionality
+        attributeTag.querySelector('.remove-attribute-selection-btn').addEventListener('click', function() {
+            attributeTag.remove();
         });
     }
 
