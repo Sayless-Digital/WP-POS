@@ -1,6 +1,6 @@
-// JPOS v1.5.3 - Updated stock manager table styling to match sessions/orders - CACHE BUST
+// JPOS v1.5.4 - Fixed stock manager image alignment - CACHE BUST
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.5.3 loaded - Stock manager table styling updated');
+    console.log('JPOS v1.5.4 loaded - Stock manager image alignment fixed');
     // Initialize Routing Manager
     const routingManager = new RoutingManager();
 
@@ -1599,7 +1599,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const placeholderHtml = `<div class="w-10 h-10 bg-slate-700 rounded-lg flex items-center justify-center text-slate-400 text-xs font-bold px-1 text-center" style="display: ${p.image_url ? 'none' : 'flex'}; line-height: 1.1;">${p.sku || 'N/A'}</div>`;
             
             row.innerHTML = `
-                <div class="col-span-1 flex justify-center">
+                <div class="col-span-1 flex justify-start">
                     ${imageHtml}${placeholderHtml}
                 </div>
                 <div class="col-span-3 font-semibold text-slate-200 truncate">${p.name}</div>
