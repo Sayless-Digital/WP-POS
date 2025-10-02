@@ -276,7 +276,7 @@ For technical support or questions:
 
 ## Version Information
 
-- Current Version: 1.5.4
+- Current Version: 1.5.8
 - Last Updated: December 2024
-- Latest Update: Updated stock manager table styling for improved visual consistency and user experience
+- Latest Update: Fixed stock manager edit button functionality - resolved timing and caching issues for proper global function access
 - Next Update: Q1 2025

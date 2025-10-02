@@ -1,6 +1,6 @@
-// JPOS v1.5.4 - Fixed stock manager image alignment - CACHE BUST
+// JPOS v1.5.8 - Fixed stock manager edit button functionality - CACHE BUST
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.5.4 loaded - Stock manager image alignment fixed');
+    console.log('JPOS v1.5.8 loaded - Fixed stock manager edit button functionality');
     // Initialize Routing Manager
     const routingManager = new RoutingManager();
 
@@ -245,6 +245,8 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadFullApp() {
         showLoginScreen(false);
         setupMainAppEventListeners();
+        
+        // Show main app but keep preloader visible until routing is complete
         document.getElementById('main-app').classList.remove('hidden');
         
         // Update user profile information safely
@@ -272,7 +274,10 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Initialize with current view from URL or default to pos-page
         const initialView = routingManager.getCurrentView();
-        routingManager.navigateToView(initialView, false); // Don't update URL on initial load
+        routingManager.navigateToView(initialView, false);
+        
+        // Hide preloader after routing is complete
+        hideAppPreloader(); // Don't update URL on initial load
         
         await checkDrawerStatus();
         validateState(); // Validate state after loading
@@ -333,6 +338,19 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('login-error').textContent = message;
         loginScreen.classList.toggle('hidden', !show);
         mainApp.classList.toggle('hidden', show);
+    }
+    
+    function hideAppPreloader() {
+        const preloader = document.getElementById('app-preloader');
+        if (preloader) {
+            preloader.classList.add('hidden');
+            // Remove from DOM after transition completes
+            setTimeout(() => {
+                if (preloader.parentNode) {
+                    preloader.parentNode.removeChild(preloader);
+                }
+            }, 300); // Match CSS transition duration
+        }
     }
     
     function showDrawerModal(view) {
@@ -614,6 +632,37 @@ document.addEventListener('DOMContentLoaded', () => {
         const refreshPosBtn = document.getElementById('refresh-pos-btn');
         if (refreshPosBtn) refreshPosBtn.addEventListener('click', () => {
             // Hard refresh: force reload from server, bypass cache
+            window.location.reload(true);
+        });
+        
+        // Add refresh buttons for all pages
+        const refreshOrdersBtn = document.getElementById('refresh-orders-btn');
+        if (refreshOrdersBtn) refreshOrdersBtn.addEventListener('click', () => {
+            window.location.reload(true);
+        });
+        
+        const refreshReportsBtn = document.getElementById('refresh-reports-btn');
+        if (refreshReportsBtn) refreshReportsBtn.addEventListener('click', () => {
+            window.location.reload(true);
+        });
+        
+        const refreshSessionsBtn = document.getElementById('refresh-sessions-btn');
+        if (refreshSessionsBtn) refreshSessionsBtn.addEventListener('click', () => {
+            window.location.reload(true);
+        });
+        
+        const refreshStockBtn = document.getElementById('refresh-stock-btn');
+        if (refreshStockBtn) refreshStockBtn.addEventListener('click', () => {
+            window.location.reload(true);
+        });
+        
+        const refreshSettingsBtn = document.getElementById('refresh-settings-btn');
+        if (refreshSettingsBtn) refreshSettingsBtn.addEventListener('click', () => {
+            window.location.reload(true);
+        });
+        
+        const refreshHeldCartsBtn = document.getElementById('refresh-held-carts-btn');
+        if (refreshHeldCartsBtn) refreshHeldCartsBtn.addEventListener('click', () => {
             window.location.reload(true);
         });
         const menuButtonHeldCarts = document.getElementById('menu-button-held-carts');
@@ -1656,6 +1705,9 @@ document.addEventListener('DOMContentLoaded', () => {
             varList.innerHTML = `<div class="p-8 text-center"><p class="text-red-400">Error loading details: ${error.message}</p></div>`;
         }
     }
+
+    // Make openStockEditModal globally accessible immediately after definition
+    window.openStockEditModal = openStockEditModal;
 
     async function handleStockEditSave() {
         const product = appState.editingStockProduct;

@@ -8,9 +8,9 @@ JPOS is a modern, enterprise-grade point-of-sale system built on WordPress. The 
 
 **Status**: ✅ PRODUCTION READY  
 **Last Updated**: December 19, 2024  
-**Version**: 1.5.4  
+**Version**: 1.5.8  
 **All Phases Completed**: Security, Architecture, Performance, Quality & Monitoring  
-**Latest Update**: Updated stock manager table styling to match sessions/orders tables with consistent grid-based layout
+**Latest Update**: Fixed stock manager edit button functionality - resolved timing and caching issues for proper global function access
 
 ## Architecture
 
@@ -407,6 +407,9 @@ JPOS implements a comprehensive routing system that maintains view state across 
 - **Cache Busting**: Implemented multi-layered cache busting (version parameters, unique comments, version incrementing) to prevent browser caching issues
 - **JavaScript Architecture**: Completed migration from global variables to centralized `appState` object - eliminated all ReferenceError issues
 - **API Fixes**: Corrected SQL prepared statement handling and removed unintended default filters in orders endpoint
+- **App Preloader**: Added professional loading screen with spinner and full-page sheen effect to prevent flash of default view before routing
+- **Reload Buttons**: Added consistent refresh buttons to all pages (Orders, Reports, Sessions, Stock, Settings, Held Carts) matching POS page style
+- **Stock Manager Edit Buttons**: Fixed edit button functionality in stock manager - resolved timing and caching issues, both row clicks and edit buttons now properly open stock management dialog
 
 ### Debug Mode
 Enable debug mode in configuration for detailed error information and logging.
@@ -469,8 +472,8 @@ Use the built-in monitoring system to track system health, performance metrics, 
 
 ---
 
-**Documentation Version**: 1.5.4  
+**Documentation Version**: 1.5.8  
 **Last Updated**: December 19, 2024  
 **System Status**: Production Ready  
-**Latest Update**: Updated stock manager table styling to match sessions/orders tables with consistent grid-based layout  
+**Latest Update**: Fixed stock manager edit button functionality - resolved timing and caching issues for proper global function access  
 **Maintenance Contact**: Development Team

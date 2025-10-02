@@ -16,7 +16,7 @@ require_once __DIR__ . '/../wp-load.php';
     <!-- JPOS Routing Module -->
     <script src="assets/js/modules/routing.js"></script>
     <!-- JPOS Original JavaScript (temporarily reverting for debugging) -->
-    <script src="assets/js/main.js?v=1.5.4"></script>
+    <script src="assets/js/main.js?v=1.5.8"></script>
     <style>
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
@@ -142,9 +142,49 @@ require_once __DIR__ . '/../wp-load.php';
         .skeleton-loader.reports-page .chart-block { background-color: #1e293b; border-radius: 0.75rem; height: 300px; animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
         
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+        
+        /* App Preloader */
+        .app-preloader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.95); /* bg-slate-900 with transparency for sheen effect */
+            backdrop-filter: blur(8px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.3s ease-out;
+        }
+        
+        .app-preloader.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .preloader-spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid rgba(51, 65, 85, 0.3); /* border-slate-700 with transparency */
+            border-top: 3px solid #3b82f6; /* border-blue-500 */
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body class="bg-slate-900 text-slate-200 font-sans antialiased overflow-hidden">
+
+    <!-- App Preloader -->
+    <div id="app-preloader" class="app-preloader">
+        <div class="preloader-spinner"></div>
+    </div>
 
     <!-- CSRF Nonces for API Security -->
     <input type="hidden" id="jpos-login-nonce" value="<?php echo wp_create_nonce('jpos_login_nonce'); ?>">
@@ -401,6 +441,9 @@ require_once __DIR__ . '/../wp-load.php';
                             <option value="refunded">Refunded</option>
                             <option value="failed">Failed</option>
                         </select>
+                        <button id="refresh-orders-btn" class="ml-2 p-2 rounded-lg bg-slate-700 border border-slate-600 hover:bg-slate-600 transition-colors flex-shrink-0 flex items-center" title="Refresh Orders Data">
+                            <i class="fa fa-refresh"></i>
+                        </button>
                     </div>
                  </header>
                  <main class="flex-grow flex flex-col overflow-y-auto">
@@ -416,6 +459,9 @@ require_once __DIR__ . '/../wp-load.php';
                  <header class="flex items-center gap-4 p-2 bg-slate-800/80 backdrop-blur-sm border border-slate-700 rounded-xl shadow-lg flex-shrink-0">
                     <button class="menu-toggle p-2 rounded-lg hover:bg-slate-700 transition-colors"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg></button>
                     <h1 class="text-xl font-bold mr-auto">Sales Reports</h1>
+                    <button id="refresh-reports-btn" class="ml-2 p-2 rounded-lg bg-slate-700 border border-slate-600 hover:bg-slate-600 transition-colors flex-shrink-0 flex items-center" title="Refresh Reports Data">
+                        <i class="fa fa-refresh"></i>
+                    </button>
                     <button id="export-pdf-btn" class="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500 transition-colors font-medium">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
@@ -432,6 +478,9 @@ require_once __DIR__ . '/../wp-load.php';
                  <header class="flex items-center gap-4 p-2 bg-slate-800/80 backdrop-blur-sm border border-slate-700 rounded-xl shadow-lg flex-shrink-0">
                     <button class="menu-toggle p-2 rounded-lg hover:bg-slate-700 transition-colors"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg></button>
                     <h1 class="text-xl font-bold mr-auto">Session History</h1>
+                    <button id="refresh-sessions-btn" class="ml-2 p-2 rounded-lg bg-slate-700 border border-slate-600 hover:bg-slate-600 transition-colors flex-shrink-0 flex items-center" title="Refresh Sessions Data">
+                        <i class="fa fa-refresh"></i>
+                    </button>
                  </header>
                  <main class="flex-grow flex flex-col overflow-y-auto">
                     <div class="grid grid-cols-12 gap-4 sticky top-0 bg-slate-900 py-2 px-4 text-xs font-bold text-slate-400 uppercase border-b border-slate-700">
@@ -460,6 +509,9 @@ require_once __DIR__ . '/../wp-load.php';
                         <button data-value="outofstock" data-state="inactive" class="px-3 py-1 text-sm rounded-md transition-colors">Out of Stock</button>
                         <button data-value="private" data-state="inactive" class="px-3 py-1 text-sm rounded-md transition-colors">Private</button>
                     </div>
+                    <button id="refresh-stock-btn" class="ml-2 p-2 rounded-lg bg-slate-700 border border-slate-600 hover:bg-slate-600 transition-colors flex-shrink-0 flex items-center" title="Refresh Stock Data">
+                        <i class="fa fa-refresh"></i>
+                    </button>
                 </header>
                 <main class="flex-grow flex flex-col overflow-y-auto">
                     <div class="grid grid-cols-12 gap-4 sticky top-0 bg-slate-900 py-2 px-4 text-xs font-bold text-slate-400 uppercase border-b border-slate-700">
@@ -480,6 +532,9 @@ require_once __DIR__ . '/../wp-load.php';
                  <header class="flex items-center gap-4 p-2 bg-slate-800/80 backdrop-blur-sm border border-slate-700 rounded-xl shadow-lg flex-shrink-0">
                     <button class="menu-toggle p-2 rounded-lg hover:bg-slate-700 transition-colors"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg></button>
                     <h1 class="text-xl font-bold mr-auto">Receipt Settings</h1>
+                    <button id="refresh-settings-btn" class="ml-2 p-2 rounded-lg bg-slate-700 border border-slate-600 hover:bg-slate-600 transition-colors flex-shrink-0 flex items-center" title="Refresh Settings Data">
+                        <i class="fa fa-refresh"></i>
+                    </button>
                  </header>
                  <main class="flex-grow overflow-y-auto p-4 bg-slate-800/90 rounded-xl border border-slate-700">
                     <form id="settings-form" class="max-w-2xl mx-auto space-y-6">
@@ -500,6 +555,9 @@ require_once __DIR__ . '/../wp-load.php';
                 <header class="flex items-center gap-4 p-2 bg-slate-800/80 backdrop-blur-sm border border-slate-700 rounded-xl shadow-lg flex-shrink-0">
                     <button class="menu-toggle p-2 rounded-lg hover:bg-slate-700 transition-colors"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg></button>
                     <h1 class="text-xl font-bold mr-auto">Held Carts</h1>
+                    <button id="refresh-held-carts-btn" class="ml-2 p-2 rounded-lg bg-slate-700 border border-slate-600 hover:bg-slate-600 transition-colors flex-shrink-0 flex items-center" title="Refresh Held Carts Data">
+                        <i class="fa fa-refresh"></i>
+                    </button>
                 </header>
                 <main class="flex-grow flex flex-col overflow-y-auto">
                     <div id="held-carts-list" class="flex flex-col gap-3 p-4"></div>

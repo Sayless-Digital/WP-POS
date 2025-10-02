@@ -408,6 +408,35 @@ php tests/php/test-database-optimizer.php
   - Matched styling patterns from existing tables
   - Maintained responsive design principles
 
+#### App Preloader Implementation (v1.5.5)
+- **Problem**: Flash of default view before routing determines correct page from URL parameters
+- **Solution**: 
+  - Added full-screen preloader with spinner and sheen effect
+  - Semi-transparent background with backdrop blur for professional appearance
+  - Automatic hiding after routing initialization completes
+  - Smooth fade-out transition with DOM cleanup
+
+#### Reload Buttons Implementation (v1.5.6)
+- **Problem**: Only POS page had refresh functionality, other pages lacked data refresh capability
+- **Solution**: 
+  - Added consistent refresh buttons to all pages (Orders, Reports, Sessions, Stock, Settings, Held Carts)
+  - Matching styling and positioning with POS page refresh button
+  - Hard reload functionality (`window.location.reload(true)`) to bypass cache
+  - Proper event handlers with null checks for each button
+
+#### Stock Manager Edit Button Fix (v1.5.7 - v1.5.8)
+- **Problem**: Edit buttons in stock manager were not working - `ReferenceError: openStockEditModal is not defined`
+- **Root Cause**: 
+  - Function was defined inside DOMContentLoaded event listener but not globally accessible
+  - HTML `onclick` attributes require functions to be in global scope (`window` object)
+  - Timing issue: function was made global at end of event listener, too late for HTML onclick execution
+  - Caching issue: HTML was loading old version of JavaScript file
+- **Solution**: 
+  - Made `openStockEditModal` globally accessible: `window.openStockEditModal = openStockEditModal`
+  - Moved global assignment to immediately after function definition (not at end of event listener)
+  - Updated cache busting version numbers in both HTML and JavaScript files
+  - Both row clicks and edit button clicks now work properly
+
 ### Debug Mode
 Enable debug mode in configuration for detailed error information:
 
@@ -459,3 +488,7 @@ For technical support or questions:
 - v1.5.2: Fixed data loading issue by making page functions globally available for routing system
 - v1.5.3: Fixed order history loading issue - resolved JavaScript variable reference errors and API endpoint filtering
 - v1.5.4: Updated stock manager table styling to match sessions/orders tables with consistent grid-based layout
+- v1.5.5: Added app preloader with spinner and full-page sheen effect to prevent flash of default view before routing
+- v1.5.6: Added consistent reload buttons to all pages (Orders, Reports, Sessions, Stock, Settings, Held Carts) matching POS page style
+- v1.5.7: Fixed stock manager edit button functionality - made openStockEditModal function globally accessible so edit buttons work properly
+- v1.5.8: Resolved timing and caching issues for stock manager edit buttons - moved global function assignment to immediate execution after function definition
