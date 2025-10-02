@@ -115,6 +115,13 @@ try {
             foreach ($variations as $variation_id) {
                 $variation = wc_get_product($variation_id);
                 if ($variation) {
+                    // Get variation attributes in readable format
+                    $variation_attributes = [];
+                    $variation_attrs = $variation->get_attributes();
+                    foreach ($variation_attrs as $attr_name => $attr_value) {
+                        $variation_attributes[$attr_name] = $attr_value;
+                    }
+                    
                     $product_data['variations'][] = [
                         'id' => $variation->get_id(),
                         'sku' => $variation->get_sku(),
@@ -124,8 +131,9 @@ try {
                         'stock_status' => $variation->get_stock_status(),
                         'stock_quantity' => $variation->get_stock_quantity(),
                         'manage_stock' => $variation->get_manage_stock(),
-                        'attributes' => $variation->get_attributes(),
-                        'status' => $variation->get_status()
+                        'attributes' => $variation_attributes,
+                        'status' => $variation->get_status(),
+                        'parent_name' => $product->get_name() // Add parent product name
                     ];
                 }
             }

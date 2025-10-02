@@ -1,6 +1,6 @@
-// JPOS v1.6.4 - Documentation update and API cleanup - CACHE BUST
+// JPOS v1.6.4 - Fixed variation display to show parent product name - CACHE BUST
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.6.3 loaded - Keep dialog open after save and change Cancel to Close');
+    console.log('JPOS v1.6.4 loaded - Fixed variation display to show parent product name');
     // Initialize Routing Manager
     const routingManager = new RoutingManager();
 
@@ -2004,9 +2004,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const variationDiv = document.createElement('div');
             variationDiv.className = 'bg-slate-600 p-3 rounded border border-slate-500';
             variationDiv.setAttribute('data-variation-id', variation.id);
+            // Create variation attributes display
+            const attributesText = Object.entries(variation.attributes || {})
+                .map(([key, value]) => `${key}: ${value}`)
+                .join(', ');
+            
             variationDiv.innerHTML = `
                 <div class="flex justify-between items-start mb-3">
-                    <h4 class="font-semibold text-slate-200">Variation #${variation.id}</h4>
+                    <div>
+                        <h4 class="font-semibold text-slate-200">${variation.parent_name || 'Product'} Variation</h4>
+                        <p class="text-sm text-slate-400">ID: ${variation.id}${attributesText ? ` • ${attributesText}` : ''}</p>
+                    </div>
                     <span class="text-sm text-slate-400">Status: ${variation.status || 'publish'}</span>
                 </div>
                 <div class="grid grid-cols-2 gap-3 text-sm">
