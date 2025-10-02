@@ -1,6 +1,6 @@
-// JPOS v1.6.4 - Fixed variation display to show parent product name - CACHE BUST
+// JPOS v1.6.5 - Fixed actual variation display function to show parent product name and specific attributes - CACHE BUST
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.6.4 loaded - Fixed variation display to show parent product name');
+    console.log('JPOS v1.6.5 loaded - Fixed actual variation display function to show parent product name and specific attributes');
     // Initialize Routing Manager
     const routingManager = new RoutingManager();
 
@@ -2212,7 +2212,29 @@ document.addEventListener('DOMContentLoaded', () => {
         variations.forEach((variation, index) => {
             const variationRow = document.createElement('div');
             variationRow.className = 'bg-slate-600 p-3 rounded border border-slate-500';
+            
+            // Create specific attribute values display
+            const attributesText = Object.entries(variation.attributes || {})
+                .map(([key, value]) => {
+                    // Convert technical names to friendly names
+                    let friendlyKey = key;
+                    if (key.startsWith('pa_')) {
+                        friendlyKey = key.replace('pa_', '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    } else if (key.startsWith('_')) {
+                        friendlyKey = key.replace('_', '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    }
+                    return `${friendlyKey}: ${value}`;
+                })
+                .join(', ');
+            
             variationRow.innerHTML = `
+                <div class="flex justify-between items-start mb-3">
+                    <div>
+                        <h4 class="font-semibold text-slate-200 text-sm">${variation.parent_name || 'Product'} Variation</h4>
+                        <p class="text-xs text-slate-400">ID: ${variation.id}${attributesText ? ` • ${attributesText}` : ''}</p>
+                    </div>
+                    <span class="text-xs text-slate-400">Status: ${variation.status || 'publish'}</span>
+                </div>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-2">
                     <div>
                         <label class="block text-xs text-slate-300 mb-1">SKU</label>
@@ -2226,17 +2248,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         <label class="block text-xs text-slate-300 mb-1">Stock</label>
                         <input type="number" value="${variation.stock_quantity || ''}" class="w-full px-2 py-1 bg-slate-600 text-slate-200 rounded border border-slate-500 text-sm">
                     </div>
-                </div>
-                <div class="text-xs text-slate-400">
-                    Attributes: ${Object.keys(variation.attributes || {}).map(attr => {
-                        // Convert technical names to friendly names
-                        if (attr.startsWith('pa_')) {
-                            return attr.replace('pa_', '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                        } else if (attr.startsWith('_')) {
-                            return attr.replace('_', '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                        }
-                        return attr;
-                    }).join(', ') || 'None'}
                 </div>
             `;
             container.appendChild(variationRow);
