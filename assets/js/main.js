@@ -1,8 +1,11 @@
-// JPOS v1.7.7 - Force complete cache refresh to eliminate component loading errors - CACHE BUST
+// JPOS v1.7.8 - Debug functionality issues and ensure proper initialization - CACHE BUST
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.7.7 loaded - Force complete cache refresh to eliminate component loading errors');
+    console.log('JPOS v1.7.8 loaded - Debug functionality issues and ensure proper initialization');
+    console.log('DOM loaded, checking for functionality issues...');
     // Initialize Routing Manager
+    console.log('Initializing Routing Manager...');
     const routingManager = new RoutingManager();
+    console.log('Routing Manager initialized:', routingManager);
 
     // Centralized State Management
     const appState = {
@@ -192,8 +195,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function init() {
+        console.log('Starting initialization...');
         setupEventListeners();
+        console.log('Event listeners set up');
         await generateNonces(); // Generate nonces immediately for login form
+        console.log('Nonces generated');
         await checkAuthStatus();
     }
 
@@ -670,8 +676,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         // Add Attribute Button
+        console.log('Setting up Add Attribute Button...');
         const addAttributeBtn = document.getElementById('add-attribute');
-        if (addAttributeBtn) addAttributeBtn.addEventListener('click', addAttributeRow);
+        console.log('Add Attribute Button found:', addAttributeBtn);
+        if (addAttributeBtn) {
+            addAttributeBtn.addEventListener('click', addAttributeRow);
+            console.log('Add Attribute Button event listener added');
+        } else {
+            console.error('Add Attribute Button not found!');
+        }
         
         // Add Variation Button
         const addVariationBtn = document.getElementById('add-variation');
