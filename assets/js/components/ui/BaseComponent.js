@@ -2,7 +2,7 @@
  * Base Component Class for JPOS
  * Similar to React/Next.js component structure
  */
-export class BaseComponent {
+class BaseComponent {
     constructor(props = {}) {
         this.props = { ...this.defaultProps, ...props };
         this.state = {};
@@ -133,3 +133,6 @@ export class BaseComponent {
         };
     }
 }
+
+// Make BaseComponent globally available
+window.BaseComponent = BaseComponent;

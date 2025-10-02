@@ -1,6 +1,6 @@
-// JPOS v1.7.0 - Component-based architecture with Next.js style organization - CACHE BUST
+// JPOS v1.7.1 - Component-based architecture with Next.js style organization - CACHE BUST
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.7.0 loaded - Component-based architecture with Next.js style organization');
+    console.log('JPOS v1.7.1 loaded - Component-based architecture with Next.js style organization');
     
     // Components are loaded via script tags in index.php
     // Initialize Routing Manager

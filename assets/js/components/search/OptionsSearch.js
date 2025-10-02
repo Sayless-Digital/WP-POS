@@ -1,11 +1,9 @@
-import { BaseComponent } from '../ui/BaseComponent.js';
-
 /**
  * OptionsSearch Component
  * Reusable search component for attribute options
  * Similar to React/Next.js component structure
  */
-export class OptionsSearch extends BaseComponent {
+class OptionsSearch extends BaseComponent {
     get defaultProps() {
         return {
             placeholder: 'Type to add option...',
@@ -247,3 +245,6 @@ window.optionsSearchRemoveOption = function(option) {
         window.currentOptionsSearch.renderOptions();
     }
 };
+
+// Make OptionsSearch globally available
+window.OptionsSearch = OptionsSearch;
