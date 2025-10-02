@@ -227,22 +227,33 @@ class OptionsSearch extends BaseComponent {
 
 // Global functions for onclick handlers
 window.optionsSearchSelectOption = function(option) {
-    // This will be set by the component instance
-    if (window.currentOptionsSearch) {
-        window.currentOptionsSearch.addOption(option);
+    // Find the current options search instance
+    for (let key in window) {
+        if (key.startsWith('currentOptionsSearch_') && window[key]) {
+            window[key].addOption(option);
+            break;
+        }
     }
 };
 
 window.optionsSearchCreateOption = function(option) {
-    if (window.currentOptionsSearch) {
-        window.currentOptionsSearch.addOption(option);
+    // Find the current options search instance
+    for (let key in window) {
+        if (key.startsWith('currentOptionsSearch_') && window[key]) {
+            window[key].addOption(option);
+            break;
+        }
     }
 };
 
 window.optionsSearchRemoveOption = function(option) {
-    if (window.currentOptionsSearch) {
-        window.currentOptionsSearch.props.onRemoveOption(option);
-        window.currentOptionsSearch.renderOptions();
+    // Find the current options search instance
+    for (let key in window) {
+        if (key.startsWith('currentOptionsSearch_') && window[key]) {
+            window[key].props.onRemoveOption(option);
+            window[key].renderOptions();
+            break;
+        }
     }
 };
 

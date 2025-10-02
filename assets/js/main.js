@@ -1,6 +1,6 @@
-// JPOS v1.7.1 - Component-based architecture with Next.js style organization - CACHE BUST
+// JPOS v1.7.3 - Replaced original attribute options search with component system - CACHE BUST
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.7.1 loaded - Component-based architecture with Next.js style organization');
+    console.log('JPOS v1.7.3 loaded - Replaced original attribute options search with component system');
     
     // Components are loaded via script tags in index.php
     // Initialize Routing Manager
@@ -679,54 +679,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const addVariationBtn = document.getElementById('add-variation');
         if (addVariationBtn) addVariationBtn.addEventListener('click', addVariationRow);
         
-        // Add event listeners for attribute option inputs (will be added dynamically)
-        document.addEventListener('input', function(e) {
-            if (e.target.id && e.target.id.startsWith('attribute-option-input-')) {
-                const attributeIndex = e.target.id.split('-')[3];
-                showAttributeSuggestions(attributeIndex, e.target.value);
-            }
-        });
-        
-        // Also add keyup listener for better compatibility
-        document.addEventListener('keyup', function(e) {
-            if (e.target.id && e.target.id.startsWith('attribute-option-input-')) {
-                const attributeIndex = e.target.id.split('-')[3];
-                showAttributeSuggestions(attributeIndex, e.target.value);
-            }
-        });
-        
-        // Add focus listener to show suggestions when input is focused
-        document.addEventListener('focus', function(e) {
-            if (e.target.id && e.target.id.startsWith('attribute-option-input-')) {
-                const attributeIndex = e.target.id.split('-')[3];
-                if (e.target.value.trim()) {
-                    showAttributeSuggestions(attributeIndex, e.target.value);
-                }
-            }
-        }, true);
-        
-        // Add keypress listener for Enter/comma
-        document.addEventListener('keypress', function(e) {
-            if (e.target.id && e.target.id.startsWith('attribute-option-input-')) {
-                if (e.key === 'Enter' || e.key === ',') {
-                    e.preventDefault();
-                    const attributeIndex = e.target.id.split('-')[3];
-                    addAttributeOption(attributeIndex, e.target.value);
-                } else if (e.key === 'Escape') {
-                    const attributeIndex = e.target.id.split('-')[3];
-                    hideAttributeSuggestions(attributeIndex);
-                }
-            }
-        });
-        
-        // Hide suggestions when clicking outside
-        document.addEventListener('click', function(e) {
-            if (!e.target.closest('.relative')) {
-                document.querySelectorAll('[id^="attribute-option-suggestions-"]').forEach(el => {
-                    el.classList.add('hidden');
-                });
-            }
-        });
+        // Event listeners now handled by OptionsSearch components
         
         // Event delegation for remove option buttons
         document.addEventListener('click', function(e) {
@@ -2151,9 +2104,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const container = document.getElementById('product-attributes');
         container.innerHTML = '';
         
+        // Common options for suggestions
+        const commonOptions = ['Red', 'Blue', 'Green', 'Yellow', 'Black', 'White', 'Gray', 'Brown', 'Pink', 'Purple', 'Orange', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'Small', 'Medium', 'Large', 'Extra Large', 'Cotton', 'Polyester', 'Wool', 'Silk', 'Leather', 'Denim', 'Linen', 'Cashmere', 'Nike', 'Adidas', 'Puma', 'Under Armour', 'Reebok', 'New Balance', 'Casual', 'Formal', 'Sport', 'Vintage', 'Modern', 'Classic', 'Trendy'];
+        
         attributes.forEach((attribute, index) => {
             const attributeRow = document.createElement('div');
             attributeRow.className = 'bg-slate-600 p-3 rounded border border-slate-500';
+            
+            // Create the basic structure
             attributeRow.innerHTML = `
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
                     <div>
@@ -2169,25 +2127,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
                     <div>
                         <label class="block text-xs text-slate-300 mb-1">Options</label>
-                        <div class="bg-slate-600 border border-slate-500 rounded p-2 min-h-[40px]">
-                            <div id="attribute-options-${index}" class="flex flex-wrap gap-1 mb-2" data-attribute-index="${index}" data-attribute-name="${(attribute.friendly_name || attribute.name).toLowerCase()}" data-original-options='${JSON.stringify(attribute.friendly_options || attribute.options)}'>
-                                ${(attribute.friendly_options || attribute.options).map(option => `
-                                    <span class="inline-flex items-center px-2 py-1 bg-blue-600 text-white text-xs rounded" data-option="${option}">
-                                        ${option}
-                                        <button type="button" class="ml-1 text-blue-200 hover:text-white remove-option-btn">
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                            </svg>
-                                        </button>
-                                    </span>
-                                `).join('')}
-                            </div>
-                            <div class="relative">
-                                <input type="text" id="attribute-option-input-${index}" placeholder="Type to add option..." class="w-full px-2 py-1 bg-slate-700 text-slate-200 rounded border border-slate-500 text-sm focus:border-blue-500 focus:outline-none">
-                                <div id="attribute-option-suggestions-${index}" class="absolute top-full left-0 right-0 bg-slate-700 border border-slate-500 rounded mt-1 max-h-32 overflow-y-auto hidden z-10">
-                                    <!-- Suggestions will be populated here -->
-                                </div>
-                            </div>
+                        <div id="options-search-container-${index}" class="bg-slate-600 border border-slate-500 rounded p-2 min-h-[40px]">
+                            <!-- OptionsSearch component will be mounted here -->
                         </div>
                         ${attribute.friendly_options ? `<div class="text-xs text-slate-500 mt-1">Technical IDs: ${attribute.options.join(', ')}</div>` : ''}
                     </div>
@@ -2202,8 +2143,42 @@ document.addEventListener('DOMContentLoaded', () => {
                         </label>
                     </div>
                 </div>
+                <div class="flex justify-end">
+                    <button type="button" onclick="this.parentElement.parentElement.remove()" class="px-2 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-500">Remove</button>
+                </div>
             `;
+            
             container.appendChild(attributeRow);
+            
+            // Create OptionsSearch component for this attribute
+            if (window.JPOSComponents) {
+                const { OptionsSearch } = window.JPOSComponents;
+                const optionsContainer = attributeRow.querySelector(`#options-search-container-${index}`);
+                
+                const optionsSearch = new OptionsSearch({
+                    placeholder: 'Type to add option...',
+                    suggestions: commonOptions,
+                    inputId: `attribute-option-input-${index}`,
+                    suggestionsId: `attribute-option-suggestions-${index}`,
+                    optionsId: `attribute-options-${index}`,
+                    existingOptions: attribute.friendly_options || attribute.options,
+                    onSelectOption: (option) => {
+                        // Add option to the attribute
+                        const currentOptions = optionsSearch.props.existingOptions || [];
+                        optionsSearch.setExistingOptions([...currentOptions, option]);
+                    },
+                    onRemoveOption: (option) => {
+                        // Remove option from the attribute
+                        const currentOptions = optionsSearch.props.existingOptions || [];
+                        optionsSearch.setExistingOptions(currentOptions.filter(opt => opt !== option));
+                    }
+                });
+                
+                optionsSearch.mount(optionsContainer);
+                
+                // Store reference for global functions
+                window[`currentOptionsSearch_${index}`] = optionsSearch;
+            }
         });
     }
 
@@ -2398,67 +2373,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function showAttributeSuggestions(attributeIndex, query) {
-        const suggestionsContainer = document.getElementById(`attribute-option-suggestions-${attributeIndex}`);
-        
-        if (!query.trim()) {
-            hideAttributeSuggestions(attributeIndex);
-            return;
-        }
-        
-        // Get attribute name from data attribute - much more reliable!
-        const optionsContainer = document.getElementById(`attribute-options-${attributeIndex}`);
-        const attributeName = optionsContainer.getAttribute('data-attribute-name') || '';
-        
-        // Get original options from database (stored in data attribute)
-        const originalOptionsJson = optionsContainer.getAttribute('data-original-options') || '[]';
-        const originalOptions = JSON.parse(originalOptionsJson);
-        
-        // Use original database options for suggestions
-        const suggestions = originalOptions;
-        
-        // Filter suggestions based on query
-        const filteredSuggestions = suggestions.filter(option => 
-            option.toLowerCase().includes(query.toLowerCase())
-        ).slice(0, 5);
-        
-        
-        if (filteredSuggestions.length > 0) {
-            // Get currently added options
-            const optionsContainer = document.getElementById(`attribute-options-${attributeIndex}`);
-            const existingOptions = Array.from(optionsContainer.querySelectorAll('span[data-option]')).map(el => el.getAttribute('data-option'));
-            
-            suggestionsContainer.innerHTML = filteredSuggestions.map(suggestion => {
-                const isAlreadyAdded = existingOptions.includes(suggestion);
-                const bgColor = isAlreadyAdded ? 'bg-green-600' : 'hover:bg-slate-600';
-                const textColor = isAlreadyAdded ? 'text-white' : 'text-slate-200';
-                const icon = isAlreadyAdded ? 
-                    '<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>' : '';
-                const action = isAlreadyAdded ? `removeAttributeOption(${attributeIndex}, '${suggestion}')` : `addAttributeOption(${attributeIndex}, '${suggestion}')`;
-                
-                return `
-                    <div class="px-3 py-2 text-sm ${textColor} ${bgColor} cursor-pointer flex items-center" onclick="${action}">
-                        ${icon}${suggestion}
-                    </div>
-                `;
-            }).join('');
-                suggestionsContainer.classList.remove('hidden');
-            } else {
-                hideAttributeSuggestions(attributeIndex);
-            }
-    }
-
-    window.hideAttributeSuggestions = function(attributeIndex) {
-        const suggestionsContainer = document.getElementById(`attribute-option-suggestions-${attributeIndex}`);
-        suggestionsContainer.classList.add('hidden');
-    }
-    
-    function refreshAttributeSuggestions(attributeIndex) {
-        const input = document.getElementById(`attribute-option-input-${attributeIndex}`);
-        if (input && input.value.trim()) {
-            showAttributeSuggestions(attributeIndex, input.value);
-        }
-    }
+    // Old attribute suggestion functions removed - now handled by OptionsSearch components
 
     function highlightJSON(jsonString) {
         return jsonString
