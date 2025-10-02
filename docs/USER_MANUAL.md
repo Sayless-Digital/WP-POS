@@ -276,7 +276,7 @@ For technical support or questions:
 
 ## Version Information
 
-- Current Version: 1.5.0
+- Current Version: 1.5.1
 - Last Updated: December 2024
-- Latest Update: Major performance optimization - faster image loading, pagination, and WebP support
+- Latest Update: Fixed order history loading issue - orders now load properly with all filtering options working
 - Next Update: Q1 2025

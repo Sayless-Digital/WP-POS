@@ -41,15 +41,8 @@ if (isset($_GET['source_filter']) && !empty($_GET['source_filter']) && $_GET['so
         $sql_params[] = '_created_via_jpos';
         $sql_params[] = '1';
     }
-} else {
-    // Default: show all orders (both POS and online)
-    $sql .= " AND EXISTS (
-        SELECT 1 FROM {$wpdb->prefix}postmeta pm
-        WHERE pm.post_id = p.ID AND pm.meta_key = %s AND pm.meta_value = %s
-    )";
-    $sql_params[] = '_created_via_jpos';
-    $sql_params[] = '1';
 }
+// Note: No default filter - show all orders by default
 
 // --- Append Date Filters ---
 if (isset($_GET['date_filter']) && !empty($_GET['date_filter']) && $_GET['date_filter'] !== 'all') {
@@ -77,10 +70,11 @@ if (isset($_GET['status_filter']) && !empty($_GET['status_filter']) && $_GET['st
     $sql .= $wpdb->prepare(" AND p.post_status = %s", $status);
 }
 
-$sql .= $wpdb->prepare(" ORDER BY p.post_date DESC LIMIT %d", $limit);
+$sql .= " ORDER BY p.post_date DESC LIMIT %d";
+$sql_params[] = $limit;
 
 // Execute the query to get order IDs
-$order_ids = $wpdb->get_col($sql);
+$order_ids = $wpdb->get_col($wpdb->prepare($sql, $sql_params));
 
 $response_data = [];
 if (!empty($order_ids)) {

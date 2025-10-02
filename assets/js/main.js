@@ -590,11 +590,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (feeDiscountApplyBtn) feeDiscountApplyBtn.addEventListener('click', applyFeeDiscount);
 
         const orderDateFilter = document.getElementById('order-date-filter');
-        if (orderDateFilter) orderDateFilter.addEventListener('change', e => { orderFilters.date = e.target.value; fetchOrders(); });
+        if (orderDateFilter) orderDateFilter.addEventListener('change', e => { appState.orders.filters.date = e.target.value; fetchOrders(); });
         const orderSourceFilter = document.getElementById('order-source-filter');
-        if (orderSourceFilter) orderSourceFilter.addEventListener('change', e => { orderFilters.source = e.target.value; fetchOrders(); });
+        if (orderSourceFilter) orderSourceFilter.addEventListener('change', e => { appState.orders.filters.source = e.target.value; fetchOrders(); });
         const orderStatusFilter = document.getElementById('order-status-filter');
-        if (orderStatusFilter) orderStatusFilter.addEventListener('change', e => { orderFilters.status = e.target.value; fetchOrders(); });
+        if (orderStatusFilter) orderStatusFilter.addEventListener('change', e => { appState.orders.filters.status = e.target.value; fetchOrders(); });
         const settingsForm = document.getElementById('settings-form');
         if (settingsForm) settingsForm.addEventListener('submit', saveSettings);
         const stockListFilter = document.getElementById('stock-list-filter');
@@ -624,7 +624,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const orderIdSearch = document.getElementById('order-id-search');
         if (orderIdSearch) {
             orderIdSearch.addEventListener('input', e => {
-                orderFilters.orderId = e.target.value.trim();
+                appState.orders.filters.orderId = e.target.value.trim();
                 renderOrders();
             });
         }
@@ -1023,11 +1023,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function addToCart(product, quantity = 1) { 
         if (!appState.drawer.isOpen) { showDrawerModal('open'); return; }
-        const existingItem = cart.find(item => item.id === product.id); 
+        const existingItem = appState.cart.items.find(item => item.id === product.id); 
         if (existingItem) {
             existingItem.qty += quantity;
             if (existingItem.qty === 0) {
-                cart = cart.filter(item => item.id !== product.id);
+                appState.cart.items = appState.cart.items.filter(item => item.id !== product.id);
                 showToast(`${product.name} removed from cart`);
             } else if (quantity > 0) {
                 showToast(`${product.name} added to cart`);
@@ -1035,14 +1035,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast(`${product.name} removed from cart`);
             }
         } else if (quantity !== 0) { 
-            cart.push({ ...product, qty: quantity }); 
+            appState.cart.items.push({ ...product, qty: quantity }); 
             showToast(`${product.name} added to cart`);
         }
         renderCart(); 
     }
 
     function updateCartQuantity(id, change) {
-        const item = cart.find(item => item.id === id);
+        const item = appState.cart.items.find(item => item.id === id);
         if (item) {
             if (item.qty < 0) {
                 const maxQty = appState.return_from_order_items.find(p => p.id === id)?.quantity || 0;
@@ -1050,7 +1050,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             item.qty += change;
             if (item.qty === 0) {
-                cart = cart.filter(i => i.id !== id);
+                appState.cart.items = appState.cart.items.filter(i => i.id !== id);
                 showToast(`${item.name} removed from cart`);
             } else if (change > 0) {
                 showToast(`${item.name} added to cart`);
@@ -1076,7 +1076,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let itemCount = 0;
         let qtyCount = 0;
         
-        cart.forEach(item => {
+        appState.cart.items.forEach(item => {
             itemCount++;
             qtyCount += item.qty;
             const isReturn = item.qty < 0;
@@ -1154,7 +1154,7 @@ document.addEventListener('DOMContentLoaded', () => {
             total += calculatedValue;
         }
         
-        if (cart.length === 0 && !appState.fee.amount && !appState.discount.amount) {
+        if (appState.cart.items.length === 0 && !appState.fee.amount && !appState.discount.amount) {
             cartContainer.innerHTML = '<p class="text-center text-slate-400 text-xs py-6">Your cart is empty.</p>';
         }
 
@@ -1181,7 +1181,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function clearCart(fullReset = false) { 
-        cart = []; 
+        appState.cart.items = []; 
         appState.fee = { amount: '', label: '', amountType: 'flat' };
         appState.discount = { amount: '', label: '', amountType: 'flat' };
         appState.feeDiscount = { type: null, amount: '', label: '', amountType: 'flat' };
@@ -1194,7 +1194,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function processTransaction() {
-        if (cart.length === 0 || !appState.drawer.isOpen) return;
+        if (appState.cart.items.length === 0 || !appState.drawer.isOpen) return;
 
         // Show split payment modal instead of direct checkout
         openSplitPaymentModal();
@@ -1203,13 +1203,13 @@ document.addEventListener('DOMContentLoaded', () => {
     async function fetchOrders() {
         const c = document.getElementById('order-list'); 
         c.innerHTML = getSkeletonLoaderHtml('list-rows', 20);
-        const params = `date_filter=${orderFilters.date}&status_filter=${orderFilters.status}&source_filter=${orderFilters.source}`;
+        const params = `date_filter=${appState.orders.filters.date}&status_filter=${appState.orders.filters.status}&source_filter=${appState.orders.filters.source}`;
         try {
             const response = await fetch(`/jpos/api/orders.php?${params}`); 
             if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
             const result = await response.json();
             if (!result.success) throw new Error(result.data.message);
-            posOrders = result.data || [];
+            appState.orders.all = result.data || [];
             renderOrders();
         } catch (error) { 
             console.error("Error in fetchOrders:", error);
@@ -1219,10 +1219,10 @@ document.addEventListener('DOMContentLoaded', () => {
     
     function renderOrders() {
         const c = document.getElementById('order-list'); c.innerHTML = '';
-        let filteredOrders = posOrders;
-        if (orderFilters.orderId) {
-            const search = orderFilters.orderId.replace(/^#/, '').toLowerCase();
-            filteredOrders = posOrders.filter(o =>
+        let filteredOrders = appState.orders.all;
+        if (appState.orders.filters.orderId) {
+            const search = appState.orders.filters.orderId.replace(/^#/, '').toLowerCase();
+            filteredOrders = appState.orders.all.filter(o =>
                 o.order_number.toString().toLowerCase().includes(search)
             );
         }
@@ -1253,7 +1253,7 @@ document.addEventListener('DOMContentLoaded', () => {
         c.querySelectorAll('.view-receipt-btn').forEach(button => {
             button.addEventListener('click', (e) => {
                 const orderId = parseInt(e.target.dataset.orderId);
-                const order = posOrders.find(o => o.id === orderId);
+                const order = appState.orders.all.find(o => o.id === orderId);
                 if (order) showReceipt({ ...order, items: order.items, payment_method: order.payment_method, split_payments: order.split_payments });
             });
         });
@@ -1266,9 +1266,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function openReturnModal(orderId) {
-        const order = posOrders.find(o => o.id === orderId);
+        const order = appState.orders.all.find(o => o.id === orderId);
         if (!order) { alert('Could not find order details.'); return; }
-        if (cart.length > 0) {
+        if (appState.cart.items.length > 0) {
             if (!confirm('You have items in your cart. Starting a return will clear the current cart. Continue?')) return;
             clearCart(true);
         }
@@ -1904,7 +1904,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Utility: Save and load cart/fee/discount from localStorage
     function saveCartState() {
-        localStorage.setItem('jpos_cart', JSON.stringify(cart));
+        localStorage.setItem('jpos_cart', JSON.stringify(appState.cart.items));
         localStorage.setItem('jpos_fee', JSON.stringify(appState.fee));
         localStorage.setItem('jpos_discount', JSON.stringify(appState.discount));
     }
@@ -1912,7 +1912,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const savedCart = localStorage.getItem('jpos_cart');
         const savedFee = localStorage.getItem('jpos_fee');
         const savedDiscount = localStorage.getItem('jpos_discount');
-        cart = savedCart ? JSON.parse(savedCart) : [];
+        appState.cart.items = savedCart ? JSON.parse(savedCart) : [];
         appState.fee = savedFee ? JSON.parse(savedFee) : { amount: '', label: '', amountType: 'flat' };
         appState.discount = savedDiscount ? JSON.parse(savedDiscount) : { amount: '', label: '', amountType: 'flat' };
     }
@@ -1935,12 +1935,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function holdCurrentCart() {
-        if (cart.length === 0) { showToast('Cart is empty.'); return; }
+        if (appState.cart.items.length === 0) { showToast('Cart is empty.'); return; }
         const heldCarts = JSON.parse(localStorage.getItem('jpos_held_carts') || '[]');
         const timestamp = new Date().toISOString();
         heldCarts.push({
             id: 'held_' + Date.now(),
-            cart: JSON.parse(JSON.stringify(cart)),
+            cart: JSON.parse(JSON.stringify(appState.cart.items)),
             fee: JSON.parse(JSON.stringify(appState.fee)),
             discount: JSON.parse(JSON.stringify(appState.discount)),
             time: timestamp
@@ -2077,7 +2077,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let heldCarts = JSON.parse(localStorage.getItem('jpos_held_carts') || '[]');
         const held = heldCarts.find(h => h.id === id);
         if (!held) return;
-        cart = held.cart;
+        appState.cart.items = held.cart;
         appState.fee = held.fee;
         appState.discount = held.discount;
         saveCartState();
@@ -2103,13 +2103,7 @@ document.addEventListener('DOMContentLoaded', () => {
         addHoldCartButton();
         // ... existing code ...
         // Held carts menu button is already handled in setupMainAppEventListeners()
-        const orderIdSearch = document.getElementById('order-id-search');
-        if (orderIdSearch) {
-            orderIdSearch.addEventListener('input', e => {
-                orderFilters.orderId = e.target.value.trim();
-                renderOrders(); // instant, client-side filtering
-            });
-        }
+        // Note: orderIdSearch event listener is already set up above
         const splitPaymentBtn = document.getElementById('split-payment-btn');
         if (splitPaymentBtn) {
             splitPaymentBtn.addEventListener('click', openSplitPaymentModal);
@@ -2365,7 +2359,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Calculate subtotal (before fees/discounts)
             let subtotal = 0;
-            (cart || []).forEach(item => {
+            (appState.cart.items || []).forEach(item => {
                 subtotal += (parseFloat(item.price) || 0) * (item.qty || 0);
             });
             
@@ -2429,8 +2423,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 if (appState.return_from_order_id) {
-                    const refund_items = cart.filter(item => item.qty < 0);
-                    const new_sale_items = cart.filter(item => item.qty > 0);
+                    const refund_items = appState.cart.items.filter(item => item.qty < 0);
+                    const new_sale_items = appState.cart.items.filter(item => item.qty > 0);
                     
                     const payload = {
                         original_order_id: appState.return_from_order_id,

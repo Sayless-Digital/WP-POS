@@ -8,9 +8,9 @@ JPOS is a modern, enterprise-grade point-of-sale system built on WordPress. The 
 
 **Status**: ✅ PRODUCTION READY  
 **Last Updated**: December 19, 2024  
-**Version**: 1.5.0  
+**Version**: 1.5.1  
 **All Phases Completed**: Security, Architecture, Performance, Quality & Monitoring  
-**Latest Update**: URL routing system implementation with sidebar integration, overlay close functionality, and data loading fix
+**Latest Update**: Fixed order history loading issue - resolved JavaScript variable reference errors and API endpoint filtering
 
 ## Architecture
 
@@ -401,6 +401,7 @@ JPOS implements a comprehensive routing system that maintains view state across 
 - **Sidebar Integration**: Seamless integration between sidebar navigation and routing system
 - **Overlay Navigation**: Click outside sidebar to close with smooth animations
 - **Data Loading**: All views properly load their data when navigated to via routing system
+- **Order History Loading**: Fixed JavaScript variable reference errors - orders now load properly with skeleton loaders replaced by actual data
 
 ### Debug Mode
 Enable debug mode in configuration for detailed error information and logging.
@@ -463,8 +464,8 @@ Use the built-in monitoring system to track system health, performance metrics, 
 
 ---
 
-**Documentation Version**: 1.5.0  
+**Documentation Version**: 1.5.1  
 **Last Updated**: December 19, 2024  
 **System Status**: Production Ready  
-**Latest Update**: Performance optimization - image optimization, pagination, WebP support, and performance monitoring (lazy loading simplified for stability)  
+**Latest Update**: Fixed order history loading issue - resolved JavaScript variable reference errors and API endpoint filtering  
 **Maintenance Contact**: Development Team
