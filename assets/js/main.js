@@ -1,6 +1,6 @@
-// JPOS v1.6.2 - Fixed live state updates and tax classes API response structure - CACHE BUST
+// JPOS v1.6.3 - Keep dialog open after save and change Cancel to Close - CACHE BUST
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.6.2 loaded - Fixed live state updates and tax classes API response structure');
+    console.log('JPOS v1.6.3 loaded - Keep dialog open after save and change Cancel to Close');
     // Initialize Routing Manager
     const routingManager = new RoutingManager();
 
@@ -2532,12 +2532,8 @@ document.addEventListener('DOMContentLoaded', () => {
             statusEl.textContent = 'Product updated successfully!';
             statusEl.className = 'text-sm text-right h-5 mt-2 text-green-400';
             
-            // Refresh data and close modal
+            // Refresh data but keep modal open for additional edits
             await refreshAllData();
-            setTimeout(() => {
-                document.getElementById('product-editor-modal').classList.add('hidden');
-                renderStockList();
-            }, 1500);
             
         } catch (error) {
             console.error('Error saving product:', error);

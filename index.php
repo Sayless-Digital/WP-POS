@@ -17,7 +17,7 @@ require_once __DIR__ . '/../wp-load.php';
     <!-- JPOS Routing Module -->
     <script src="assets/js/modules/routing.js?v=1.5.10"></script>
     <!-- JPOS Original JavaScript (temporarily reverting for debugging) -->
-    <script src="assets/js/main.js?v=1.6.2"></script>
+    <script src="assets/js/main.js?v=1.6.3"></script>
     <style>
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
@@ -823,7 +823,7 @@ require_once __DIR__ . '/../wp-load.php';
                 
                 <!-- Form View Action Buttons -->
                 <div class="flex justify-end gap-3 pt-6 mt-6 border-t border-slate-700">
-                    <button id="product-editor-cancel" class="px-5 py-2 bg-slate-600 rounded-lg hover:bg-slate-500 text-white">Cancel</button>
+                    <button id="product-editor-cancel" class="px-5 py-2 bg-slate-600 rounded-lg hover:bg-slate-500 text-white">Close</button>
                     <button id="product-editor-save" class="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500">Save Changes</button>
                 </div>
             </div>
@@ -839,7 +839,7 @@ require_once __DIR__ . '/../wp-load.php';
                 
                 <!-- JSON View Action Buttons -->
                 <div class="flex justify-end gap-3 pt-6 mt-6 border-t border-slate-700">
-                    <button id="product-editor-cancel-json" class="px-5 py-2 bg-slate-600 rounded-lg hover:bg-slate-500 text-white">Cancel</button>
+                    <button id="product-editor-cancel-json" class="px-5 py-2 bg-slate-600 rounded-lg hover:bg-slate-500 text-white">Close</button>
                     <button id="product-editor-save-json" class="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500">Save Changes</button>
                 </div>
             </div>
