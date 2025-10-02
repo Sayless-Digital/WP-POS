@@ -1,6 +1,6 @@
-// JPOS v1.6.8 - Added tag-based search functionality to add attribute options area - CACHE BUST
+// JPOS v1.6.8 - Enhanced add attribute functionality with search/lookup system like existing attributes - CACHE BUST
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.6.8 loaded - Added tag-based search functionality to add attribute options area');
+    console.log('JPOS v1.6.8 loaded - Enhanced add attribute functionality with search/lookup system like existing attributes');
     // Initialize Routing Manager
     const routingManager = new RoutingManager();
 
@@ -2278,45 +2278,38 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Error loading available attributes:', error);
         }
         
-        // Create options for existing attributes
-        const existingOptions = availableAttributes.map(attr => 
-            `<option value="${attr.slug}" data-type="${attr.type}" data-label="${attr.label}">${attr.label} (${attr.type})</option>`
-        ).join('');
+        // Store available attributes for suggestions
+        const attributeSuggestions = availableAttributes.map(attr => attr.label);
         
         attributeRow.innerHTML = `
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
                 <div>
-                    <label class="block text-xs text-slate-300 mb-1">Select Existing or Create New</label>
-                    <select id="attribute-selector" class="w-full px-2 py-1 bg-slate-600 text-slate-200 rounded border border-slate-500 text-sm">
-                        <option value="">Choose an existing attribute...</option>
-                        ${existingOptions}
-                        <option value="new">+ Create New Attribute</option>
-                    </select>
+                    <label class="block text-xs text-slate-300 mb-1">Attribute Name</label>
+                    <div class="relative">
+                        <input type="text" id="new-attribute-name-input" placeholder="Type attribute name..." class="w-full px-2 py-1 bg-slate-600 text-slate-200 rounded border border-slate-500 text-sm focus:border-blue-500 focus:outline-none">
+                        <div id="new-attribute-name-suggestions" class="absolute top-full left-0 right-0 bg-slate-700 border border-slate-500 rounded mt-1 max-h-32 overflow-y-auto hidden z-10">
+                            <!-- Suggestions will be populated here -->
+                        </div>
+                    </div>
                 </div>
                 <div>
                     <label class="block text-xs text-slate-300 mb-1">Type</label>
-                    <select id="attribute-type" class="w-full px-2 py-1 bg-slate-600 text-slate-200 rounded border border-slate-500 text-sm">
+                    <select id="new-attribute-type" class="w-full px-2 py-1 bg-slate-600 text-slate-200 rounded border border-slate-500 text-sm">
                         <option value="custom">Custom</option>
                         <option value="taxonomy">Taxonomy</option>
                     </select>
                 </div>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
-                <div id="attribute-name-container" class="hidden">
-                    <label class="block text-xs text-slate-300 mb-1">Attribute Name</label>
-                    <input type="text" id="attribute-name-input" placeholder="e.g., Color, Size" class="w-full px-2 py-1 bg-slate-600 text-slate-200 rounded border border-slate-500 text-sm">
-                </div>
-                <div>
-                    <label class="block text-xs text-slate-300 mb-1">Options</label>
-                    <div class="bg-slate-600 border border-slate-500 rounded p-2 min-h-[40px]">
-                        <div id="new-attribute-options" class="flex flex-wrap gap-1 mb-2">
-                            <!-- Selected options will appear here -->
-                        </div>
-                        <div class="relative">
-                            <input type="text" id="new-attribute-option-input" placeholder="Type to add option..." class="w-full px-2 py-1 bg-slate-700 text-slate-200 rounded border border-slate-500 text-sm focus:border-blue-500 focus:outline-none">
-                            <div id="new-attribute-option-suggestions" class="absolute top-full left-0 right-0 bg-slate-700 border border-slate-500 rounded mt-1 max-h-32 overflow-y-auto hidden z-10">
-                                <!-- Suggestions will be populated here -->
-                            </div>
+            <div class="mb-2">
+                <label class="block text-xs text-slate-300 mb-1">Options</label>
+                <div class="bg-slate-600 border border-slate-500 rounded p-2 min-h-[40px]">
+                    <div id="new-attribute-options" class="flex flex-wrap gap-1 mb-2">
+                        <!-- Selected options will appear here -->
+                    </div>
+                    <div class="relative">
+                        <input type="text" id="new-attribute-option-input" placeholder="Type to add option..." class="w-full px-2 py-1 bg-slate-700 text-slate-200 rounded border border-slate-500 text-sm focus:border-blue-500 focus:outline-none">
+                        <div id="new-attribute-option-suggestions" class="absolute top-full left-0 right-0 bg-slate-700 border border-slate-500 rounded mt-1 max-h-32 overflow-y-auto hidden z-10">
+                            <!-- Suggestions will be populated here -->
                         </div>
                     </div>
                 </div>
@@ -2335,66 +2328,102 @@ document.addEventListener('DOMContentLoaded', () => {
                 <button type="button" onclick="this.parentElement.parentElement.remove()" class="px-2 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-500">Remove</button>
             </div>
         `;
+        
         container.appendChild(attributeRow);
         
-        // Add event listeners for the new functionality
-        const selector = attributeRow.querySelector('#attribute-selector');
-        const typeSelect = attributeRow.querySelector('#attribute-type');
-        const nameContainer = attributeRow.querySelector('#attribute-name-container');
-        const nameInput = attributeRow.querySelector('#attribute-name-input');
-        
-        selector.addEventListener('change', function() {
-            const selectedOption = this.options[this.selectedIndex];
-            if (this.value === 'new') {
-                // Show name input for new attribute
-                nameContainer.classList.remove('hidden');
-                nameInput.required = true;
-            } else if (this.value) {
-                // Hide name input and set type based on selection
-                nameContainer.classList.add('hidden');
-                nameInput.required = false;
-                typeSelect.value = selectedOption.dataset.type || 'custom';
-            } else {
-                // Hide name input
-                nameContainer.classList.add('hidden');
-                nameInput.required = false;
-            }
-        });
-        
-        // Add event listeners for new attribute options functionality
+        // Add event listeners for new attribute functionality
+        const nameInput = attributeRow.querySelector('#new-attribute-name-input');
+        const nameSuggestions = attributeRow.querySelector('#new-attribute-name-suggestions');
         const optionInput = attributeRow.querySelector('#new-attribute-option-input');
         const optionsContainer = attributeRow.querySelector('#new-attribute-options');
-        const suggestionsContainer = attributeRow.querySelector('#new-attribute-option-suggestions');
+        const optionSuggestions = attributeRow.querySelector('#new-attribute-option-suggestions');
         
         // Store common options for suggestions
         const commonOptions = ['Red', 'Blue', 'Green', 'Yellow', 'Black', 'White', 'Gray', 'Brown', 'Pink', 'Purple', 'Orange', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'Small', 'Medium', 'Large', 'Extra Large', 'Cotton', 'Polyester', 'Wool', 'Silk', 'Leather', 'Denim', 'Linen', 'Cashmere', 'Nike', 'Adidas', 'Puma', 'Under Armour', 'Reebok', 'New Balance', 'Casual', 'Formal', 'Sport', 'Vintage', 'Modern', 'Classic', 'Trendy'];
         
+        // Attribute name search functionality
+        nameInput.addEventListener('input', function() {
+            showNewAttributeNameSuggestions(this.value, attributeSuggestions, nameSuggestions);
+        });
+        
+        nameInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                selectNewAttributeName(this.value, attributeSuggestions, nameSuggestions);
+            } else if (e.key === 'Escape') {
+                hideNewAttributeNameSuggestions(nameSuggestions);
+            }
+        });
+        
+        // Attribute options search functionality
         optionInput.addEventListener('input', function() {
-            showNewAttributeSuggestions(this.value, commonOptions, optionsContainer, suggestionsContainer);
+            showNewAttributeOptionSuggestions(this.value, commonOptions, optionsContainer, optionSuggestions);
         });
         
         optionInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter' || e.key === ',') {
                 e.preventDefault();
-                addNewAttributeOption(this.value, optionsContainer, suggestionsContainer);
+                addNewAttributeOption(this.value, optionsContainer, optionSuggestions);
                 this.value = '';
             } else if (e.key === 'Escape') {
-                hideNewAttributeSuggestions(suggestionsContainer);
+                hideNewAttributeOptionSuggestions(optionSuggestions);
             }
         });
         
         // Hide suggestions when clicking outside
         document.addEventListener('click', function(e) {
             if (!attributeRow.contains(e.target)) {
-                hideNewAttributeSuggestions(suggestionsContainer);
+                hideNewAttributeNameSuggestions(nameSuggestions);
+                hideNewAttributeOptionSuggestions(optionSuggestions);
             }
         });
     }
 
-    // Helper functions for new attribute options functionality
-    function showNewAttributeSuggestions(query, commonOptions, optionsContainer, suggestionsContainer) {
+    // Helper functions for new attribute functionality
+    function showNewAttributeNameSuggestions(query, attributeSuggestions, suggestionsContainer) {
         if (!query.trim()) {
-            hideNewAttributeSuggestions(suggestionsContainer);
+            hideNewAttributeNameSuggestions(suggestionsContainer);
+            return;
+        }
+        
+        // Filter suggestions based on query
+        const filteredSuggestions = attributeSuggestions.filter(attr => 
+            attr.toLowerCase().includes(query.toLowerCase())
+        ).slice(0, 5);
+        
+        if (filteredSuggestions.length > 0) {
+            suggestionsContainer.innerHTML = filteredSuggestions.map(suggestion => {
+                return `
+                    <div class="px-3 py-2 text-sm text-slate-200 hover:bg-slate-600 cursor-pointer flex items-center" onclick="selectNewAttributeName('${suggestion}', [], document.getElementById('new-attribute-name-suggestions'))">
+                        ${suggestion}
+                    </div>
+                `;
+            }).join('');
+            suggestionsContainer.classList.remove('hidden');
+        } else {
+            // Show option to create new attribute
+            suggestionsContainer.innerHTML = `
+                <div class="px-3 py-2 text-sm text-blue-400 hover:bg-slate-600 cursor-pointer flex items-center" onclick="selectNewAttributeName('${query}', [], document.getElementById('new-attribute-name-suggestions'))">
+                    + Create "${query}" as new attribute
+                </div>
+            `;
+            suggestionsContainer.classList.remove('hidden');
+        }
+    }
+    
+    function hideNewAttributeNameSuggestions(suggestionsContainer) {
+        suggestionsContainer.classList.add('hidden');
+    }
+    
+    window.selectNewAttributeName = function(name, attributeSuggestions, suggestionsContainer) {
+        const nameInput = document.getElementById('new-attribute-name-input');
+        nameInput.value = name;
+        hideNewAttributeNameSuggestions(suggestionsContainer);
+    }
+    
+    function showNewAttributeOptionSuggestions(query, commonOptions, optionsContainer, suggestionsContainer) {
+        if (!query.trim()) {
+            hideNewAttributeOptionSuggestions(suggestionsContainer);
             return;
         }
         
@@ -2429,7 +2458,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    function hideNewAttributeSuggestions(suggestionsContainer) {
+    function hideNewAttributeOptionSuggestions(suggestionsContainer) {
         suggestionsContainer.classList.add('hidden');
     }
     
@@ -2465,7 +2494,52 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         optionsContainer.appendChild(optionTag);
-        hideNewAttributeSuggestions(suggestionsContainer);
+        hideNewAttributeOptionSuggestions(suggestionsContainer);
+    }
+    
+    window.saveNewAttribute = function(button) {
+        const attributeRow = button.closest('.bg-slate-600');
+        const nameInput = attributeRow.querySelector('#new-attribute-name-input');
+        const typeSelect = attributeRow.querySelector('#new-attribute-type');
+        const optionsContainer = attributeRow.querySelector('#new-attribute-options');
+        const visibleCheckbox = attributeRow.querySelector('input[type="checkbox"]');
+        const variationCheckbox = attributeRow.querySelectorAll('input[type="checkbox"]')[1];
+        
+        const attributeName = nameInput.value.trim();
+        const attributeType = typeSelect.value;
+        const options = Array.from(optionsContainer.querySelectorAll('span')).map(el => 
+            el.textContent.trim().split('×')[0].trim()
+        );
+        const visible = visibleCheckbox.checked;
+        const variation = variationCheckbox.checked;
+        
+        if (!attributeName) {
+            alert('Please enter an attribute name');
+            return;
+        }
+        
+        if (options.length === 0) {
+            alert('Please add at least one option');
+            return;
+        }
+        
+        // Create the attribute data structure
+        const attributeData = {
+            name: attributeName,
+            type: attributeType,
+            options: options,
+            visible: visible,
+            variation: variation
+        };
+        
+        // Add to the attributes list (this would normally save to the server)
+        console.log('New attribute data:', attributeData);
+        
+        // For now, just show success message
+        alert(`Attribute "${attributeName}" with ${options.length} options added successfully!`);
+        
+        // Remove the row after successful save
+        attributeRow.remove();
     }
 
     function addVariationRow() {
