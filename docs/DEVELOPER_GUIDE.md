@@ -653,3 +653,13 @@ For technical support or questions:
 - v1.6.1: Fixed attribute options persistence and tax classes API - options now remain available after removal, added get_tax_classes action handler
 - v1.6.2: Fixed live state updates and tax classes API response structure - suggestions update immediately when options are added/removed
 - v1.6.3: Enhanced UX with persistent dialog for iterative editing and improved button labels (Cancel → Close)
+- v1.6.4: API and Display Fixes - Fixed get_tax_classes API endpoint, enhanced variation data with parent_name and formatted attributes
+- v1.6.5: Live Updates and UX Improvements - Fixed attribute suggestions live updates, prevented dialog auto-close, changed Cancel to Close
+- v1.6.6: Attribute Management Enhancements - Fixed options disappearing from suggestions, stored original database options
+- v1.6.7: Enhanced Add Attribute Functionality - Added API endpoint for available attributes, dropdown selection for existing/new attributes
+- v1.6.8: Smart Search & Lookup System - Replaced dropdown with search input, real-time suggestions, tag-based option selection
+- v1.6.9: Enhanced Attribute Search - Show all options initially in scrollable dropdown, focus-triggered suggestions, real-time filtering
+- v1.7.0: Enhanced Existing Attribute Options - Show active options in suggestions list, live updates when selecting/deselecting
+- v1.7.1: Component Cleanup - Manually removed unused component files causing 404 errors, cleaned up file system
+- v1.7.2: Debugging and Troubleshooting - Added comprehensive debugging for add attribute button functionality
+- v1.7.3: Comprehensive Attribute Management System - Complete product editor with intelligent attribute management, scrollable option suggestions, live state updates, active options display, focus-triggered suggestions, real-time filtering, create new functionality, enhanced UX with WordPress-style patterns

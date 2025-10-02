@@ -65,11 +65,16 @@ The editor features two main views:
 - **Attributes**: Product attributes with WordPress-style tag-based options management
 - **Variations**: For variable products, edit individual variation details
 
-#### Attribute Management
+#### Comprehensive Attribute Management (v1.7.3)
+- **Intelligent Search**: Type to search through available attributes with real-time suggestions
+- **Scrollable Options**: All available options displayed in scrollable dropdown initially
+- **Active Options Display**: Visual indication of selected vs available options (green background + checkmark)
+- **Live State Updates**: Real-time updates when selecting/deselecting attribute options
+- **Focus-Triggered Suggestions**: Shows all options when input is focused for better discoverability
+- **Real-Time Filtering**: Filter options as you type
+- **Create New Options**: Ability to create new attributes/options if they don't exist
 - **Tag-based Interface**: Add/remove attribute options using tags
-- **Smart Search**: Type to search existing options from your database
 - **Database-driven**: All suggestions come from your actual product data (no hardcoded lists)
-- **Live Updates**: Suggestions update immediately when you add/remove options
 - **Persistent Options**: Removed options remain available for re-adding
 - **Multiple Attributes**: Each attribute maintains its own isolated options
 - **Visual Feedback**: Green checkmarks show already-added options
@@ -317,12 +322,12 @@ Customize the interface:
 
 #### Suggestions Not Updating Live
 - **Problem**: When you add/remove options, suggestions don't update immediately
-- **Solution**: Refresh the page (Ctrl+F5) to ensure you have the latest version (v1.6.3+)
-- **Check**: Look for "JPOS v1.6.3 loaded" in browser console
+- **Solution**: Refresh the page (Ctrl+F5) to ensure you have the latest version (v1.7.3+)
+- **Check**: Look for "JPOS v1.7.3 loaded" in browser console
 
 #### Dialog Closes After Save
 - **Problem**: Product editor closes automatically after saving
-- **Solution**: Update to version 1.6.3+ where dialog stays open for iterative editing
+- **Solution**: Update to version 1.7.3+ where dialog stays open for iterative editing
 - **Check**: Version should show "Keep dialog open after save" in console
 
 #### Tax Classes Not Loading
@@ -365,7 +370,7 @@ For technical support or questions:
 
 ## Version Information
 
-- Current Version: 1.5.17
-- Last Updated: December 2024
-- Latest Update: Comprehensive Product Editor with JSON Preview - supports both simple and variable products with full text-based field editing and value-highlighted JSON preview
+- Current Version: 1.7.3
+- Last Updated: January 2, 2025
+- Latest Update: Comprehensive Attribute Management System v1.7.3 - Complete product editor with intelligent attribute management, scrollable option suggestions, live state updates, active options display, focus-triggered suggestions, real-time filtering, create new functionality, enhanced UX with WordPress-style patterns
 - Next Update: Q1 2025
