@@ -1,6 +1,6 @@
-// JPOS v1.7.4 - Merged existing and add attribute search functionality with best features from both - CACHE BUST
+// JPOS v1.7.5 - Fixed component loading error and ensured clean cache - CACHE BUST
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.7.4 loaded - Merged existing and add attribute search functionality with best features from both');
+    console.log('JPOS v1.7.5 loaded - Fixed component loading error and ensured clean cache');
     // Initialize Routing Manager
     const routingManager = new RoutingManager();
 

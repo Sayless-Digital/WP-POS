@@ -17,7 +17,7 @@ require_once __DIR__ . '/../wp-load.php';
     <!-- JPOS Routing Module -->
     <script src="assets/js/modules/routing.js?v=1.5.10"></script>
     <!-- JPOS Original JavaScript (temporarily reverting for debugging) -->
-    <script src="assets/js/main.js?v=1.7.4"></script>
+    <script src="assets/js/main.js?v=1.7.5"></script>
     <style>
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
