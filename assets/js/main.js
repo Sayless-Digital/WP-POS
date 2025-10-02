@@ -1,6 +1,6 @@
-// JPOS v1.7.9 - Fixed add attribute to show selected style for already added options - CACHE BUST
+// JPOS v1.8.0 - Fixed add attribute search input clearing on add/remove - CACHE BUST
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.7.9 loaded - Fixed add attribute to show selected style for already added options');
+    console.log('JPOS v1.8.0 loaded - Fixed add attribute search input clearing on add/remove');
     // Initialize Routing Manager
     console.log('Initializing Routing Manager...');
     const routingManager = new RoutingManager();
@@ -2566,14 +2566,22 @@ document.addEventListener('DOMContentLoaded', () => {
         // Add remove functionality
         optionTag.querySelector('.remove-new-attribute-option-btn').addEventListener('click', function() {
             optionTag.remove();
-            // Refresh suggestions to show updated state
+            // Clear the input field and refresh suggestions
             const input = document.getElementById('new-attribute-option-input');
             if (input) {
+                input.value = '';
                 showNewAttributeOptionSuggestions(input.value, optionsContainer, suggestionsContainer);
             }
         });
         
         optionsContainer.appendChild(optionTag);
+        
+        // Clear the input field
+        const input = document.getElementById('new-attribute-option-input');
+        if (input) {
+            input.value = '';
+        }
+        
         hideNewAttributeOptionSuggestions(suggestionsContainer);
     }
     
@@ -2582,9 +2590,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const optionTag = optionsContainer.querySelector(`span[data-option="${option}"]`);
         if (optionTag) {
             optionTag.remove();
-            // Refresh suggestions to show updated state
+            
+            // Clear the input field
             const input = document.getElementById('new-attribute-option-input');
             if (input) {
+                input.value = '';
                 showNewAttributeOptionSuggestions(input.value, optionsContainer, suggestionsContainer);
             }
         }
