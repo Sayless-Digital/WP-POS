@@ -7,6 +7,9 @@ require_once __DIR__ . '/../wp-load.php';
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>Modern POS</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛒</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -17,7 +20,7 @@ require_once __DIR__ . '/../wp-load.php';
     <!-- JPOS Routing Module -->
     <script src="assets/js/modules/routing.js?v=1.5.10"></script>
     <!-- JPOS Original JavaScript (temporarily reverting for debugging) -->
-    <script src="assets/js/main.js?v=1.7.6"></script>
+    <script src="assets/js/main.js?v=1.7.7"></script>
     <style>
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }

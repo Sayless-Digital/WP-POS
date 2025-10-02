@@ -1,6 +1,6 @@
-// JPOS v1.7.6 - Fixed add attribute to show options only after attribute selection with attribute-specific options - CACHE BUST
+// JPOS v1.7.7 - Force complete cache refresh to eliminate component loading errors - CACHE BUST
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.7.6 loaded - Fixed add attribute to show options only after attribute selection with attribute-specific options');
+    console.log('JPOS v1.7.7 loaded - Force complete cache refresh to eliminate component loading errors');
     // Initialize Routing Manager
     const routingManager = new RoutingManager();
 
