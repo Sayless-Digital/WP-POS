@@ -113,11 +113,8 @@ class OptionsSearch extends BaseComponent {
     showSuggestions() {
         if (!this.suggestionsElement) return;
         
-        const filteredSuggestions = this.props.suggestions.filter(option => 
-            !this.props.existingOptions.includes(option)
-        );
-        
-        this.renderSuggestions(filteredSuggestions);
+        // Show all suggestions, but mark already added ones differently
+        this.renderSuggestions(this.props.suggestions);
         this.show(this.suggestionsElement);
     }
 
@@ -158,19 +155,29 @@ class OptionsSearch extends BaseComponent {
 
         this.suggestionsElement.innerHTML = suggestions
             .slice(0, this.props.maxSuggestions)
-            .map(suggestion => `
-                <div class="px-3 py-2 text-sm text-slate-200 hover:bg-slate-600 cursor-pointer flex items-center suggestion-item" 
-                     data-suggestion="${suggestion}">
-                    ${suggestion}
-                </div>
-            `).join('');
+            .map(suggestion => {
+                const isAlreadyAdded = this.props.existingOptions.includes(suggestion);
+                const className = isAlreadyAdded 
+                    ? 'px-3 py-2 text-sm text-green-400 hover:bg-slate-600 cursor-pointer flex items-center suggestion-item opacity-60' 
+                    : 'px-3 py-2 text-sm text-slate-200 hover:bg-slate-600 cursor-pointer flex items-center suggestion-item';
+                
+                return `
+                    <div class="${className}" data-suggestion="${suggestion}" data-added="${isAlreadyAdded}">
+                        ${suggestion} ${isAlreadyAdded ? '✓' : ''}
+                    </div>
+                `;
+            }).join('');
         
         // Add event listeners for suggestion clicks
         this.suggestionsElement.querySelectorAll('.suggestion-item').forEach(item => {
             item.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const suggestion = item.getAttribute('data-suggestion');
-                this.addOption(suggestion);
+                const isAlreadyAdded = item.getAttribute('data-added') === 'true';
+                
+                if (!isAlreadyAdded) {
+                    this.addOption(suggestion);
+                }
             });
         });
     }

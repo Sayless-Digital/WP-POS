@@ -1,6 +1,6 @@
-// JPOS v1.7.6 - Fixed click outside functionality to close suggestions - CACHE BUST
+// JPOS v1.7.7 - Fixed add options functionality for existing attributes - CACHE BUST
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.7.6 loaded - Fixed click outside functionality to close suggestions');
+    console.log('JPOS v1.7.7 loaded - Fixed add options functionality for existing attributes');
     
     // Components are loaded via script tags in index.php
     // Initialize Routing Manager
