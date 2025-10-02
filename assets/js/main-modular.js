@@ -207,7 +207,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             await window.drawerManager.fetchSessions();
                         }
                         break;
-                    case 'stock-page':
+                    case 'products-page':
                         if (window.productsManager) {
                             window.productsManager.renderStockList();
                         }

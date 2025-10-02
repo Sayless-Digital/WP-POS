@@ -14,9 +14,9 @@ require_once __DIR__ . '/../wp-load.php';
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     
     <!-- JPOS Routing Module -->
-    <script src="assets/js/modules/routing.js"></script>
+    <script src="assets/js/modules/routing.js?v=1.5.10"></script>
     <!-- JPOS Original JavaScript (temporarily reverting for debugging) -->
-    <script src="assets/js/main.js?v=1.5.8"></script>
+    <script src="assets/js/main.js?v=1.5.10"></script>
     <style>
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
@@ -290,9 +290,9 @@ require_once __DIR__ . '/../wp-load.php';
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                         <span>Sessions</span>
                     </button></li>
-                    <li><button id="menu-button-stock" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
+                    <li><button id="menu-button-products" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
-                        <span>Stock Manager</span>
+                        <span>Products</span>
                     </button></li>
                     <li><button id="menu-button-held-carts" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M3 12h18M3 17h18"></path></svg>
@@ -495,21 +495,21 @@ require_once __DIR__ . '/../wp-load.php';
                  </main>
             </section>
 
-            <!-- Stock Manager Page -->
-            <section id="stock-page" class="page-content w-full hidden flex flex-col p-3 gap-3">
+            <!-- Products Page -->
+            <section id="products-page" class="page-content w-full hidden flex flex-col p-3 gap-3">
                 <header class="flex items-center gap-4 p-2 bg-slate-800/80 backdrop-blur-sm border border-slate-700 rounded-xl shadow-lg flex-shrink-0">
                     <button class="menu-toggle p-2 rounded-lg hover:bg-slate-700 transition-colors"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg></button>
-                    <h1 class="text-xl font-bold">Stock Manager</h1>
-                    <div class="relative flex-grow min-w-[150px] max-w-[250px]"><div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none"><svg class="w-4 h-4 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg></div><input type="text" id="stock-list-filter" placeholder="Filter list by name or SKU..." class="w-full pl-10 p-2 rounded-lg bg-slate-700 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"></div>
-                    <select id="stock-manager-category-filter" class="p-2 rounded-lg bg-slate-700 border border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 flex-shrink-0"><option value="all">All Categories</option></select>
-                    <select id="stock-manager-tag-filter" class="p-2 rounded-lg bg-slate-700 border border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 flex-shrink-0"><option value="all">All Tags</option></select>
-                    <div id="stock-manager-stock-filter" class="segmented-control flex p-1 rounded-lg bg-slate-700 border border-slate-600 flex-shrink-0">
+                    <h1 class="text-xl font-bold">Products</h1>
+                    <div class="relative flex-grow min-w-[150px] max-w-[250px]"><div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none"><svg class="w-4 h-4 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg></div><input type="text" id="products-list-filter" placeholder="Filter list by name or SKU..." class="w-full pl-10 p-2 rounded-lg bg-slate-700 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"></div>
+                    <select id="products-category-filter" class="p-2 rounded-lg bg-slate-700 border border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 flex-shrink-0"><option value="all">All Categories</option></select>
+                    <select id="products-tag-filter" class="p-2 rounded-lg bg-slate-700 border border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 flex-shrink-0"><option value="all">All Tags</option></select>
+                    <div id="products-stock-filter" class="segmented-control flex p-1 rounded-lg bg-slate-700 border border-slate-600 flex-shrink-0">
                         <button data-value="all" data-state="active" class="px-3 py-1 text-sm rounded-md transition-colors">All</button>
                         <button data-value="instock" data-state="inactive" class="px-3 py-1 text-sm rounded-md transition-colors">In Stock</button>
                         <button data-value="outofstock" data-state="inactive" class="px-3 py-1 text-sm rounded-md transition-colors">Out of Stock</button>
                         <button data-value="private" data-state="inactive" class="px-3 py-1 text-sm rounded-md transition-colors">Private</button>
                     </div>
-                    <button id="refresh-stock-btn" class="ml-2 p-2 rounded-lg bg-slate-700 border border-slate-600 hover:bg-slate-600 transition-colors flex-shrink-0 flex items-center" title="Refresh Stock Data">
+                    <button id="refresh-products-btn" class="ml-2 p-2 rounded-lg bg-slate-700 border border-slate-600 hover:bg-slate-600 transition-colors flex-shrink-0 flex items-center" title="Refresh Products Data">
                         <i class="fa fa-refresh"></i>
                     </button>
                 </header>

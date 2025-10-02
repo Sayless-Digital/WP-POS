@@ -1,6 +1,6 @@
-// JPOS v1.5.8 - Fixed stock manager edit button functionality - CACHE BUST
+// JPOS v1.5.10 - Fixed Products sidebar click handler and routing cache issue - CACHE BUST
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.5.8 loaded - Fixed stock manager edit button functionality');
+    console.log('JPOS v1.5.10 loaded - Fixed Products sidebar click handler and routing cache issue');
     // Initialize Routing Manager
     const routingManager = new RoutingManager();
 
@@ -559,8 +559,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (menuButtonReports) menuButtonReports.addEventListener('click', () => routingManager.navigateToView('reports-page'));
         const menuButtonSessions = document.getElementById('menu-button-sessions');
         if (menuButtonSessions) menuButtonSessions.addEventListener('click', () => routingManager.navigateToView('sessions-page'));
-        const menuButtonStock = document.getElementById('menu-button-stock');
-        if (menuButtonStock) menuButtonStock.addEventListener('click', () => routingManager.navigateToView('stock-page'));
+        const menuButtonProducts = document.getElementById('menu-button-products');
+        if (menuButtonProducts) menuButtonProducts.addEventListener('click', () => routingManager.navigateToView('products-page'));
         const menuButtonSettings = document.getElementById('menu-button-settings');
         if (menuButtonSettings) menuButtonSettings.addEventListener('click', () => routingManager.navigateToView('settings-page'));
         
@@ -616,19 +616,19 @@ document.addEventListener('DOMContentLoaded', () => {
         if (orderStatusFilter) orderStatusFilter.addEventListener('change', e => { appState.orders.filters.status = e.target.value; fetchOrders(); });
         const settingsForm = document.getElementById('settings-form');
         if (settingsForm) settingsForm.addEventListener('submit', saveSettings);
-        const stockListFilter = document.getElementById('stock-list-filter');
-        if (stockListFilter) stockListFilter.addEventListener('input', () => renderStockList());
+        const productsListFilter = document.getElementById('products-list-filter');
+        if (productsListFilter) productsListFilter.addEventListener('input', () => renderStockList());
         const stockEditCancelBtn = document.getElementById('stock-edit-cancel-btn');
         if (stockEditCancelBtn) stockEditCancelBtn.addEventListener('click', () => document.getElementById('stock-edit-modal').classList.add('hidden'));
         const stockEditSaveBtn = document.getElementById('stock-edit-save-btn');
         if (stockEditSaveBtn) stockEditSaveBtn.addEventListener('click', handleStockEditSave);
         
-        const smCat = document.getElementById('stock-manager-category-filter');
-        const smTag = document.getElementById('stock-manager-tag-filter');
-        const smStock = document.getElementById('stock-manager-stock-filter');
+        const smCat = document.getElementById('products-category-filter');
+        const smTag = document.getElementById('products-tag-filter');
+        const smStock = document.getElementById('products-stock-filter');
         if (smCat) smCat.addEventListener('change', e => { appState.stockFilters.category = e.target.value; renderStockList(); });
         if (smTag) smTag.addEventListener('change', e => { appState.stockFilters.tag = e.target.value; renderStockList(); });
-        if (smStock) smStock.addEventListener('click', e => { const target = e.target.closest('button'); if (!target) return; appState.stockFilters.stock = target.dataset.value; document.querySelectorAll('#stock-manager-stock-filter button').forEach(btn => btn.dataset.state = 'inactive'); target.dataset.state = 'active'; renderStockList(); });
+        if (smStock) smStock.addEventListener('click', e => { const target = e.target.closest('button'); if (!target) return; appState.stockFilters.stock = target.dataset.value; document.querySelectorAll('#products-stock-filter button').forEach(btn => btn.dataset.state = 'inactive'); target.dataset.state = 'active'; renderStockList(); });
         const refreshPosBtn = document.getElementById('refresh-pos-btn');
         if (refreshPosBtn) refreshPosBtn.addEventListener('click', () => {
             // Hard refresh: force reload from server, bypass cache
@@ -651,8 +651,8 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload(true);
         });
         
-        const refreshStockBtn = document.getElementById('refresh-stock-btn');
-        if (refreshStockBtn) refreshStockBtn.addEventListener('click', () => {
+        const refreshProductsBtn = document.getElementById('refresh-products-btn');
+        if (refreshProductsBtn) refreshProductsBtn.addEventListener('click', () => {
             window.location.reload(true);
         });
         
@@ -704,14 +704,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function buildFilterUI(categories, tags) {
-        ['category-filter', 'stock-manager-category-filter'].forEach(id => {
+        ['category-filter', 'products-category-filter'].forEach(id => {
             const catSelect = document.getElementById(id);
             if(catSelect) {
                 catSelect.innerHTML = '<option value="all">All Categories</option>';
                 categories.forEach(cat => catSelect.innerHTML += `<option value="${cat.term_id}">${cat.name}</option>`);
             }
         });
-        ['tag-filter', 'stock-manager-tag-filter'].forEach(id => {
+        ['tag-filter', 'products-tag-filter'].forEach(id => {
             const tagSelect = document.getElementById(id);
             if(tagSelect) {
                 tagSelect.innerHTML = '<option value="all">All Tags</option>';
@@ -1601,7 +1601,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderStockList() { 
         const container = document.getElementById('stock-list');
         container.innerHTML = '';
-        const filterText = document.getElementById('stock-list-filter').value.toLowerCase();
+        const filterText = document.getElementById('products-list-filter').value.toLowerCase();
         
         // Check if appState is properly initialized
         if (!appState || !appState.products || !appState.stockFilters) {

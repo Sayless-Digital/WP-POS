@@ -1,6 +1,7 @@
 /**
- * JPOS Routing Module
+ * JPOS Routing Module v1.5.10
  * Handles URL parameter-based routing for view persistence
+ * Updated to support products-page instead of stock-page
  */
 
 class RoutingManager {
@@ -11,7 +12,7 @@ class RoutingManager {
             'orders-page', 
             'reports-page',
             'sessions-page',
-            'stock-page',
+            'products-page',
             'held-carts-page',
             'settings-page'
         ];
@@ -22,7 +23,7 @@ class RoutingManager {
             'orders-page': 'menu-button-orders',
             'reports-page': 'menu-button-reports',
             'sessions-page': 'menu-button-sessions',
-            'stock-page': 'menu-button-stock',
+            'products-page': 'menu-button-products',
             'held-carts-page': 'menu-button-held-carts',
             'settings-page': 'menu-button-settings'
         };
@@ -163,7 +164,7 @@ class RoutingManager {
                         await window.fetchSessions();
                     }
                     break;
-                case 'stock-page':
+                case 'products-page':
                     if (typeof window.renderStockList === 'function') {
                         window.renderStockList();
                     }

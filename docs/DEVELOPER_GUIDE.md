@@ -76,7 +76,7 @@ JPOS uses a URL parameter-based routing system to maintain view state across pag
 - `orders-page` - Order History
 - `reports-page` - Sales Reports
 - `sessions-page` - Session History
-- `stock-page` - Stock Manager
+- `products-page` - Products
 - `held-carts-page` - Held Carts
 - `settings-page` - Settings
 
@@ -356,8 +356,8 @@ php tests/php/test-database-optimizer.php
 - **Solution**: Ensure all order-related functions use `appState.orders.filters` and `appState.orders.all`
 - **Prevention**: Always use centralized state management (`appState`) instead of global variables
 
-#### Stock Manager Loading Issues
-- **Symptom**: Stock manager page shows empty table or doesn't load product data
+#### Products Loading Issues
+- **Symptom**: Products page shows empty table or doesn't load product data
 - **Cause**: JavaScript variable reference errors (`allProducts`, `stockManagerFilters`, `currentProductForModal` not defined)
 - **Solution**: Use `appState.products.all`, `appState.stockFilters`, and `appState.products.currentForModal`
 - **Prevention**: Always use centralized state management (`appState`) instead of global variables
@@ -424,8 +424,8 @@ php tests/php/test-database-optimizer.php
   - Hard reload functionality (`window.location.reload(true)`) to bypass cache
   - Proper event handlers with null checks for each button
 
-#### Stock Manager Edit Button Fix (v1.5.7 - v1.5.8)
-- **Problem**: Edit buttons in stock manager were not working - `ReferenceError: openStockEditModal is not defined`
+#### Products Edit Button Fix (v1.5.7 - v1.5.8)
+- **Problem**: Edit buttons in products page were not working - `ReferenceError: openStockEditModal is not defined`
 - **Root Cause**: 
   - Function was defined inside DOMContentLoaded event listener but not globally accessible
   - HTML `onclick` attributes require functions to be in global scope (`window` object)
@@ -436,6 +436,18 @@ php tests/php/test-database-optimizer.php
   - Moved global assignment to immediately after function definition (not at end of event listener)
   - Updated cache busting version numbers in both HTML and JavaScript files
   - Both row clicks and edit button clicks now work properly
+
+#### Products Sidebar Navigation Fix (v1.5.10)
+- **Problem**: Products button in sidebar was not working - "Invalid view: products-page" error
+- **Root Cause**: 
+  - Routing module (`routing.js`) was being cached by browser without version parameter
+  - Browser was loading old version of routing.js that still had `stock-page` instead of `products-page`
+  - Main.js had cache busting but routing.js did not
+- **Solution**: 
+  - Added cache busting to routing module: `routing.js?v=1.5.10`
+  - Updated version comment in routing module
+  - Ensured both main.js and routing.js load updated versions
+  - Products sidebar navigation now works correctly
 
 ### Debug Mode
 Enable debug mode in configuration for detailed error information:
@@ -487,8 +499,10 @@ For technical support or questions:
 - v1.5.1: URL routing system implementation with sidebar integration and overlay close functionality
 - v1.5.2: Fixed data loading issue by making page functions globally available for routing system
 - v1.5.3: Fixed order history loading issue - resolved JavaScript variable reference errors and API endpoint filtering
-- v1.5.4: Updated stock manager table styling to match sessions/orders tables with consistent grid-based layout
+- v1.5.4: Updated products table styling to match sessions/orders tables with consistent grid-based layout
 - v1.5.5: Added app preloader with spinner and full-page sheen effect to prevent flash of default view before routing
-- v1.5.6: Added consistent reload buttons to all pages (Orders, Reports, Sessions, Stock, Settings, Held Carts) matching POS page style
-- v1.5.7: Fixed stock manager edit button functionality - made openStockEditModal function globally accessible so edit buttons work properly
-- v1.5.8: Resolved timing and caching issues for stock manager edit buttons - moved global function assignment to immediate execution after function definition
+- v1.5.6: Added consistent reload buttons to all pages (Orders, Reports, Sessions, Products, Settings, Held Carts) matching POS page style
+- v1.5.7: Fixed products edit button functionality - made openStockEditModal function globally accessible so edit buttons work properly
+- v1.5.8: Resolved timing and caching issues for products edit buttons - moved global function assignment to immediate execution after function definition
+- v1.5.9: Renamed Stock Manager to Products - updated URL parameters, page titles, and all references throughout the system
+- v1.5.10: Fixed Products sidebar click handler - resolved routing module cache issue that prevented navigation to products page

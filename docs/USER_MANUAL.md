@@ -276,7 +276,7 @@ For technical support or questions:
 
 ## Version Information
 
-- Current Version: 1.5.8
+- Current Version: 1.5.10
 - Last Updated: December 2024
-- Latest Update: Fixed stock manager edit button functionality - resolved timing and caching issues for proper global function access
+- Latest Update: Fixed Products sidebar navigation - resolved routing cache issue preventing navigation to Products page
 - Next Update: Q1 2025
