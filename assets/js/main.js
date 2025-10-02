@@ -1,5 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
 
+    // Initialize Routing Manager
+    const routingManager = new RoutingManager();
+
     // Centralized State Management
     const appState = {
         // Authentication & User
@@ -265,7 +268,11 @@ document.addEventListener('DOMContentLoaded', () => {
         await generateNonces();
         await loadReceiptSettings();
         await refreshAllData();
-        showPage('pos-page', false);
+        
+        // Initialize with current view from URL or default to pos-page
+        const initialView = routingManager.getCurrentView();
+        routingManager.navigateToView(initialView, false); // Don't update URL on initial load
+        
         await checkDrawerStatus();
         validateState(); // Validate state after loading
     }
@@ -400,16 +407,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
+    // Make toggleMenu globally available (needed early)
+    window.toggleMenu = toggleMenu;
+    
     async function showPage(pageId, closeMenu = true) {
-        document.querySelectorAll('section.page-content').forEach(page => page.classList.add('hidden'));
-        document.getElementById(pageId).classList.remove('hidden');
-        if (closeMenu && document.getElementById('side-menu').classList.contains('is-open')) { toggleMenu(); }
-        if (pageId === 'orders-page') { await fetchOrders(); }
-        if (pageId === 'reports-page') { await fetchReportsData(); }
-        if (pageId === 'sessions-page') { await fetchSessions(); }
-        if (pageId === 'stock-page') { renderStockList(); }
-        if (pageId === 'settings-page') { populateSettingsForm(); }
-        if (pageId === 'held-carts-page') { renderHeldCarts(); }
+        // Use routing manager for navigation
+        routingManager.navigateToView(pageId, true);
     }
 
     async function handleLogin(e) {
@@ -522,20 +525,25 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
         const menuOverlay = document.getElementById('menu-overlay');
-        if (menuOverlay) menuOverlay.addEventListener('click', toggleMenu);
+        if (menuOverlay) {
+            menuOverlay.addEventListener('click', (e) => {
+                e.preventDefault();
+                toggleMenu();
+            });
+        }
         
         const menuButtonPos = document.getElementById('menu-button-pos');
-        if (menuButtonPos) menuButtonPos.addEventListener('click', () => showPage('pos-page'));
+        if (menuButtonPos) menuButtonPos.addEventListener('click', () => routingManager.navigateToView('pos-page'));
         const menuButtonOrders = document.getElementById('menu-button-orders');
-        if (menuButtonOrders) menuButtonOrders.addEventListener('click', () => showPage('orders-page'));
+        if (menuButtonOrders) menuButtonOrders.addEventListener('click', () => routingManager.navigateToView('orders-page'));
         const menuButtonReports = document.getElementById('menu-button-reports');
-        if (menuButtonReports) menuButtonReports.addEventListener('click', () => showPage('reports-page'));
+        if (menuButtonReports) menuButtonReports.addEventListener('click', () => routingManager.navigateToView('reports-page'));
         const menuButtonSessions = document.getElementById('menu-button-sessions');
-        if (menuButtonSessions) menuButtonSessions.addEventListener('click', () => showPage('sessions-page'));
+        if (menuButtonSessions) menuButtonSessions.addEventListener('click', () => routingManager.navigateToView('sessions-page'));
         const menuButtonStock = document.getElementById('menu-button-stock');
-        if (menuButtonStock) menuButtonStock.addEventListener('click', () => showPage('stock-page'));
+        if (menuButtonStock) menuButtonStock.addEventListener('click', () => routingManager.navigateToView('stock-page'));
         const menuButtonSettings = document.getElementById('menu-button-settings');
-        if (menuButtonSettings) menuButtonSettings.addEventListener('click', () => showPage('settings-page'));
+        if (menuButtonSettings) menuButtonSettings.addEventListener('click', () => routingManager.navigateToView('settings-page'));
         
         const searchInput = document.getElementById('search-input');
         if (searchInput) {
@@ -608,7 +616,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload(true);
         });
         const menuButtonHeldCarts = document.getElementById('menu-button-held-carts');
-        if (menuButtonHeldCarts) menuButtonHeldCarts.addEventListener('click', () => showPage('held-carts-page'));
+        if (menuButtonHeldCarts) menuButtonHeldCarts.addEventListener('click', () => routingManager.navigateToView('held-carts-page'));
         addHoldCartButton();
         const holdCartBtn = document.getElementById('hold-cart-btn');
         if (holdCartBtn) holdCartBtn.addEventListener('click', holdCurrentCart);
@@ -851,7 +859,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             }
                         }
                         document.getElementById('variation-modal').classList.add('hidden');
-                        if (typeof showPage === 'function') showPage('held-carts-page');
+                        routingManager.navigateToView('held-carts-page');
                         setTimeout(() => {
                             if (foundCartId) {
                                 const heldDiv = document.querySelector(`[data-id='${foundCartId}']`);
@@ -1341,7 +1349,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         document.getElementById('return-modal').classList.add('hidden');
-        showPage('pos-page');
+        routingManager.navigateToView('pos-page');
     }
     
     async function fetchReportsData() {
@@ -2076,7 +2084,7 @@ document.addEventListener('DOMContentLoaded', () => {
         heldCarts = heldCarts.filter(h => h.id !== id);
         localStorage.setItem('jpos_held_carts', JSON.stringify(heldCarts));
         renderHeldCarts();
-        showPage('pos-page');
+        routingManager.navigateToView('pos-page');
         renderCart();
         showToast('Held cart restored to cart');
     }
@@ -2094,7 +2102,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCart();
         addHoldCartButton();
         // ... existing code ...
-        document.getElementById('menu-button-held-carts').addEventListener('click', renderHeldCarts);
+        // Held carts menu button is already handled in setupMainAppEventListeners()
         const orderIdSearch = document.getElementById('order-id-search');
         if (orderIdSearch) {
             orderIdSearch.addEventListener('input', e => {
@@ -2591,4 +2599,12 @@ async function generateClientSidePDF(data) {
         });
         doc.save('sales_report_' + (data.report_date || '').replace(/\s+/g, '_') + '.pdf');
     }
+
+    // Make all page data functions globally available for routing system
+    window.fetchOrders = fetchOrders;
+    window.fetchReportsData = fetchReportsData;
+    window.fetchSessions = fetchSessions;
+    window.renderStockList = renderStockList;
+    window.populateSettingsForm = populateSettingsForm;
+    window.renderHeldCarts = renderHeldCarts;
 });

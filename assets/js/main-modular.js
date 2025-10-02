@@ -35,23 +35,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             },
 
             async loadInitialData() {
-                // Initialize image optimizer (temporarily disabled for stability)
-                if (window.imageOptimizer) {
-                    // window.imageOptimizer.init(); // Disabled to fix image display issue
-                    console.log('Image optimizer available but disabled for stability');
-                }
-
                 // Load products
                 if (window.productsManager) {
                     const productsData = await window.productsManager.loadProducts();
                     if (productsData.categories && productsData.tags) {
                         window.productsManager.buildFilterUI(productsData.categories, productsData.tags);
                         window.productsManager.renderProducts();
-                        
-                        // Lazy loading temporarily disabled
-                        // if (window.imageOptimizer) {
-                        //     window.imageOptimizer.observeImages(document.getElementById('product-list'));
-                        // }
                     }
                 }
 

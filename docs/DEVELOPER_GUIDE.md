@@ -10,6 +10,7 @@ JPOS (WordPress POS) is a modern, modular point-of-sale system built on WordPres
 - **Modular JavaScript**: The frontend uses a modular architecture with separate modules for different functionalities
 - **State Management**: Centralized state management using `appState` object
 - **API Communication**: RESTful API endpoints with consistent response formats
+- **URL Routing**: URL parameter-based routing system for view persistence and navigation
 
 ### Backend Architecture
 - **WordPress Integration**: Built on WordPress with custom API endpoints
@@ -34,6 +35,7 @@ wp-pos/
 │   │   ├── main.js        # Main application file
 │   │   ├── main-modular.js # Modular entry point
 │   │   └── modules/       # Modular JavaScript files
+│   │       ├── routing.js # URL routing system
 │   └── build/             # Optimized bundles
 ├── config/                # Configuration files
 ├── tests/                 # Test suites
@@ -63,6 +65,68 @@ The system uses JSON-based configuration files located in the `config/` director
 - Performance settings
 - Security settings
 - UI preferences
+
+## Routing System
+
+### URL Parameter-Based Routing
+JPOS uses a URL parameter-based routing system to maintain view state across page reloads. This ensures users stay on their current view when refreshing the page.
+
+### Supported Views
+- `pos-page` - Point of Sale (default)
+- `orders-page` - Order History
+- `reports-page` - Sales Reports
+- `sessions-page` - Session History
+- `stock-page` - Stock Manager
+- `held-carts-page` - Held Carts
+- `settings-page` - Settings
+
+### Usage
+```javascript
+// Navigate to a specific view
+routingManager.navigateToView('orders-page');
+
+// Get current view
+const currentView = routingManager.getCurrentView();
+
+// Check if view is valid
+const isValid = routingManager.isValidView('reports-page');
+```
+
+### URL Format
+Views are accessed via URL parameters:
+- `?view=pos-page` - Point of Sale
+- `?view=orders-page` - Orders
+- `?view=reports-page` - Reports
+- etc.
+
+### Browser Navigation
+The routing system supports browser back/forward navigation and updates the URL automatically when switching views.
+
+### Sidebar Navigation
+The sidebar menu integrates seamlessly with the routing system:
+- **Menu Buttons**: All sidebar buttons use the routing manager for navigation
+- **Active State**: Current view button is highlighted automatically
+- **Auto-Close**: Sidebar closes when navigating to different views
+- **Overlay Close**: Clicking outside the sidebar (on overlay) closes it
+- **URL Sync**: Sidebar navigation updates the browser URL
+
+### Technical Implementation
+The routing system requires specific global functions to be available for data loading:
+
+**Required Global Functions:**
+- `window.toggleMenu()` - Menu toggle functionality
+- `window.fetchOrders()` - Load order history data
+- `window.fetchReportsData()` - Load sales reports data
+- `window.fetchSessions()` - Load session history data
+- `window.renderStockList()` - Render stock management list
+- `window.populateSettingsForm()` - Load settings form data
+- `window.renderHeldCarts()` - Render held carts list
+
+**Implementation Notes:**
+- Functions are made globally available at the end of main.js execution
+- Routing system checks for function availability before calling
+- Proper error handling for missing functions
+- Seamless integration with existing event listeners
 
 ## API Reference
 
@@ -333,3 +397,5 @@ For technical support or questions:
 - v1.4.2: Fixed user email display in authentication API responses
 - v1.4.3: Console security cleanup, removed sensitive data logging, added favicon
 - v1.5.0: Performance optimization - image optimization, pagination, WebP support, and performance monitoring (lazy loading simplified for stability)
+- v1.5.1: URL routing system implementation with sidebar integration and overlay close functionality
+- v1.5.2: Fixed data loading issue by making page functions globally available for routing system

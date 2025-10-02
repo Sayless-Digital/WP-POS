@@ -13,6 +13,8 @@ require_once __DIR__ . '/../wp-load.php';
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     
+    <!-- JPOS Routing Module -->
+    <script src="assets/js/modules/routing.js"></script>
     <!-- JPOS Original JavaScript (temporarily reverting for debugging) -->
     <script src="assets/js/main.js"></script>
     <style>
@@ -263,7 +265,7 @@ require_once __DIR__ . '/../wp-load.php';
                 </ul>
             </div>
         </nav>
-        <div id="menu-overlay" class="menu-toggle hidden fixed inset-0 bg-black/50 z-40"></div>
+        <div id="menu-overlay" class="hidden fixed inset-0 bg-black/50 z-40"></div>
 
         <div class="flex h-screen w-full">
             <!-- POS Page -->

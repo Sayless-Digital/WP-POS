@@ -10,7 +10,7 @@ JPOS is a modern, enterprise-grade point-of-sale system built on WordPress. The 
 **Last Updated**: December 19, 2024  
 **Version**: 1.5.0  
 **All Phases Completed**: Security, Architecture, Performance, Quality & Monitoring  
-**Latest Update**: Performance optimization - image size optimization, pagination, and WebP support (lazy loading removed for stability)
+**Latest Update**: URL routing system implementation with sidebar integration, overlay close functionality, and data loading fix
 
 ## Architecture
 
@@ -19,7 +19,8 @@ JPOS is a modern, enterprise-grade point-of-sale system built on WordPress. The 
 - **State Management**: Centralized `appState` object with validation utilities
 - **API Communication**: RESTful endpoints with consistent response formats
 - **Bundle Optimization**: 29.38KB minified JavaScript bundle
-- **UI Navigation**: Working menu system with smooth animations
+- **UI Navigation**: Working menu system with smooth animations and overlay close functionality
+- **URL Routing**: URL parameter-based routing system for view persistence on page reload
 
 ### Backend Architecture
 - **WordPress Integration**: Built on WordPress with custom API endpoints
@@ -61,6 +62,7 @@ wp-pos/
 │   │       ├── auth.js            # Authentication
 │   │       ├── products.js        # Product management
 │   │       ├── cart.js            # Shopping cart
+│   │       ├── routing.js         # URL routing system
 │   │       └── module-loader.js   # Module loader
 │   └── build/                     # Optimized bundles
 ├── config/
@@ -98,6 +100,40 @@ wp-pos/
 - Unified error response format
 - Secure error reporting without information leakage
 - Comprehensive error logging with unique IDs
+
+## Routing System
+
+### URL Parameter-Based Navigation
+JPOS implements a comprehensive routing system that maintains view state across page reloads and provides seamless navigation.
+
+### Key Features
+- **View Persistence**: Current view is maintained when reloading the page
+- **URL Parameters**: Views accessible via `?view=view-name` parameters
+- **Browser Navigation**: Full support for back/forward buttons
+- **Sidebar Integration**: Menu buttons automatically update URL and highlight active state
+- **Overlay Close**: Click outside sidebar to close with smooth animations
+
+### Supported Views
+- `pos-page` - Point of Sale (default)
+- `orders-page` - Order History
+- `reports-page` - Sales Reports
+- `sessions-page` - Session History
+- `stock-page` - Stock Manager
+- `held-carts-page` - Held Carts
+- `settings-page` - Settings
+
+### Technical Implementation
+- **RoutingManager Class**: Handles all navigation logic
+- **View Mapping**: Proper mapping between view IDs and menu button IDs
+- **Global Functions**: Required global functions for data loading:
+  - `window.toggleMenu()` - Menu toggle functionality
+  - `window.fetchOrders()` - Load order history data
+  - `window.fetchReportsData()` - Load sales reports data
+  - `window.fetchSessions()` - Load session history data
+  - `window.renderStockList()` - Render stock management list
+  - `window.populateSettingsForm()` - Load settings form data
+  - `window.renderHeldCarts()` - Render held carts list
+- **Event Integration**: Seamless integration with existing event listeners
 
 ## Performance Optimizations
 
@@ -361,9 +397,32 @@ wp-pos/
 - **Console Security**: Sensitive business data no longer logged to browser console
 - **Image Loading**: Images now use optimized sizes (medium) with WebP support and native lazy loading
 - **Slow Product Loading**: Pagination implemented (20 items per page) with performance monitoring
+- **View Persistence**: URL parameter-based routing system ensures views persist on page reload
+- **Sidebar Integration**: Seamless integration between sidebar navigation and routing system
+- **Overlay Navigation**: Click outside sidebar to close with smooth animations
+- **Data Loading**: All views properly load their data when navigated to via routing system
 
 ### Debug Mode
 Enable debug mode in configuration for detailed error information and logging.
+
+### Routing System Troubleshooting
+If views are not loading data properly:
+
+1. **Check Global Functions**: Ensure all required functions are globally available:
+   ```javascript
+   console.log('Available functions:', {
+     fetchOrders: typeof window.fetchOrders,
+     fetchReportsData: typeof window.fetchReportsData,
+     fetchSessions: typeof window.fetchSessions,
+     renderStockList: typeof window.renderStockList,
+     populateSettingsForm: typeof window.populateSettingsForm,
+     renderHeldCarts: typeof window.renderHeldCarts
+   });
+   ```
+
+2. **Verify Function Assignment**: Functions are assigned at the end of main.js execution
+3. **Check Console Errors**: Look for "function not found" warnings in browser console
+4. **URL Parameters**: Ensure views are accessed via proper URL parameters (`?view=view-name`)
 
 ### Monitoring
 Use the built-in monitoring system to track system health, performance metrics, and error rates.
