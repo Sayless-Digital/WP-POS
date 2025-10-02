@@ -276,7 +276,7 @@ For technical support or questions:
 
 ## Version Information
 
-- Current Version: 1.5.1
+- Current Version: 1.5.4
 - Last Updated: December 2024
-- Latest Update: Fixed order history loading issue - orders now load properly with all filtering options working
+- Latest Update: Updated stock manager table styling for improved visual consistency and user experience
 - Next Update: Q1 2025

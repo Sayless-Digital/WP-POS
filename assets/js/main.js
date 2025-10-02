@@ -1554,9 +1554,8 @@ document.addEventListener('DOMContentLoaded', () => {
         container.innerHTML = '';
         const filterText = document.getElementById('stock-list-filter').value.toLowerCase();
         
-        // Debug: Check if appState is properly initialized
+        // Check if appState is properly initialized
         if (!appState || !appState.products || !appState.stockFilters) {
-            console.error('JPOS: appState not properly initialized in renderStockList');
             container.innerHTML = '<div class="p-10 text-center text-red-400 col-span-12">Error: State not initialized</div>';
             return;
         }

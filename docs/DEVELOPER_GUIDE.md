@@ -362,6 +362,52 @@ php tests/php/test-database-optimizer.php
 - **Solution**: Use `appState.products.all`, `appState.stockFilters`, and `appState.products.currentForModal`
 - **Prevention**: Always use centralized state management (`appState`) instead of global variables
 
+#### Browser Caching Issues
+- **Symptom**: JavaScript changes not taking effect, old code still running, ReferenceError persists after fixes
+- **Cause**: Browser aggressively caching JavaScript files, serving outdated versions
+- **Solution**: Implement cache busting techniques:
+  - Add version parameter to script tags: `<script src="assets/js/main.js?v=1.5.3"></script>`
+  - Add unique comments at top of JS files: `// JPOS v1.5.3 - CACHE BUST`
+  - Increment version numbers for each deployment
+- **Prevention**: Always use cache busting for production deployments, test in incognito mode
+
+### Technical Fixes Implemented
+
+#### JavaScript Variable Reference Errors (v1.5.1 - v1.5.3)
+- **Problem**: Global variables (`orderFilters`, `posOrders`, `cart`, `allProducts`, `stockManagerFilters`, `currentProductForModal`) were undefined
+- **Root Cause**: Incomplete migration from global variables to centralized `appState` object
+- **Solution**: Systematic replacement of all global variable references with `appState` properties:
+  - `orderFilters` → `appState.orders.filters`
+  - `posOrders` → `appState.orders.all`
+  - `cart` → `appState.cart.items`
+  - `allProducts` → `appState.products.all`
+  - `stockManagerFilters` → `appState.stockFilters`
+  - `currentProductForModal` → `appState.products.currentForModal`
+
+#### API Endpoint Filtering Issues (v1.5.1)
+- **Problem**: Orders API returning incorrect data due to SQL query issues
+- **Root Cause**: Incorrect parameter passing in `wpdb->prepare()` and unintended default filters
+- **Solution**: 
+  - Fixed SQL prepared statement parameter handling
+  - Removed default filter that forced POS-only orders
+  - Corrected LIMIT clause parameter passing
+
+#### Cache Busting Implementation (v1.5.2 - v1.5.3)
+- **Problem**: Browser caching preventing JavaScript updates from taking effect
+- **Solution**: Multi-layered cache busting approach:
+  - Version parameters in script tags: `?v=1.5.3`
+  - Unique comments in JavaScript files
+  - Version incrementing for each deployment
+  - Console logging to verify correct version loading
+
+#### UI Consistency Improvements (v1.5.4)
+- **Problem**: Stock manager table styling inconsistent with sessions/orders tables
+- **Solution**: 
+  - Converted from HTML `<table>` to CSS Grid layout
+  - Implemented consistent 12-column grid system
+  - Matched styling patterns from existing tables
+  - Maintained responsive design principles
+
 ### Debug Mode
 Enable debug mode in configuration for detailed error information:
 
@@ -412,3 +458,4 @@ For technical support or questions:
 - v1.5.1: URL routing system implementation with sidebar integration and overlay close functionality
 - v1.5.2: Fixed data loading issue by making page functions globally available for routing system
 - v1.5.3: Fixed order history loading issue - resolved JavaScript variable reference errors and API endpoint filtering
+- v1.5.4: Updated stock manager table styling to match sessions/orders tables with consistent grid-based layout
