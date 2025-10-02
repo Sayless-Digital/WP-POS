@@ -1,9 +1,8 @@
 // JPOS v1.7.0 - Component-based architecture with Next.js style organization - CACHE BUST
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
     console.log('JPOS v1.7.0 loaded - Component-based architecture with Next.js style organization');
     
-    // Import components
-    const { AttributeForm } = await import('../components/index.js');
+    // Components are loaded via script tags in index.php
     // Initialize Routing Manager
     const routingManager = new RoutingManager();
 
@@ -2283,6 +2282,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         const commonOptions = ['Red', 'Blue', 'Green', 'Yellow', 'Black', 'White', 'Gray', 'Brown', 'Pink', 'Purple', 'Orange', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'Small', 'Medium', 'Large', 'Extra Large', 'Cotton', 'Polyester', 'Wool', 'Silk', 'Leather', 'Denim', 'Linen', 'Cashmere', 'Nike', 'Adidas', 'Puma', 'Under Armour', 'Reebok', 'New Balance', 'Casual', 'Formal', 'Sport', 'Vintage', 'Modern', 'Classic', 'Trendy'];
         
         // Create AttributeForm component
+        if (!window.JPOSComponents) {
+            console.error('JPOS Components not loaded. Please refresh the page.');
+            return;
+        }
+        
+        const { AttributeForm } = window.JPOSComponents;
         const attributeForm = new AttributeForm({
             availableAttributes: availableAttributes.map(attr => attr.label),
             commonOptions,
