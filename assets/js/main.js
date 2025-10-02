@@ -1,6 +1,6 @@
-// JPOS v1.7.5 - Fixed option selection from suggestions list - CACHE BUST
+// JPOS v1.7.6 - Fixed click outside functionality to close suggestions - CACHE BUST
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.7.5 loaded - Fixed option selection from suggestions list');
+    console.log('JPOS v1.7.6 loaded - Fixed click outside functionality to close suggestions');
     
     // Components are loaded via script tags in index.php
     // Initialize Routing Manager

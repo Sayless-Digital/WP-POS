@@ -55,12 +55,7 @@ class OptionsSearch extends BaseComponent {
             }
         });
 
-        // Click outside to hide suggestions
-        this.addEventListener(document, 'click', (e) => {
-            if (!this.element?.contains(e.target)) {
-                this.hideSuggestions();
-            }
-        });
+        // Click outside to hide suggestions - will be added after element is rendered
     }
 
     render() {
@@ -106,6 +101,13 @@ class OptionsSearch extends BaseComponent {
         if (this.container) {
             this.container.appendChild(this.element);
         }
+        
+        // Add click outside listener after element is rendered
+        this.addEventListener(document, 'click', (e) => {
+            if (!this.element?.contains(e.target)) {
+                this.hideSuggestions();
+            }
+        });
     }
 
     showSuggestions() {
