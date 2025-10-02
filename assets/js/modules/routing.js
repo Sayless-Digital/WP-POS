@@ -10,7 +10,6 @@ class RoutingManager {
         this.validViews = [
             'pos-page',
             'orders-page', 
-            'reports-page',
             'sessions-page',
             'products-page',
             'held-carts-page',
@@ -21,7 +20,6 @@ class RoutingManager {
         this.viewToButtonMap = {
             'pos-page': 'menu-button-pos',
             'orders-page': 'menu-button-orders',
-            'reports-page': 'menu-button-reports',
             'sessions-page': 'menu-button-sessions',
             'products-page': 'menu-button-products',
             'held-carts-page': 'menu-button-held-carts',
@@ -152,11 +150,6 @@ class RoutingManager {
                 case 'orders-page':
                     if (typeof window.fetchOrders === 'function') {
                         await window.fetchOrders();
-                    }
-                    break;
-                case 'reports-page':
-                    if (typeof window.fetchReportsData === 'function') {
-                        await window.fetchReportsData();
                     }
                     break;
                 case 'sessions-page':

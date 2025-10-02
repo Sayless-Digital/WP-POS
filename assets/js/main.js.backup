@@ -1,6 +1,6 @@
-// JPOS v1.8.16 - Reports Functionality Completely Removed
+// JPOS v1.8.15 - Fixed Date Picker Filtering
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.8.16 loaded - Reports Functionality Completely Removed');
+    console.log('JPOS v1.8.15 loaded - Fixed Date Picker Filtering');
     // Initialize Routing Manager
     const routingManager = new RoutingManager();
 
@@ -70,7 +70,8 @@ document.addEventListener('DOMContentLoaded', () => {
         settings: {
             receipt: {},
             session: {
-                sessions: []
+                sessions: [],
+                charts: {}
             }
         },
         
@@ -92,7 +93,11 @@ document.addEventListener('DOMContentLoaded', () => {
             error: null
         },
         
-        // Charts removed
+        // Charts Management
+        charts: {
+            revenue: null,
+            orders: null
+        }
     };
 
     // State Management Utilities
@@ -166,6 +171,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (type === 'variation-edit-rows') {
             columns = 4;
             actualCount = count !== null ? count : 4;
+        } else if (type === 'reports-page') {
+            return `<div class="skeleton-loader reports-page">
+                <div class="kpi-row">
+                    <div class="kpi-block"><div class="block"></div><div class="block"></div></div>
+                    <div class="kpi-block"><div class="block"></div><div class="block"></div></div>
+                    <div class="kpi-block"><div class="block"></div><div class="block"></div></div>
+                </div>
+                <div class="chart-row">
+                    <div class="chart-block"></div>
+                    <div class="chart-block"></div>
+                </div>
+            </div>`;
         } else {
             actualCount = count !== null ? count : 20;
         }
@@ -546,7 +563,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (menuButtonPos) menuButtonPos.addEventListener('click', () => routingManager.navigateToView('pos-page'));
         const menuButtonOrders = document.getElementById('menu-button-orders');
         if (menuButtonOrders) menuButtonOrders.addEventListener('click', () => routingManager.navigateToView('orders-page'));
-        // Reports menu button removed
+        const menuButtonReports = document.getElementById('menu-button-reports');
+        if (menuButtonReports) menuButtonReports.addEventListener('click', () => routingManager.navigateToView('reports-page'));
         const menuButtonSessions = document.getElementById('menu-button-sessions');
         if (menuButtonSessions) menuButtonSessions.addEventListener('click', () => routingManager.navigateToView('sessions-page'));
         const menuButtonProducts = document.getElementById('menu-button-products');
@@ -749,6 +767,11 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload(true);
         });
         
+        const refreshReportsBtn = document.getElementById('refresh-reports-btn');
+        if (refreshReportsBtn) refreshReportsBtn.addEventListener('click', () => {
+            window.location.reload(true);
+        });
+        
         const refreshSessionsBtn = document.getElementById('refresh-sessions-btn');
         if (refreshSessionsBtn) refreshSessionsBtn.addEventListener('click', () => {
             window.location.reload(true);
@@ -791,7 +814,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('split-payment-modal').classList.add('hidden');
             });
         }
-        // PDF Export functionality removed
+        // PDF Export functionality
+        const exportPdfBtn = document.getElementById('export-pdf-btn');
+        if (exportPdfBtn) {
+            exportPdfBtn.addEventListener('click', exportReportsToPDF);
+        }
     }
 
     function showSkeletonLoader() {
@@ -1502,6 +1529,600 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
 
+        contentArea.innerHTML = `
+            <!-- Reports Header with Filters -->
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-6">
+                <div class="flex flex-wrap items-center gap-4">
+                    <h2 class="text-lg font-semibold text-white">Sales Report</h2>
+                    
+                    <!-- Date Filter -->
+                    <div class="flex items-center gap-2">
+                        <label class="text-sm text-slate-400">Period:</label>
+                        <button id="date-picker-btn" class="bg-slate-700 text-white px-3 py-2 rounded border border-slate-600 text-sm hover:bg-slate-600 flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                            <span id="date-range-text">Today</span>
+                            <input type="hidden" id="report-period" value="today">
+                        </button>
+                    </div>
+                    
+                    <!-- Cashier Filter -->
+                    <div class="flex items-center gap-2">
+                        <label class="text-sm text-slate-400">Cashier:</label>
+                        <select id="report-cashier" class="bg-slate-700 text-white px-3 py-1 rounded border border-slate-600 text-sm">
+                            <option value="all">All Cashiers</option>
+                            <option value="current">Current User</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Print Button -->
+                    <button id="print-report-btn" class="ml-auto bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2z"></path>
+                        </svg>
+                        Print Report
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Main Chart Area -->
+            <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 mb-6">
+                <h3 class="text-lg font-semibold mb-4 text-white" id="chart-title">Orders Over Time</h3>
+                <div style="height: 300px; position: relative;">
+                    <canvas id="orders-chart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Bottom Section: Orders List and Print Preview -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Orders List -->
+                <div class="bg-slate-800 rounded-xl border border-slate-700">
+                    <div class="p-4 border-b border-slate-700">
+                        <h3 class="text-lg font-semibold text-white">Recent Orders</h3>
+                    </div>
+                    <div class="p-4">
+                        <div id="orders-list" class="space-y-2">
+                            <!-- Orders will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Print Preview -->
+                <div class="bg-slate-800 rounded-xl border border-slate-700">
+                    <div class="p-4 border-b border-slate-700">
+                        <h3 class="text-lg font-semibold text-white">Report Preview</h3>
+                    </div>
+                    <div class="p-4">
+                        <div id="report-preview" class="bg-white text-black p-4 rounded-lg font-mono text-sm">
+                            <!-- Receipt-style preview will be generated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Date Picker Modal -->
+            <div id="date-picker-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+                <div class="flex items-center justify-center min-h-screen p-4">
+                    <div class="bg-slate-800 rounded-xl border border-slate-700 p-6 max-w-4xl w-full">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-white">Select Date Range</h3>
+                            <button id="close-date-picker" class="text-slate-400 hover:text-white">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Predefined Ranges -->
+                            <div class="space-y-2">
+                                <h4 class="text-sm font-medium text-slate-300 mb-3">Quick Select</h4>
+                                <div class="space-y-1">
+                                    <button class="date-range-btn w-full text-left px-3 py-2 rounded-lg hover:bg-slate-700 text-white" data-period="today">Today</button>
+                                    <button class="date-range-btn w-full text-left px-3 py-2 rounded-lg hover:bg-slate-700 text-white" data-period="yesterday">Yesterday</button>
+                                    <button class="date-range-btn w-full text-left px-3 py-2 rounded-lg hover:bg-slate-700 text-white" data-period="week">This Week</button>
+                                    <button class="date-range-btn w-full text-left px-3 py-2 rounded-lg hover:bg-slate-700 text-white" data-period="last_week">Last Week</button>
+                                    <button class="date-range-btn w-full text-left px-3 py-2 rounded-lg hover:bg-slate-700 text-white" data-period="month">This Month</button>
+                                    <button class="date-range-btn w-full text-left px-3 py-2 rounded-lg hover:bg-slate-700 text-white" data-period="last_month">Last Month</button>
+                                    <button class="date-range-btn w-full text-left px-3 py-2 rounded-lg hover:bg-slate-700 text-white" data-period="custom">Custom Range</button>
+                                </div>
+                            </div>
+                            
+                            <!-- Calendar -->
+                            <div>
+                                <h4 class="text-sm font-medium text-slate-300 mb-3">Custom Date Range</h4>
+                                <div class="bg-slate-700 rounded-lg p-4">
+                                    <div class="grid grid-cols-2 gap-4 mb-4">
+                                        <div>
+                                            <label class="text-xs text-slate-400">From</label>
+                                            <input type="date" id="custom-start-date" class="w-full bg-slate-600 text-white px-3 py-2 rounded border border-slate-500 text-sm">
+                                        </div>
+                                        <div>
+                                            <label class="text-xs text-slate-400">To</label>
+                                            <input type="date" id="custom-end-date" class="w-full bg-slate-600 text-white px-3 py-2 rounded border border-slate-500 text-sm">
+                                        </div>
+                                    </div>
+                                    <button id="apply-custom-range" class="w-full bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm">Apply Custom Range</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex justify-end gap-3 mt-6">
+                            <button id="cancel-date-picker" class="px-4 py-2 text-slate-400 hover:text-white">Cancel</button>
+                            <button id="apply-date-range" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg">Apply</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Destroy existing charts
+        if (appState.charts.orders) appState.charts.orders.destroy();
+
+        // Get current period selection
+        const periodSelect = document.getElementById('report-period');
+        const selectedPeriod = periodSelect ? periodSelect.value : 'month';
+        
+        // Prepare chart data based on selected period
+        const { labels, ordersData, revenueData } = prepareChartData(data, selectedPeriod);
+        
+        // Update chart title based on period
+        updateChartTitle(selectedPeriod);
+
+        // Chart options
+        const chartOptions = { 
+            responsive: true,
+            maintainAspectRatio: false,
+            aspectRatio: 2.5,
+            plugins: { 
+                legend: { 
+                    display: true,
+                    labels: {
+                        color: '#94a3b8',
+                        usePointStyle: true
+                    }
+                } 
+            }, 
+            scales: { 
+                y: { 
+                    beginAtZero: true, 
+                    grid: { color: '#334155' }, 
+                    ticks: { color: '#94a3b8' } 
+                }, 
+                x: { 
+                    grid: { color: '#1e293b' }, 
+                    ticks: { color: '#94a3b8' } 
+                } 
+            } 
+        };
+        
+        // Create single orders chart
+        const ordersCtx = document.getElementById('orders-chart').getContext('2d');
+        appState.charts.orders = new Chart(ordersCtx, { 
+            type: 'line', 
+            data: { 
+                labels: labels, 
+                datasets: [
+                    {
+                        label: 'Orders',
+                        data: ordersData,
+                        fill: true,
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        pointBackgroundColor: 'rgba(59, 130, 246, 1)',
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 2,
+                        pointRadius: 4
+                    }
+                ]
+            }, 
+            options: chartOptions 
+        });
+
+        // Load orders list
+        loadOrdersList(data, summary);
+        
+        // Generate print preview
+        generatePrintPreview(data, summary);
+        
+        // Add event listeners
+        addReportEventListeners();
+        
+        // Initialize date picker with default selection
+        initializeDatePicker();
+    }
+    
+    // Helper function to prepare chart data based on selected period
+    function prepareChartData(data, period) {
+        let labels, ordersData, revenueData;
+        
+        // Use real data from API - no more sample data generation
+        switch (period) {
+            case 'today':
+            case 'yesterday':
+                // For today/yesterday, data is already hourly from API (format: "HH:00")
+                labels = data.daily_data.map(d => d.order_date);
+                ordersData = data.daily_data.map(d => d.daily_orders);
+                revenueData = data.daily_data.map(d => d.daily_revenue);
+                break;
+                
+            case 'week':
+            case 'last_week':
+                // For week views, show daily data
+                labels = data.daily_data.map(d => {
+                    const date = new Date(d.order_date);
+                    return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                });
+                ordersData = data.daily_data.map(d => d.daily_orders);
+                revenueData = data.daily_data.map(d => d.daily_revenue);
+                break;
+                
+            case 'month':
+            case 'last_month':
+                // For month views, show daily data
+                labels = data.daily_data.map(d => new Date(d.order_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                ordersData = data.daily_data.map(d => d.daily_orders);
+                revenueData = data.daily_data.map(d => d.daily_revenue);
+                break;
+                
+            case 'custom':
+                // For custom range, determine scale based on date range length
+                const dateRange = new Date(data.daily_data[data.daily_data.length - 1].order_date) - new Date(data.daily_data[0].order_date);
+                const daysDiff = Math.ceil(dateRange / (1000 * 60 * 60 * 24));
+                
+                if (daysDiff <= 1) {
+                    // Single day or less - show hourly
+                    labels = data.daily_data.map(d => d.order_date);
+                } else if (daysDiff <= 7) {
+                    // Week or less - show daily
+                    labels = data.daily_data.map(d => {
+                        const date = new Date(d.order_date);
+                        return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                    });
+                } else if (daysDiff <= 31) {
+                    // Month or less - show daily
+                    labels = data.daily_data.map(d => new Date(d.order_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                } else {
+                    // More than a month - show weekly/monthly
+                    labels = data.daily_data.map(d => new Date(d.order_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                }
+                
+                ordersData = data.daily_data.map(d => d.daily_orders);
+                revenueData = data.daily_data.map(d => d.daily_revenue);
+                break;
+                
+            default:
+                // Default: show all available daily data
+                labels = data.daily_data.map(d => new Date(d.order_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                ordersData = data.daily_data.map(d => d.daily_orders);
+                revenueData = data.daily_data.map(d => d.daily_revenue);
+                break;
+        }
+        
+        return { labels, ordersData, revenueData };
+    }
+    
+    // Helper function to update chart title based on period
+    function updateChartTitle(period) {
+        const chartTitle = document.getElementById('chart-title');
+        if (!chartTitle) return;
+        
+        const titles = {
+            'today': 'Orders Today (By Hour)',
+            'yesterday': 'Orders Yesterday (By Hour)',
+            'week': 'Orders This Week (By Day)',
+            'last_week': 'Orders Last Week (By Day)',
+            'month': 'Orders This Month (By Day)',
+            'last_month': 'Orders Last Month (By Day)',
+            'custom': 'Orders (Custom Period)'
+        };
+        
+        chartTitle.textContent = titles[period] || 'Orders Over Time';
+    }
+    
+    
+    // Helper function to load orders list
+    async function loadOrdersList(data, summary) {
+        const ordersList = document.getElementById('orders-list');
+        if (!ordersList) return;
+        
+        // Helper for currency formatting
+        function formatCurrency(val) {
+            return Number(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+        
+        // Get the current period to determine date range for individual orders
+        const periodInput = document.getElementById('report-period');
+        const selectedPeriod = periodInput ? periodInput.value : 'month';
+        
+        let startDate, endDate;
+        const today = new Date();
+        
+        switch (selectedPeriod) {
+            case 'today':
+                startDate = endDate = today.toISOString().split('T')[0];
+                break;
+            case 'yesterday':
+                const yesterday = new Date(today);
+                yesterday.setDate(yesterday.getDate() - 1);
+                startDate = endDate = yesterday.toISOString().split('T')[0];
+                break;
+            case 'week':
+                const weekAgo = new Date(today);
+                weekAgo.setDate(weekAgo.getDate() - 7);
+                startDate = weekAgo.toISOString().split('T')[0];
+                endDate = today.toISOString().split('T')[0];
+                break;
+            case 'last_week':
+                const lastWeekStart = new Date(today);
+                lastWeekStart.setDate(lastWeekStart.getDate() - 14);
+                const lastWeekEnd = new Date(today);
+                lastWeekEnd.setDate(lastWeekEnd.getDate() - 7);
+                startDate = lastWeekStart.toISOString().split('T')[0];
+                endDate = lastWeekEnd.toISOString().split('T')[0];
+                break;
+            case 'month':
+                const monthAgo = new Date(today);
+                monthAgo.setDate(monthAgo.getDate() - 30);
+                startDate = monthAgo.toISOString().split('T')[0];
+                endDate = today.toISOString().split('T')[0];
+                break;
+            case 'last_month':
+                const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+                startDate = lastMonthStart.toISOString().split('T')[0];
+                endDate = lastMonthEnd.toISOString().split('T')[0];
+                break;
+            case 'custom':
+                startDate = document.getElementById('custom-start-date').value;
+                endDate = document.getElementById('custom-end-date').value;
+                break;
+            default:
+                startDate = endDate = today.toISOString().split('T')[0];
+        }
+        
+        try {
+            // Fetch individual orders for the selected period
+            const params = new URLSearchParams({
+                action: 'get_orders',
+                start_date: startDate,
+                end_date: endDate,
+                limit: 50 // Limit to 50 most recent orders
+            });
+            
+            const response = await fetch(`api/orders.php?${params}`);
+            if (!response.ok) throw new Error(`Server responded with ${response.status}`);
+            const result = await response.json();
+            
+            if (!result.success || !result.data || result.data.length === 0) {
+                ordersList.innerHTML = '<p class="text-slate-400 text-center py-4">No orders found for the selected period.</p>';
+                return;
+            }
+            
+            // Display individual orders
+            const ordersHtml = result.data.map(order => {
+                const orderDate = new Date(order.post_date);
+                const formattedDate = orderDate.toLocaleDateString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit'
+                });
+                
+                return `
+                    <div class="border-b border-slate-700 pb-3 mb-3 last:border-b-0">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <h4 class="text-sm font-medium text-white">Order #${order.ID}</h4>
+                                <p class="text-xs text-slate-400">${formattedDate}</p>
+                            </div>
+                            <span class="text-sm font-medium text-green-400">$${formatCurrency(order.total)}</span>
+                        </div>
+                        <div class="text-xs text-slate-300">
+                            <div class="flex justify-between">
+                                <span>Payment:</span>
+                                <span>${order.payment_method || 'N/A'}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Status:</span>
+                                <span class="capitalize">${order.status}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            ordersList.innerHTML = ordersHtml;
+            
+        } catch (error) {
+            console.error('Error fetching individual orders:', error);
+            ordersList.innerHTML = '<p class="text-slate-400 text-center py-4">Error loading orders.</p>';
+        }
+    }
+    
+    // Helper function to generate print preview
+    function generatePrintPreview(data, summary) {
+        const preview = document.getElementById('report-preview');
+        if (!preview) return;
+        
+        // Helper for currency formatting
+        function formatCurrency(val) {
+            return Number(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+        
+        const currentDate = new Date().toLocaleDateString();
+        const currentTime = new Date().toLocaleTimeString();
+        
+        preview.innerHTML = `
+            <div class="text-center mb-4">
+                <div class="font-bold text-lg">SALES REPORT</div>
+                <div class="text-sm">Generated: ${currentDate} ${currentTime}</div>
+            </div>
+            
+            <div class="border-t border-b py-2 my-2">
+                <div class="flex justify-between">
+                    <span>Total Orders:</span>
+                    <span class="font-bold">${summary.total_orders}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>Total Revenue:</span>
+                    <span class="font-bold">$${formatCurrency(summary.total_revenue)}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>Average Order:</span>
+                    <span class="font-bold">$${formatCurrency(summary.average_order_value)}</span>
+                </div>
+            </div>
+            
+            <div class="text-sm">
+                <div class="flex justify-between">
+                    <span>Cash Orders:</span>
+                    <span>${summary.cash_orders}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>Card Orders:</span>
+                    <span>${summary.card_orders}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>POS Orders:</span>
+                    <span>${summary.pos_orders}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>Online Orders:</span>
+                    <span>${summary.online_orders}</span>
+                </div>
+            </div>
+            
+            <div class="border-t mt-4 pt-2 text-center text-xs text-gray-600">
+                Report Period: Last 30 Days
+            </div>
+        `;
+    }
+    
+    // Helper function to add event listeners
+    function addReportEventListeners() {
+        const printBtn = document.getElementById('print-report-btn');
+        const datePickerBtn = document.getElementById('date-picker-btn');
+        const datePickerModal = document.getElementById('date-picker-modal');
+        const closeDatePicker = document.getElementById('close-date-picker');
+        const cancelDatePicker = document.getElementById('cancel-date-picker');
+        const applyDateRange = document.getElementById('apply-date-range');
+        const dateRangeBtns = document.querySelectorAll('.date-range-btn');
+        const applyCustomRange = document.getElementById('apply-custom-range');
+        const cashierSelect = document.getElementById('report-cashier');
+        
+        if (printBtn) {
+            printBtn.addEventListener('click', () => {
+                window.print();
+            });
+        }
+        
+        // Date picker modal controls
+        if (datePickerBtn) {
+            datePickerBtn.addEventListener('click', () => {
+                datePickerModal.classList.remove('hidden');
+            });
+        }
+        
+        if (closeDatePicker) {
+            closeDatePicker.addEventListener('click', () => {
+                datePickerModal.classList.add('hidden');
+            });
+        }
+        
+        if (cancelDatePicker) {
+            cancelDatePicker.addEventListener('click', () => {
+                datePickerModal.classList.add('hidden');
+            });
+        }
+        
+        if (applyDateRange) {
+            applyDateRange.addEventListener('click', () => {
+                datePickerModal.classList.add('hidden');
+                fetchReportsData();
+            });
+        }
+        
+        // Date range button selection
+        dateRangeBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                console.log('Date range button clicked:', e.target.dataset.period);
+                
+                // Remove active class from all buttons
+                dateRangeBtns.forEach(b => b.classList.remove('bg-blue-600'));
+                // Add active class to clicked button
+                e.target.classList.add('bg-blue-600');
+                
+                const period = e.target.dataset.period;
+                const periodInput = document.getElementById('report-period');
+                const dateRangeText = document.getElementById('date-range-text');
+                
+                console.log('Setting period to:', period);
+                if (periodInput) {
+                    periodInput.value = period;
+                    console.log('Period input updated to:', periodInput.value);
+                }
+                if (dateRangeText) {
+                    dateRangeText.textContent = e.target.textContent;
+                    console.log('Date range text updated to:', dateRangeText.textContent);
+                }
+                
+                // If custom range, show date inputs
+                if (period === 'custom') {
+                    document.getElementById('custom-start-date').style.display = 'block';
+                    document.getElementById('custom-end-date').style.display = 'block';
+                } else {
+                    document.getElementById('custom-start-date').style.display = 'none';
+                    document.getElementById('custom-end-date').style.display = 'none';
+                }
+            });
+        });
+        
+        // Custom range application
+        if (applyCustomRange) {
+            applyCustomRange.addEventListener('click', () => {
+                const startDate = document.getElementById('custom-start-date').value;
+                const endDate = document.getElementById('custom-end-date').value;
+                
+                if (startDate && endDate) {
+                    const periodInput = document.getElementById('report-period');
+                    const dateRangeText = document.getElementById('date-range-text');
+                    
+                    if (periodInput) periodInput.value = 'custom';
+                    if (dateRangeText) dateRangeText.textContent = `${startDate} to ${endDate}`;
+                }
+            });
+        }
+        
+        if (cashierSelect) {
+            cashierSelect.addEventListener('change', (e) => {
+                console.log('Cashier filter changed to:', e.target.value);
+                fetchReportsData();
+            });
+        }
+    }
+    
+    // Helper function to initialize date picker with default selection
+    function initializeDatePicker() {
+        // Set "Today" as default selection
+        const todayBtn = document.querySelector('.date-range-btn[data-period="today"]');
+        if (todayBtn) {
+            todayBtn.classList.add('bg-blue-600');
+        }
+        
+        // Set default values
+        const periodInput = document.getElementById('report-period');
+        const dateRangeText = document.getElementById('date-range-text');
+        
+        if (periodInput) periodInput.value = 'today';
+        if (dateRangeText) dateRangeText.textContent = 'Today';
+        
+        console.log('Date picker initialized with default selection: Today');
+    }
+    
     async function fetchSessions() {
         const container = document.getElementById('session-list'); 
         container.innerHTML = getSkeletonLoaderHtml('list-rows', 20);
@@ -3600,13 +4221,94 @@ document.addEventListener('DOMContentLoaded', () => {
         return Math.max(0, total);
     }
 
-    // PDF Export functionality removed
+    // PDF Export function for reports
+    async function exportReportsToPDF() {
+        const btn = document.getElementById('export-pdf-btn');
+        if (btn) btn.disabled = true;
+        try {
+            const res = await fetch('/jpos/api/export-pdf.php');
+            const result = await res.json();
+            if (!result.success) throw new Error(result.data?.message || 'Failed to generate PDF');
+            if (result.data && result.data.pdf_data) {
+                // TCPDF server-side PDF: download
+                const pdfBlob = b64toBlob(result.data.pdf_data, 'application/pdf');
+                const url = URL.createObjectURL(pdfBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = result.data.filename || 'sales_report.pdf';
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 100);
+            } else if (result.data && result.data.fallback) {
+                // Fallback: client-side PDF (simple)
+                await generateClientSidePDF(result.data.data);
+            } else {
+                throw new Error('Unexpected response from server.');
+            }
+        } catch (err) {
+            alert('Failed to export PDF: ' + err.message);
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    }
 
-    // PDF-related functions removed
+    // Helper: base64 to Blob
+    function b64toBlob(b64Data, contentType = '', sliceSize = 512) {
+        const byteCharacters = atob(b64Data);
+        const byteArrays = [];
+        for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+            const slice = byteCharacters.slice(offset, offset + sliceSize);
+            const byteNumbers = new Array(slice.length);
+            for (let i = 0; i < slice.length; i++) {
+                byteNumbers[i] = slice.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            byteArrays.push(byteArray);
+        }
+        return new Blob(byteArrays, { type: contentType });
+    }
+
+    // Fallback: very basic client-side PDF using jsPDF (if available)
+async function generateClientSidePDF(data) {
+    if (typeof window.jspdf === 'undefined') {
+        alert('PDF export is not available (jsPDF not loaded and TCPDF not available on server).');
+        return;
+    }
+    const doc = new window.jspdf.jsPDF();
+        doc.setFontSize(16);
+        doc.text(data.store_name + ' - Sales Report', 10, 15);
+        doc.setFontSize(12);
+        doc.text('Report Date: ' + data.report_date, 10, 25);
+        doc.text('Total Revenue: $' + (data.summary.total_revenue || 0).toFixed(2), 10, 35);
+        doc.text('Total Orders: ' + (data.summary.total_orders || 0), 10, 45);
+        doc.text('Average Order Value: $' + (data.summary.average_order_value || 0).toFixed(2), 10, 55);
+        doc.text('Cash Revenue: $' + (data.summary.cash_revenue || 0).toFixed(2), 10, 65);
+        doc.text('Card/Linx Revenue: $' + (data.summary.card_revenue || 0).toFixed(2), 10, 75);
+        doc.text('Cash Orders: ' + (data.summary.cash_orders || 0), 10, 85);
+        doc.text('Card/Linx Orders: ' + (data.summary.card_orders || 0), 10, 95);
+        doc.setFontSize(10);
+        doc.text('Daily Breakdown:', 10, 110);
+        let y = 120;
+        doc.setFont('courier', 'normal');
+        doc.text('Date      Revenue  Orders  CashRev  CardRev', 10, y);
+        y += 7;
+        data.daily_data.forEach(day => {
+            if (y > 270) { doc.addPage(); y = 20; }
+            doc.text(
+                `${day.order_date}  $${(day.daily_revenue || 0).toFixed(2)}   ${day.daily_orders}   $${(day.daily_cash_revenue || 0).toFixed(2)}   $${(day.daily_card_revenue || 0).toFixed(2)}`,
+                10, y
+            );
+            y += 7;
+        });
+        doc.save('sales_report_' + (data.report_date || '').replace(/\s+/g, '_') + '.pdf');
+    }
 
     // Make all page data functions globally available for routing system
     window.fetchOrders = fetchOrders;
-    // Reports functionality removed
+    window.fetchReportsData = fetchReportsData;
     window.fetchSessions = fetchSessions;
     window.renderStockList = renderStockList;
     window.populateSettingsForm = populateSettingsForm;
