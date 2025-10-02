@@ -2,6 +2,7 @@
 // FILE: /jpos/api/reports.php
 
 require_once __DIR__ . '/../../wp-load.php';
+require_once __DIR__ . '/database-optimizer.php';
 
 header('Content-Type: application/json');
 
@@ -21,22 +22,22 @@ $jpos_meta_check = "EXISTS (
 // Only consider orders from the last 30 days
 $thirty_days_ago = date('Y-m-d 00:00:00', strtotime('-29 days'));
 
-// Best practice: classify payment methods
+// Best practice: classify payment methods (using prepared statement placeholders)
 $cash_methods = [ 'Cash', 'cash', 'cod' ];
 $card_methods = [ 'Card', 'card', 'credit_card', 'debit', 'linx', 'Linx' ];
-$cash_methods_sql = implode(",", array_map(function($m) { return "'" . esc_sql($m) . "'"; }, $cash_methods));
-$card_methods_sql = implode(",", array_map(function($m) { return "'" . esc_sql($m) . "'"; }, $card_methods));
+$cash_placeholders = implode(',', array_fill(0, count($cash_methods), '%s'));
+$card_placeholders = implode(',', array_fill(0, count($card_methods), '%s'));
 
 $summary_query = $wpdb->prepare("
     SELECT
         SUM(pm.meta_value) as total_revenue,
         COUNT(p.ID) as total_orders,
-        SUM(CASE WHEN pm_payment.meta_value IN ($cash_methods_sql) THEN pm.meta_value ELSE 0 END) as cash_revenue,
-        COUNT(CASE WHEN pm_payment.meta_value IN ($cash_methods_sql) THEN 1 END) as cash_orders,
-        SUM(CASE WHEN pm_payment.meta_value IN ($card_methods_sql) THEN pm.meta_value ELSE 0 END) as card_revenue,
-        COUNT(CASE WHEN pm_payment.meta_value IN ($card_methods_sql) THEN 1 END) as card_orders,
-        SUM(CASE WHEN (pm_payment.meta_value NOT IN ($cash_methods_sql, $card_methods_sql) OR pm_payment.meta_value IS NULL) THEN pm.meta_value ELSE 0 END) as other_revenue,
-        COUNT(CASE WHEN (pm_payment.meta_value NOT IN ($cash_methods_sql, $card_methods_sql) OR pm_payment.meta_value IS NULL) THEN 1 END) as other_orders
+        SUM(CASE WHEN pm_payment.meta_value IN ($cash_placeholders) THEN pm.meta_value ELSE 0 END) as cash_revenue,
+        COUNT(CASE WHEN pm_payment.meta_value IN ($cash_placeholders) THEN 1 END) as cash_orders,
+        SUM(CASE WHEN pm_payment.meta_value IN ($card_placeholders) THEN pm.meta_value ELSE 0 END) as card_revenue,
+        COUNT(CASE WHEN pm_payment.meta_value IN ($card_placeholders) THEN 1 END) as card_orders,
+        SUM(CASE WHEN (pm_payment.meta_value NOT IN ($cash_placeholders) AND pm_payment.meta_value NOT IN ($card_placeholders) OR pm_payment.meta_value IS NULL) THEN pm.meta_value ELSE 0 END) as other_revenue,
+        COUNT(CASE WHEN (pm_payment.meta_value NOT IN ($cash_placeholders) AND pm_payment.meta_value NOT IN ($card_placeholders) OR pm_payment.meta_value IS NULL) THEN 1 END) as other_orders
     FROM {$wpdb->prefix}posts p
     JOIN {$wpdb->prefix}postmeta pm ON p.ID = pm.post_id
     LEFT JOIN {$wpdb->prefix}postmeta pm_payment ON p.ID = pm_payment.post_id AND pm_payment.meta_key = '_payment_method'
@@ -44,7 +45,7 @@ $summary_query = $wpdb->prepare("
     AND p.post_status IN {$valid_order_statuses}
     AND pm.meta_key = '_order_total'
     AND p.post_date >= %s
-", $thirty_days_ago);
+", array_merge($cash_methods, $card_methods, $cash_methods, $card_methods, $cash_methods, $card_methods, $cash_methods, $card_methods, [$thirty_days_ago]));
 
 $summary_results = $wpdb->get_row($summary_query);
 

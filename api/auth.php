@@ -5,59 +5,93 @@ ini_set('display_errors', 0); // Disable error display for security
 error_reporting(0);
 
 require_once __DIR__ . '/../../wp-load.php';
+require_once __DIR__ . '/validation.php';
+require_once __DIR__ . '/error_handler.php';
 
 header('Content-Type: application/json');
 
-$response = ['success' => false, 'message' => 'Invalid request.'];
-$data = json_decode(file_get_contents('php://input'), true);
+// Handle different request methods
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $data = JPOS_Error_Handler::safe_json_decode(file_get_contents('php://input'));
+} else {
+    $data = $_GET;
+}
+
 $action = $data['action'] ?? $_GET['action'] ?? null;
 
+if (!$action) {
+    JPOS_Error_Handler::send_error('Invalid request. Action parameter required.', 400);
+}
+
 if ($action === 'login') {
-    // Nonce check can be added here for extra security if desired
+    // CSRF Protection: Verify nonce for login requests
+    $nonce = $data['nonce'] ?? $_GET['nonce'] ?? '';
+    JPOS_Error_Handler::check_nonce($nonce, 'jpos_login_nonce');
+    
+    // Validate login input
+    $validated_data = JPOS_Validation::validate_input($data, [
+        'username' => ['type' => 'text', 'required' => true, 'min_length' => 3, 'max_length' => 60],
+        'password' => ['type' => 'text', 'required' => true, 'min_length' => 1]
+    ]);
+    
     $creds = [
-        'user_login'    => sanitize_user($data['username'] ?? '', true),
-        'user_password' => $data['password'] ?? '',
+        'user_login'    => sanitize_user($validated_data['username'], true),
+        'user_password' => $validated_data['password'],
         'remember'      => true,
     ];
 
     $user = wp_signon($creds, is_ssl());
 
     if (is_wp_error($user)) {
-        $response['message'] = 'Invalid username or password.';
+        JPOS_Error_Handler::send_error('Invalid username or password.', 401);
     } else {
         if (user_can($user, 'manage_woocommerce')) {
-            wp_set_current_user($user->ID);
-            wp_set_auth_cookie($user->ID, true, is_ssl());
+// REDUNDANT: wp_signon handles this -             wp_set_current_user($user->ID);
+// REDUNDANT: wp_signon handles this -             wp_set_auth_cookie($user->ID, true, is_ssl());
+            
 
-            $response = [
+            // Force the email to be included
+            $user_email = $user->user_email ?: 'admin@saylesstt.com';
+            
+            // Return data directly without JPOS_Error_Handler wrapper
+            wp_send_json([
                 'success' => true,
-                'message' => 'Login successful.',
                 'user' => [
                     'id' => $user->ID,
-                    'displayName' => $user->display_name
+                    'displayName' => $user->display_name,
+                    'email' => $user_email
                 ]
-            ];
+            ]);
         } else {
-            $response['message'] = 'You do not have permission to access the POS.';
+            JPOS_Error_Handler::send_error('You do not have permission to access the POS.', 403);
         }
     }
 } elseif ($action === 'logout') {
+    // CSRF Protection: Verify nonce for logout requests
+    $nonce = $data['nonce'] ?? $_GET['nonce'] ?? '';
+    JPOS_Error_Handler::check_nonce($nonce, 'jpos_logout_nonce');
+    
     wp_logout();
-    $response = ['success' => true, 'message' => 'Logged out successfully.'];
+    wp_send_json(['success' => true, 'message' => 'Logged out successfully.']);
 } elseif ($action === 'check_status') {
     if (is_user_logged_in() && current_user_can('manage_woocommerce')) {
         $current_user = wp_get_current_user();
-        $response = [
+        
+        $user_data = [
+            'id' => $current_user->ID,
+            'displayName' => $current_user->display_name,
+            'email' => $current_user->user_email ?: 'admin@saylesstt.com'
+        ];
+        
+        // Return data directly without JPOS_Error_Handler wrapper
+        wp_send_json([
             'success' => true,
             'loggedIn' => true,
-            'user' => [
-                'id' => $current_user->ID,
-                'displayName' => $current_user->display_name
-            ]
-        ];
+            'user' => $user_data
+        ]);
     } else {
-        $response = ['success' => true, 'loggedIn' => false];
+        wp_send_json(['success' => true, 'loggedIn' => false]);
     }
+} else {
+    JPOS_Error_Handler::send_error('Invalid action specified.', 400);
 }
-
-echo json_encode($response);

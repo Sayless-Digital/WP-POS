@@ -1,0 +1,6 @@
+[2025-10-02 01:46:24] [INFO] Test info message {"test":"data"}
+[2025-10-02 01:46:24] [WARNING] Test warning message
+[2025-10-02 01:46:24] [ERROR] Test error message
+[2025-10-02 01:46:24] [CRITICAL] Test critical message
+[2025-10-02 01:46:24] [INFO] API Request: GET /api/products.php {"endpoint":"\/api\/products.php","method":"GET","response_time":0.5,"status_code":200,"user_id":1}
+[2025-10-02 01:46:24] [INFO] API Request: POST /api/orders.php {"endpoint":"\/api\/orders.php","method":"POST","response_time":1.2,"status_code":201,"user_id":1}

@@ -2,31 +2,36 @@
 // FILE: /jpos/api/stock.php
 
 require_once __DIR__ . '/../../wp-load.php';
+require_once __DIR__ . '/error_handler.php';
 
 header('Content-Type: application/json');
 global $wpdb;
 
-if (!is_user_logged_in() || !current_user_can('manage_woocommerce')) {
-    wp_send_json_error(['message' => 'Authentication required.'], 403);
-    exit;
+JPOS_Error_Handler::check_auth();
+
+$data = JPOS_Error_Handler::safe_json_decode(file_get_contents('php://input'));
+$action = $data['action'] ?? $_GET['action'] ?? null;
+
+if (!$action) {
+    JPOS_Error_Handler::send_error('Invalid request. Action parameter required.', 400);
 }
 
-$response = ['success' => false, 'message' => 'Invalid request.'];
-$data = json_decode(file_get_contents('php://input'), true);
-$action = $data['action'] ?? $_GET['action'] ?? null;
+// CSRF Protection: Verify nonce for POST requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'update_variations') {
+    $nonce = $data['nonce'] ?? '';
+    JPOS_Error_Handler::check_nonce($nonce, 'jpos_stock_nonce');
+}
 
 if ($action === 'get_details') {
     $product_id = absint($_GET['id']);
     if (!$product_id) {
-        wp_send_json_error(['message' => 'Product ID is required.'], 400);
-        exit;
+        JPOS_Error_Handler::send_error('Product ID is required.', 400);
     }
 
     $product = wc_get_product($product_id);
 
     if (!$product) {
-        wp_send_json_error(['message' => 'Product not found.'], 404);
-        exit;
+        JPOS_Error_Handler::handle_not_found_error('Product');
     }
 
     $details = [

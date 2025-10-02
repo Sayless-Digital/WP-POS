@@ -1,0 +1,74 @@
+{
+    "database": {
+        "query_cache_ttl": 300,
+        "max_results_per_page": 100,
+        "enable_query_logging": false
+    },
+    "cache": {
+        "enabled": true,
+        "default_ttl": 300,
+        "cleanup_interval": 3600,
+        "max_cache_size": 52428800
+    },
+    "performance": {
+        "enable_bundling": true,
+        "enable_minification": true,
+        "enable_compression": true,
+        "lazy_load_images": true,
+        "max_products_per_request": 50,
+        "image_optimization": {
+            "default_size": "medium",
+            "fallback_size": "thumbnail",
+            "enable_webp": true,
+            "cache_image_urls": true
+        },
+        "pagination": {
+            "enabled": true,
+            "products_per_page": 20,
+            "load_more_threshold": 0.8
+        }
+    },
+    "api": {
+        "rate_limit_enabled": false,
+        "rate_limit_requests_per_minute": 100,
+        "enable_cors": false,
+        "cors_origins": []
+    },
+    "security": {
+        "enable_csrf_protection": true,
+        "session_timeout": 3600,
+        "max_login_attempts": 5,
+        "lockout_duration": 900
+    },
+    "ui": {
+        "default_theme": "dark",
+        "items_per_page": 20,
+        "auto_refresh_interval": 30000,
+        "show_debug_info": false
+    },
+    "receipt": {
+        "default_printer": "thermal",
+        "paper_width": 80,
+        "font_size": "normal",
+        "show_logo": true,
+        "show_qr_code": false
+    },
+    "payment": {
+        "default_method": "Cash",
+        "allow_split_payments": true,
+        "require_cash_drawer": true,
+        "auto_calculate_change": true
+    },
+    "inventory": {
+        "low_stock_threshold": 5,
+        "track_stock_levels": true,
+        "allow_negative_stock": false,
+        "auto_update_variations": true
+    },
+    "reports": {
+        "default_date_range": 30,
+        "cache_reports": true,
+        "auto_generate_daily": true,
+        "include_online_orders": true
+    }
+}

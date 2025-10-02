@@ -2,6 +2,9 @@
 // FILE: /jpos/api/products.php
 
 require_once __DIR__ . '/../../wp-load.php';
+require_once __DIR__ . '/database-optimizer.php';
+require_once __DIR__ . '/image-optimizer.php';
+require_once __DIR__ . '/performance-monitor.php';
 
 header('Content-Type: application/json');
 
@@ -12,13 +15,30 @@ if (!is_user_logged_in() || !current_user_can('manage_woocommerce')) {
 
 global $wpdb;
 
+// Start performance monitoring
+JPOS_Performance_Monitor::start_monitoring();
+
+// Get pagination parameters
+$page = max(1, intval($_GET['page'] ?? 1));
+$per_page = min(100, max(10, intval($_GET['per_page'] ?? 20))); // Default 20, max 100
+$offset = ($page - 1) * $per_page;
+
 try {
-    $all_posts = $wpdb->get_results("
+    // Get total count first for pagination
+    $total_count = $wpdb->get_var("
+        SELECT COUNT(*)
+        FROM {$wpdb->posts}
+        WHERE post_type = 'product' AND post_parent = 0 
+        AND post_status IN ('publish', 'private')
+    ");
+
+    $all_posts = $wpdb->get_results($wpdb->prepare("
         SELECT ID, post_title, post_parent, post_type, menu_order, post_status
         FROM {$wpdb->posts}
         WHERE post_type IN ('product', 'product_variation') AND post_status IN ('publish', 'private')
         ORDER BY menu_order, post_title ASC
-    ", OBJECT_K);
+        LIMIT %d OFFSET %d
+    ", $per_page * 3, $offset), OBJECT_K); // Load 3x per_page to get variations
 
     if (empty($all_posts)) {
         wp_send_json_success(['products' => [], 'categories' => [], 'tags' => []]);
@@ -27,11 +47,12 @@ try {
 
     $all_post_ids = implode(',', array_keys($all_posts));
     
+    // Optimized meta query - only get essential fields for better performance
     $all_meta_results = $wpdb->get_results("
         SELECT post_id, meta_key, meta_value
         FROM {$wpdb->postmeta}
         WHERE post_id IN ({$all_post_ids})
-        AND (meta_key LIKE 'attribute_%' OR meta_key IN ('_price', '_sku', '_stock_status', '_stock', '_manage_stock', '_thumbnail_id'))
+        AND meta_key IN ('_price', '_sku', '_stock_status', '_stock', '_manage_stock', '_thumbnail_id', '_sale_price', '_product_type')
     ");
     
     $meta_map = [];
@@ -71,11 +92,12 @@ try {
     }
     $image_urls = [];
     if (!empty($thumbnail_ids)) {
-        $upload_dir_info = wp_get_upload_dir();
-        $image_meta = $wpdb->get_results("SELECT post_id, meta_value FROM {$wpdb->postmeta} WHERE meta_key = '_wp_attached_file' AND post_id IN (" . implode(',', array_unique($thumbnail_ids)) . ")");
-        foreach ($image_meta as $img) {
-            $image_urls[$img->post_id] = $upload_dir_info['baseurl'] . '/' . $img->meta_value;
-        }
+        // Use optimized image URLs with caching and WebP support
+        $image_urls = JPOS_Image_Optimizer::get_bulk_optimized_urls(
+            $thumbnail_ids, 
+            'medium', // Optimal size for POS product cards
+            true // Enable WebP support
+        );
     }
     
     $products = [];
@@ -140,9 +162,26 @@ try {
     $product_categories = get_terms(['taxonomy' => 'product_cat', 'hide_empty' => true]);
     $product_tags = get_terms(['taxonomy' => 'product_tag', 'hide_empty' => true]);
 
+    // Calculate pagination info
+    $total_pages = ceil($total_count / $per_page);
+    
+    // End performance monitoring and log results
+    $performance_stats = JPOS_Performance_Monitor::end_monitoring();
+    JPOS_Performance_Monitor::log_performance('load_products', $performance_stats);
+
     wp_send_json_success([
         'products'   => array_values($products),
-        'categories' => $product_categories, 'tags' => $product_tags
+        'categories' => $product_categories, 
+        'tags' => $product_tags,
+        'pagination' => [
+            'current_page' => $page,
+            'per_page' => $per_page,
+            'total_count' => (int)$total_count,
+            'total_pages' => $total_pages,
+            'has_next' => $page < $total_pages,
+            'has_prev' => $page > 1
+        ],
+        'performance' => $performance_stats
     ]);
 
 } catch (Exception $e) {

@@ -2,6 +2,8 @@
 // FILE: /jpos/api/checkout.php
 
 require_once __DIR__ . '/../../wp-load.php';
+require_once __DIR__ . '/validation.php';
+require_once __DIR__ . '/error_handler.php';
 
 define('JPOS_SETTINGS_OPTION_KEY', 'jpos_receipt_settings');
 
@@ -14,14 +16,29 @@ if (!is_user_logged_in() || !current_user_can('manage_woocommerce')) {
 
 global $wpdb;
 
-$data = json_decode(file_get_contents('php://input'), true);
-if (json_last_error() !== JSON_ERROR_NONE) {
-    wp_send_json_error(['message' => 'Invalid JSON received.'], 400);
+$data = JPOS_Validation::validate_json_input(file_get_contents('php://input'));
+
+// CSRF Protection: Verify nonce for checkout requests
+$nonce = $data['nonce'] ?? '';
+if (!wp_verify_nonce($nonce, 'jpos_checkout_nonce')) {
+    wp_send_json_error(['message' => 'Security token invalid. Please refresh the page and try again.'], 403);
     exit;
 }
 
+// Validate checkout input
+$validated_data = JPOS_Validation::validate_input($data, [
+    'payment_method' => ['type' => 'text', 'required' => false, 'max_length' => 50],
+    'cart_items' => ['type' => 'text', 'required' => true] // Will be validated separately as array
+]);
+
+// Validate cart items structure
 $cart_items = $data['cart_items'] ?? [];
-$payment_method_title = sanitize_text_field($data['payment_method'] ?? 'Cash');
+if (!is_array($cart_items)) {
+    wp_send_json_error(['message' => 'Cart items must be an array.'], 400);
+    exit;
+}
+
+$payment_method_title = $validated_data['payment_method'] ?? 'Cash';
 $fee_discount_data = $data['fee_discount'] ?? null;
 $split_payments = $data['split_payments'] ?? null;
 $current_user = wp_get_current_user();

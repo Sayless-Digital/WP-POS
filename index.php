@@ -1,12 +1,20 @@
+<?php
+// Load WordPress to access nonce functions
+require_once __DIR__ . '/../wp-load.php';
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Modern POS</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛒</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <!-- JPOS Original JavaScript (temporarily reverting for debugging) -->
+    <script src="assets/js/main.js"></script>
     <style>
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
@@ -36,8 +44,13 @@
         #product-list, #stock-list-table tbody { grid-auto-rows: min-content; }
 
         /* Side menu transition */
-        #side-menu { transition: transform 0.3s ease-in-out; }
-        #side-menu.is-open { transform: translateX(0); }
+        #side-menu { 
+            transition: transform 0.3s ease-in-out; 
+            transform: translateX(-100%);
+        }
+        #side-menu.is-open { 
+            transform: translateX(0) !important; 
+        }
 
         /* Reusable Form Component Styles */
         .form-input {
@@ -131,6 +144,15 @@
 </head>
 <body class="bg-slate-900 text-slate-200 font-sans antialiased overflow-hidden">
 
+    <!-- CSRF Nonces for API Security -->
+    <input type="hidden" id="jpos-login-nonce" value="<?php echo wp_create_nonce('jpos_login_nonce'); ?>">
+    <input type="hidden" id="jpos-logout-nonce" value="<?php echo wp_create_nonce('jpos_logout_nonce'); ?>">
+    <input type="hidden" id="jpos-checkout-nonce" value="<?php echo wp_create_nonce('jpos_checkout_nonce'); ?>">
+    <input type="hidden" id="jpos-settings-nonce" value="<?php echo wp_create_nonce('jpos_settings_nonce'); ?>">
+    <input type="hidden" id="jpos-drawer-nonce" value="<?php echo wp_create_nonce('jpos_drawer_nonce'); ?>">
+    <input type="hidden" id="jpos-stock-nonce" value="<?php echo wp_create_nonce('jpos_stock_nonce'); ?>">
+    <input type="hidden" id="jpos-refund-nonce" value="<?php echo wp_create_nonce('jpos_refund_nonce'); ?>">
+
     <!-- Login Screen -->
     <div id="login-screen" class="app-overlay hidden">
         <div class="w-full max-w-sm p-8 space-y-6 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl">
@@ -192,9 +214,22 @@
     <!-- Main App Wrapper (Initially hidden) -->
     <div id="main-app" class="hidden">
         <!-- Slide-out Menu -->
-        <nav id="side-menu" class="fixed top-0 left-0 h-full w-64 bg-slate-900/80 backdrop-blur-lg border-r border-slate-700 z-50 transform -translate-x-full">
+        <nav id="side-menu" class="fixed top-0 left-0 h-full w-64 bg-slate-900/80 backdrop-blur-lg border-r border-slate-700 z-50">
             <div class="p-4">
-                <h2 class="text-2xl font-bold text-white mb-6">JPOS Menu</h2>
+                <!-- User Profile Section -->
+                <div id="user-profile-section" class="mb-6 p-3 bg-slate-800/50 rounded-lg border border-slate-600">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                            </svg>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div id="user-display-name" class="text-white font-semibold text-sm truncate">Loading...</div>
+                            <div id="user-email" class="text-slate-400 text-xs truncate">Loading...</div>
+                        </div>
+                    </div>
+                </div>
                 <ul class="space-y-2">
                     <li><button id="menu-button-pos" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path></svg>
@@ -252,7 +287,7 @@
                         <div class="ml-auto flex items-center gap-4 flex-shrink-0">
                              <div class="flex items-center gap-2">
                                 <div id="drawer-status-indicator" class="w-3 h-3 bg-gray-500 rounded-full" title="Drawer Closed"></div>
-                                <span id="user-display-name" class="text-sm font-medium"></span>
+                                <span id="header-user-display-name" class="text-sm font-medium"></span>
                             </div>
                             <button id="close-drawer-btn" class="text-xs font-bold px-3 py-1.5 rounded-md transition-colors"></button>
                             <button id="logout-btn" class="text-xs font-bold bg-slate-700 px-3 py-1.5 rounded-md hover:bg-slate-600 transition-colors">Logout</button>
@@ -576,7 +611,6 @@
   </div>
 </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="assets/js/main.js"></script>
     <div id="jpos-toast" style="display:none"></div>
     </body>
 </html>

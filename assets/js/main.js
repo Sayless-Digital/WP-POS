@@ -1,21 +1,158 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-    const appState = { 
-        user: null, drawer: { isOpen: false, data: null }, settings: {}, sessions: [], 
-        stockProduct: null, stockList: [], editingStockProduct: null, charts: {}, 
-        paymentMethod: 'Cash',
-        fee: { amount: '', label: '', amountType: 'flat' },
-        discount: { amount: '', label: '', amountType: 'flat' },
-        feeDiscount: { type: null, amount: '', label: '', amountType: 'flat' },
-        return_from_order_id: null,
-        return_from_order_items: [],
-        splitPayments: null,
+    // Centralized State Management
+    const appState = {
+        // Authentication & User
+        auth: {
+            user: null,
+            isLoggedIn: false
+        },
+        
+        // Cash Drawer Management
+        drawer: {
+            isOpen: false,
+            data: null,
+            openingAmount: 0,
+            closingAmount: 0
+        },
+        
+        // Product & Inventory Management
+        products: {
+            all: [],
+            currentForModal: null,
+            stockList: [],
+            editingProduct: null
+        },
+        
+        // Shopping Cart & Checkout
+        cart: {
+            items: [],
+            paymentMethod: 'Cash',
+            fee: { amount: '', label: '', amountType: 'flat' },
+            discount: { amount: '', label: '', amountType: 'flat' },
+            feeDiscount: { type: null, amount: '', label: '', amountType: 'flat' },
+            splitPayments: null
+        },
+        
+        // Orders Management
+        orders: {
+            all: [],
+            filters: { date: 'all', status: 'all', source: 'all', orderId: '' }
+        },
+        
+        // Product Filters
+        filters: {
+            search: '',
+            searchType: 'name',
+            stock: 'all',
+            category: 'all',
+            tag: 'all'
+        },
+        
+        // Stock Management Filters
+        stockFilters: {
+            stock: 'all',
+            category: 'all',
+            tag: 'all'
+        },
+        
+        // Returns & Refunds
+        returns: {
+            fromOrderId: null,
+            items: []
+        },
+        
+        // Application Settings
+        settings: {
+            receipt: {},
+            session: {
+                sessions: [],
+                charts: {}
+            }
+        },
+        
+        // Security Tokens
+        nonces: {
+            login: '',
+            logout: '',
+            checkout: '',
+            settings: '',
+            drawer: '',
+            stock: '',
+            refund: ''
+        },
+        
+        // UI State
+        ui: {
+            currentPage: 'products',
+            isLoading: false,
+            error: null
+        }
     };
 
-    let allProducts = [], cart = [], currentProductForModal = null, posOrders = [];
-    const filters = { search: '', searchType: 'name', stock: 'all', category: 'all', tag: 'all' };
-    const orderFilters = { date: 'all', status: 'all', source: 'all', orderId: '' };
-    const stockManagerFilters = { stock: 'all', category: 'all', tag: 'all' };
+    // State Management Utilities
+    function updateState(path, value) {
+        const keys = path.split('.');
+        let current = appState;
+        
+        for (let i = 0; i < keys.length - 1; i++) {
+            if (!current[keys[i]]) {
+                current[keys[i]] = {};
+            }
+            current = current[keys[i]];
+        }
+        
+        current[keys[keys.length - 1]] = value;
+        return current[keys[keys.length - 1]];
+    }
+    
+    function getState(path) {
+        const keys = path.split('.');
+        let current = appState;
+        
+        for (const key of keys) {
+            if (current && typeof current === 'object' && key in current) {
+                current = current[key];
+            } else {
+                return undefined;
+            }
+        }
+        
+        return current;
+    }
+    
+    function validateState() {
+        // Validate critical state consistency
+        if (appState.auth.isLoggedIn && !appState.auth.user) {
+            console.warn('State inconsistency: isLoggedIn is true but user is null');
+            appState.auth.isLoggedIn = false;
+        }
+        
+        if (appState.drawer.isOpen && !appState.drawer.data) {
+            console.warn('State inconsistency: drawer is open but data is null');
+        }
+        
+        // Validate cart consistency
+        if (appState.cart.items && !Array.isArray(appState.cart.items)) {
+            console.warn('State inconsistency: cart.items should be an array');
+            appState.cart.items = [];
+        }
+    }
+    
+    function resetState() {
+        // Reset state to initial values
+        appState.auth = { user: null, isLoggedIn: false };
+        appState.drawer = { isOpen: false, data: null, openingAmount: 0, closingAmount: 0 };
+        appState.cart.items = [];
+        appState.cart.paymentMethod = 'Cash';
+        appState.cart.fee = { amount: '', label: '', amountType: 'flat' };
+        appState.cart.discount = { amount: '', label: '', amountType: 'flat' };
+        appState.cart.feeDiscount = { type: null, amount: '', label: '', amountType: 'flat' };
+        appState.cart.splitPayments = null;
+        appState.returns.fromOrderId = null;
+        appState.returns.items = [];
+        appState.ui.error = null;
+    }
 
     function getSkeletonLoaderHtml(type = 'list-rows', count = null) {
         let rowHtml = '';
@@ -52,6 +189,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function init() {
         setupEventListeners();
+        await generateNonces(); // Generate nonces immediately for login form
         await checkAuthStatus();
     }
 
@@ -60,10 +198,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch('/jpos/api/auth.php?action=check_status');
             if (!response.ok) throw new Error(`Server responded with ${response.status}`);
             const result = await response.json();
-            if (result.success && result.loggedIn) {
-                appState.user = result.user;
+            
+            // Handle WordPress wp_send_json_success response structure
+            const loggedIn = result.data?.loggedIn || result.loggedIn;
+            const userData = result.data?.user || result.user;
+            
+            
+            if (result.success && loggedIn && userData) {
+                appState.auth.user = userData;
+                appState.auth.isLoggedIn = true;
                 await loadFullApp();
             } else {
+                console.log('Authentication failed - showing login screen');
                 showLoginScreen(true);
             }
         } catch (error) {
@@ -96,11 +242,47 @@ document.addEventListener('DOMContentLoaded', () => {
         showLoginScreen(false);
         setupMainAppEventListeners();
         document.getElementById('main-app').classList.remove('hidden');
-        document.getElementById('user-display-name').textContent = appState.user.displayName;
+        
+        // Update user profile information safely
+        const userDisplayName = document.getElementById('user-display-name'); // Side menu
+        const headerUserDisplayName = document.getElementById('header-user-display-name'); // Header
+        const userEmail = document.getElementById('user-email');
+        const userData = getState('auth.user');
+        
+        const displayName = getState('auth.user.displayName') || 'User';
+        const emailValue = getState('auth.user.email');
+        
+        
+        if (userDisplayName) {
+            userDisplayName.textContent = displayName;
+        }
+        if (headerUserDisplayName) {
+            headerUserDisplayName.textContent = displayName;
+        }
+        if (userEmail) {
+            userEmail.textContent = emailValue || 'No email';
+        }
+        await generateNonces();
         await loadReceiptSettings();
         await refreshAllData();
         showPage('pos-page', false);
-        await checkDrawerStatus(); 
+        await checkDrawerStatus();
+        validateState(); // Validate state after loading
+    }
+
+    async function generateNonces() {
+        try {
+            // Generate nonces for CSRF protection
+            appState.nonces.login = document.getElementById('jpos-login-nonce')?.value || '';
+            appState.nonces.logout = document.getElementById('jpos-logout-nonce')?.value || '';
+            appState.nonces.checkout = document.getElementById('jpos-checkout-nonce')?.value || '';
+            appState.nonces.settings = document.getElementById('jpos-settings-nonce')?.value || '';
+            appState.nonces.drawer = document.getElementById('jpos-drawer-nonce')?.value || '';
+            appState.nonces.stock = document.getElementById('jpos-stock-nonce')?.value || '';
+            appState.nonces.refund = document.getElementById('jpos-refund-nonce')?.value || '';
+        } catch (error) {
+            console.error('Error generating nonces:', error);
+        }
     }
 
     async function loadReceiptSettings() {
@@ -110,7 +292,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const result = await response.json();
             if (result.success) {
                 appState.settings = result.data;
-                console.log('Receipt settings loaded:', appState.settings);
             } else { throw new Error(result.message || 'Failed to parse settings.'); }
         } catch (error) {
             console.error("Could not load receipt settings.", error);
@@ -136,6 +317,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('product-list').innerHTML = `<p class="col-span-full text-center text-red-400">Error: Could not load product data. ${error.message}</p>`;
         }
     }
+
 
     function showLoginScreen(show, message = '') {
         const loginScreen = document.getElementById('login-screen');
@@ -205,7 +387,18 @@ document.addEventListener('DOMContentLoaded', () => {
         renderProducts();
     }
     
-    function toggleMenu() { document.getElementById('side-menu').classList.toggle('is-open'); document.getElementById('menu-overlay').classList.toggle('hidden'); }
+    function toggleMenu() { 
+        const sideMenu = document.getElementById('side-menu');
+        const menuOverlay = document.getElementById('menu-overlay');
+        
+        if (sideMenu) {
+            sideMenu.classList.toggle('is-open');
+        }
+        
+        if (menuOverlay) {
+            menuOverlay.classList.toggle('hidden');
+        }
+    }
     
     async function showPage(pageId, closeMenu = true) {
         document.querySelectorAll('section.page-content').forEach(page => page.classList.add('hidden'));
@@ -226,18 +419,25 @@ document.addEventListener('DOMContentLoaded', () => {
         button.disabled = true;
         document.getElementById('login-error').textContent = '';
         
-        const data = { action: 'login', username: form.username.value, password: form.password.value };
+        const data = { action: 'login', username: form.username.value, password: form.password.value, nonce: appState.nonces.login };
         try {
             const response = await fetch('/jpos/api/auth.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
             const responseText = await response.text();
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}, body: ${responseText}`);
             const result = JSON.parse(responseText);
             if (result.success) {
-                appState.user = result.user;
-                form.reset();
-                await loadFullApp();
+                // Handle WordPress wp_send_json_success response structure
+                const userData = result.data?.user || result.user;
+                if (userData) {
+                    updateState('auth.user', userData);
+                    updateState('auth.isLoggedIn', true);
+                    form.reset();
+                    await loadFullApp();
+                } else {
+                    showLoginScreen(true, 'Login successful but user data not received.');
+                }
             } else {
-                showLoginScreen(true, result.message || 'Login failed.');
+                showLoginScreen(true, result.message || result.data?.message || 'Login failed.');
             }
         } catch (error) {
             console.error("Login error details:", error);
@@ -248,13 +448,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     async function handleLogout() {
-        if (appState.drawer.isOpen) { alert("Please close the cash drawer before logging out."); return; }
-        await fetch('/jpos/api/auth.php?action=logout');
-        appState.user = null;
-        appState.drawer.isOpen = false;
+        if (getState('drawer.isOpen')) { alert("Please close the cash drawer before logging out."); return; }
+        await fetch('/jpos/api/auth.php?action=logout&nonce=' + encodeURIComponent(getState('nonces.logout')));
+        resetState();
         updateDrawerUI();
         showLoginScreen(true);
-        clearCart(true);
     }
 
     async function handleOpenDrawer(e) {
@@ -262,7 +460,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const amountInput = document.getElementById('opening-amount');
         const amount = parseFloat(amountInput.value);
         if (isNaN(amount) || amount < 0) { alert("Please enter a valid opening amount."); return; }
-        const data = { action: 'open', openingAmount: amount };
+        const data = { action: 'open', openingAmount: amount, nonce: appState.nonces.drawer };
         try {
             const response = await fetch('/jpos/api/drawer.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
             if (!response.ok) throw new Error(`Server responded with ${response.status}`);
@@ -279,7 +477,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const amountInput = document.getElementById('closing-amount');
         const amount = parseFloat(amountInput.value);
         if (isNaN(amount) || amount < 0) { alert("Please enter a valid closing amount."); return; }
-        const data = { action: 'close', closingAmount: amount };
+        const data = { action: 'close', closingAmount: amount, nonce: appState.nonces.drawer };
         try {
             const response = await fetch('/jpos/api/drawer.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
             if (!response.ok) throw new Error(`Server responded with ${response.status}`);
@@ -317,7 +515,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const drawerSummaryOkBtn = document.getElementById('drawer-summary-ok-btn');
         if (drawerSummaryOkBtn) drawerSummaryOkBtn.addEventListener('click', () => { showDrawerModal(false); });
         
-        document.querySelectorAll('.menu-toggle').forEach(btn => btn.addEventListener('click', toggleMenu));
+        document.querySelectorAll('.menu-toggle').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                toggleMenu();
+            });
+        });
         const menuOverlay = document.getElementById('menu-overlay');
         if (menuOverlay) menuOverlay.addEventListener('click', toggleMenu);
         
@@ -336,17 +539,17 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const searchInput = document.getElementById('search-input');
         if (searchInput) {
-            searchInput.addEventListener('input', e => { filters.search = e.target.value; renderProducts(); });
+            searchInput.addEventListener('input', e => { appState.filters.search = e.target.value; renderProducts(); });
             searchInput.addEventListener('keypress', handlePOSSearch);
         }
         const categoryFilter = document.getElementById('category-filter');
-        if (categoryFilter) categoryFilter.addEventListener('change', e => { filters.category = e.target.value; renderProducts(); });
+        if (categoryFilter) categoryFilter.addEventListener('change', e => { appState.filters.category = e.target.value; renderProducts(); });
         const tagFilter = document.getElementById('tag-filter');
-        if (tagFilter) tagFilter.addEventListener('change', e => { filters.tag = e.target.value; renderProducts(); });
+        if (tagFilter) tagFilter.addEventListener('change', e => { appState.filters.tag = e.target.value; renderProducts(); });
         const searchToggleBtn = document.getElementById('search-toggle-btn');
-        if (searchToggleBtn) searchToggleBtn.addEventListener('click', () => { const isName = filters.searchType === 'name'; filters.searchType = isName ? 'sku' : 'name'; document.getElementById('search-input').placeholder = isName ? 'Search by name...' : 'Search by SKU...'; document.getElementById('search-icon-name').classList.toggle('hidden', !isName); document.getElementById('search-icon-sku').classList.toggle('hidden', isName); renderProducts(); });
+        if (searchToggleBtn) searchToggleBtn.addEventListener('click', () => { const isName = appState.filters.searchType === 'name'; appState.filters.searchType = isName ? 'sku' : 'name'; document.getElementById('search-input').placeholder = isName ? 'Search by name...' : 'Search by SKU...'; document.getElementById('search-icon-name').classList.toggle('hidden', !isName); document.getElementById('search-icon-sku').classList.toggle('hidden', isName); renderProducts(); });
         const stockFilter = document.getElementById('stock-filter');
-        if (stockFilter) stockFilter.addEventListener('click', e => { const target = e.target.closest('button'); if (!target) return; filters.stock = target.dataset.value; document.querySelectorAll('#stock-filter button').forEach(btn => btn.dataset.state = 'inactive'); target.dataset.state = 'active'; renderProducts(); });
+        if (stockFilter) stockFilter.addEventListener('click', e => { const target = e.target.closest('button'); if (!target) return; appState.filters.stock = target.dataset.value; document.querySelectorAll('#stock-filter button').forEach(btn => btn.dataset.state = 'inactive'); target.dataset.state = 'active'; renderProducts(); });
         
         const checkoutBtn = document.getElementById('checkout-btn');
         if (checkoutBtn) checkoutBtn.addEventListener('click', processTransaction);
@@ -462,7 +665,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handlePOSSearch(e) {
         if (e.key !== 'Enter') return;
         e.preventDefault();
-        if (filters.searchType !== 'sku') return;
+        if (appState.filters.searchType !== 'sku') return;
         const searchInput = document.getElementById('search-input');
         const searchValue = searchInput.value.trim();
         if (!searchValue) return;
@@ -471,7 +674,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if(foundProduct) {
             await handleProductClick(foundProduct.id, searchValue);
             searchInput.value = '';
-            filters.search = '';
+            appState.filters.search = '';
             renderProducts();
         } else {
             alert('SKU not found');
@@ -481,17 +684,17 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderProducts() {
         const container = document.getElementById('product-list'); container.innerHTML = '';
         const filteredProducts = allProducts.filter(p => {
-            if (filters.searchType === 'sku') return true;
-            const searchLower = filters.search.toLowerCase();
-            const categoryMatch = filters.category === 'all' || (p.category_ids || []).includes(parseInt(filters.category));
-            const tagMatch = filters.tag === 'all' || (p.tag_ids || []).includes(parseInt(filters.tag));
+            if (appState.filters.searchType === 'sku') return true;
+            const searchLower = appState.filters.search.toLowerCase();
+            const categoryMatch = appState.filters.category === 'all' || (p.category_ids || []).includes(parseInt(appState.filters.category));
+            const tagMatch = appState.filters.tag === 'all' || (p.tag_ids || []).includes(parseInt(appState.filters.tag));
             let stockMatch;
-            if (filters.stock === 'private') {
+            if (appState.filters.stock === 'private') {
                 stockMatch = p.post_status === 'private';
             } else {
-                stockMatch = filters.stock === 'all' || p.stock_status === filters.stock;
+                stockMatch = appState.filters.stock === 'all' || p.stock_status === appState.filters.stock;
             }
-            const searchMatch = filters.search === '' || (p.name && p.name.toLowerCase().includes(searchLower));
+            const searchMatch = appState.filters.search === '' || (p.name && p.name.toLowerCase().includes(searchLower));
             return searchMatch && stockMatch && categoryMatch && tagMatch;
         });
 
@@ -506,6 +709,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 badgeHtml = `<div class="absolute top-2 left-2 bg-indigo-500/60 backdrop-blur-sm px-2 py-1 rounded-full text-xs font-bold text-white" style="height:1.5rem;display:flex;align-items:center;">Private</div>`;
             }
             el.className = `group flex flex-col cursor-pointer border border-slate-700 rounded-xl bg-slate-800 text-left hover:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all overflow-hidden relative ${isOutOfStock ? 'opacity-40' : ''} ${highlightClass}`;
+            // Use regular src for now to fix the disappearing image issue
             const imageHTML = p.image_url ? 
                 `<img src="${p.image_url}" alt="${p.name}" class="w-full h-full object-cover transition-transform group-hover:scale-105" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` : 
                 '';
@@ -1431,7 +1635,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const stockInput = row.querySelector('[data-field="stock_quantity"]');
             variationsData.push({ id: parseInt(row.dataset.vid, 10), sku: row.querySelector('[data-field="sku"]').value, price: parseFloat(row.querySelector('[data-field="price"]').value), stock_quantity: stockInput ? parseInt(stockInput.value, 10) : null });
         });
-        const payload = { action: 'update_variations', parent_id: product.id, variations: variationsData };
+        const payload = { action: 'update_variations', parent_id: product.id, variations: variationsData, nonce: appState.nonces.stock };
         try {
             const response = await fetch('/jpos/api/stock.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             if (!response.ok) throw new Error(`Server responded with ${response.status}`);
@@ -1455,7 +1659,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function saveSettings(event) {
         event.preventDefault(); const statusEl = document.getElementById('settings-status'); const saveBtn = event.target.querySelector('button[type="submit"]');
         saveBtn.disabled = true; statusEl.textContent = 'Saving...'; statusEl.className = 'ml-4 text-sm text-slate-400';
-        const data = { name: document.getElementById('setting-name').value, logo_url: document.getElementById('setting-logo-url').value, email: document.getElementById('setting-email').value, phone: document.getElementById('setting-phone').value, address: document.getElementById('setting-address').value, footer_message_1: document.getElementById('setting-footer1').value, footer_message_2: document.getElementById('setting-footer2').value, };
+        const data = { name: document.getElementById('setting-name').value, logo_url: document.getElementById('setting-logo-url').value, email: document.getElementById('setting-email').value, phone: document.getElementById('setting-phone').value, address: document.getElementById('setting-address').value, footer_message_1: document.getElementById('setting-footer1').value, footer_message_2: document.getElementById('setting-footer2').value, nonce: appState.nonces.settings };
         try {
             const response = await fetch('/jpos/api/settings.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
             if (!response.ok) throw new Error(`Server responded with ${response.status}`);
@@ -1472,8 +1676,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showReceipt(data) {
         const c = document.getElementById('receipt-content');
-        console.log('Showing receipt with settings:', appState.settings);
-        console.log('Logo URL:', appState.settings.logo_url);
         let itemsHTML = '';
         (data.items || []).forEach((item, index) => {
             itemsHTML += `<div class="grid grid-cols-12 gap-2 py-1 border-t border-dashed border-gray-400"><div class="col-span-1">${index + 1}</div><div class="col-span-6">${item.name}<br><span class="text-xs text-gray-500">SKU: ${item.sku || 'N/A'}</span></div><div class="col-span-2 text-center">${item.quantity}</div><div class="col-span-3 text-right">$${parseFloat(item.total).toFixed(2)}</div></div>`;
@@ -1529,7 +1731,7 @@ document.addEventListener('DOMContentLoaded', () => {
             '';
         
         c.innerHTML = `
-            <div class="text-center space-y-1 mb-4"> ${logoUrl ? `<img src="${logoUrl}" alt="Logo" class="w-24 h-auto mx-auto" onerror="this.style.display='none'; console.log('Logo failed to load:', this.src);" onload="console.log('Logo loaded successfully:', this.src);">` : ''} <p class="font-bold text-lg">${appState.settings.name || 'Your Store'}</p><p>${appState.settings.email || ''}</p><p>Phone: ${appState.settings.phone || ''}</p><p>${appState.settings.address || ''}</p></div>
+            <div class="text-center space-y-1 mb-4"> ${logoUrl ? `<img src="${logoUrl}" alt="Logo" class="w-24 h-auto mx-auto" onerror="this.style.display='none';">` : ''} <p class="font-bold text-lg">${appState.settings.name || 'Your Store'}</p><p>${appState.settings.email || ''}</p><p>Phone: ${appState.settings.phone || ''}</p><p>${appState.settings.address || ''}</p></div>
             <div class="space-y-1 border-t border-dashed border-gray-400 pt-2"><p>Order No: #${data.order_number}</p><p>Date: ${formatDateTime(data.date_created || data.date)}</p></div>
             <div class="mt-2"><div class="grid grid-cols-12 gap-2 font-bold py-1"><div class="col-span-1">#</div><div class="col-span-6">Item</div><div class="col-span-2 text-center">Qty</div><div class="col-span-3 text-right">Total</div></div>${itemsHTML}</div>
             <div class="mt-2 pt-2 border-t border-dashed border-gray-400 space-y-1">${totalsHTML}${paymentHTML}</div>
@@ -2229,6 +2431,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         payment_method: splits[0].method,
                     };
 
+                    payload.nonce = appState.nonces.refund;
                     const response = await fetch('/jpos/api/refund.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                     if (!response.ok) {
                         const errorData = await response.json().catch(() => ({message: `Server responded with ${response.status}`}));
@@ -2253,6 +2456,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (splits.length > 1) {
                         payload.split_payments = splits.map(s => ({ method: s.method, amount: parseFloat(s.amount) || 0 }));
                     }
+                    payload.nonce = appState.nonces.checkout;
                     const response = await fetch('/jpos/api/checkout.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                     if (!response.ok) {
                         const errorData = await response.json().catch(() => ({message: `Server responded with ${response.status}`}));

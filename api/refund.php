@@ -2,21 +2,19 @@
 // FILE: /jpos/api/refund.php
 
 require_once __DIR__ . '/../../wp-load.php';
+require_once __DIR__ . '/error_handler.php';
 
 header('Content-Type: application/json');
 
-if (!is_user_logged_in() || !current_user_can('manage_woocommerce')) {
-    wp_send_json_error(['message' => 'Authentication required.'], 403);
-    exit;
-}
+JPOS_Error_Handler::check_auth();
 
 global $wpdb;
 
-$data = json_decode(file_get_contents('php://input'), true);
-if (json_last_error() !== JSON_ERROR_NONE) {
-    wp_send_json_error(['message' => 'Invalid JSON received.'], 400);
-    exit;
-}
+$data = JPOS_Error_Handler::safe_json_decode(file_get_contents('php://input'));
+
+// CSRF Protection: Verify nonce for refund requests
+$nonce = $data['nonce'] ?? '';
+JPOS_Error_Handler::check_nonce($nonce, 'jpos_refund_nonce');
 
 $original_order_id = absint($data['original_order_id'] ?? 0);
 $refund_items = $data['refund_items'] ?? [];

@@ -2,6 +2,8 @@
 // FILE: /jpos/api/settings.php
 
 require_once __DIR__ . '/../../wp-load.php';
+require_once __DIR__ . '/validation.php';
+require_once __DIR__ . '/error_handler.php';
 
 header('Content-Type: application/json');
 
@@ -19,44 +21,52 @@ function get_jpos_default_settings() {
     ];
 }
 
-if (!is_user_logged_in() || !current_user_can('manage_woocommerce')) {
-    wp_send_json_error(['message' => 'Authentication required.'], 403);
-    exit;
-}
+JPOS_Error_Handler::check_auth();
 
 $request_method = $_SERVER['REQUEST_METHOD'];
 
 if ($request_method === 'GET') {
     $saved_settings = get_option(JPOS_SETTINGS_OPTION_KEY);
     $settings = wp_parse_args($saved_settings ?: [], get_jpos_default_settings());
-    wp_send_json_success($settings);
+    JPOS_Error_Handler::send_success($settings);
 
 } elseif ($request_method === 'POST') {
-    $data = json_decode(file_get_contents('php://input'), true);
+    $data = JPOS_Error_Handler::safe_json_decode(file_get_contents('php://input'));
 
-    if (empty($data)) {
-        wp_send_json_error(['message' => 'No data provided.'], 400);
-        exit;
-    }
+    // CSRF Protection: Verify nonce for settings update requests
+    $nonce = $data['nonce'] ?? '';
+    JPOS_Error_Handler::check_nonce($nonce, 'jpos_settings_nonce');
+
+    // Validate settings input
+    $validated_data = JPOS_Validation::validate_input($data, [
+        'name' => ['type' => 'text', 'required' => false, 'max_length' => 100],
+        'email' => ['type' => 'email', 'required' => false, 'max_length' => 100],
+        'phone' => ['type' => 'text', 'required' => false, 'max_length' => 20],
+        'address' => ['type' => 'text', 'required' => false, 'max_length' => 200],
+        'logo_url' => ['type' => 'url', 'required' => false],
+        'footer_message_1' => ['type' => 'text', 'required' => false, 'max_length' => 200],
+        'footer_message_2' => ['type' => 'text', 'required' => false, 'max_length' => 200]
+    ]);
 
     $current_settings = get_option(JPOS_SETTINGS_OPTION_KEY, get_jpos_default_settings());
 
-    if (isset($data['logo_url'])) $current_settings['logo_url'] = esc_url_raw($data['logo_url']);
-    if (isset($data['name'])) $current_settings['name'] = sanitize_text_field($data['name']);
-    if (isset($data['email'])) $current_settings['email'] = sanitize_email($data['email']);
-    if (isset($data['phone'])) $current_settings['phone'] = sanitize_text_field($data['phone']);
-    if (isset($data['address'])) $current_settings['address'] = sanitize_text_field($data['address']);
-    if (isset($data['footer_message_1'])) $current_settings['footer_message_1'] = sanitize_text_field($data['footer_message_1']);
-    if (isset($data['footer_message_2'])) $current_settings['footer_message_2'] = sanitize_text_field($data['footer_message_2']);
+    // Update settings with validated data
+    if (isset($validated_data['logo_url'])) $current_settings['logo_url'] = $validated_data['logo_url'];
+    if (isset($validated_data['name'])) $current_settings['name'] = $validated_data['name'];
+    if (isset($validated_data['email'])) $current_settings['email'] = $validated_data['email'];
+    if (isset($validated_data['phone'])) $current_settings['phone'] = $validated_data['phone'];
+    if (isset($validated_data['address'])) $current_settings['address'] = $validated_data['address'];
+    if (isset($validated_data['footer_message_1'])) $current_settings['footer_message_1'] = $validated_data['footer_message_1'];
+    if (isset($validated_data['footer_message_2'])) $current_settings['footer_message_2'] = $validated_data['footer_message_2'];
     
     $result = update_option(JPOS_SETTINGS_OPTION_KEY, $current_settings);
 
     if ($result) {
-        wp_send_json_success(['message' => 'Settings saved successfully.']);
+        JPOS_Error_Handler::send_success([], 'Settings saved successfully.');
     } else {
-        wp_send_json_success(['message' => 'Settings are unchanged.']);
+        JPOS_Error_Handler::send_success([], 'Settings are unchanged.');
     }
 
 } else {
-    wp_send_json_error(['message' => 'Invalid request method.'], 405);
+    JPOS_Error_Handler::send_error('Invalid request method.', 405);
 }

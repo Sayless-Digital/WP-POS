@@ -1,0 +1,3 @@
+[2025-10-02 01:46:24] [PERFORMANCE] api_request {"endpoint":"\/api\/products.php","method":"GET","response_time":0.5,"status_code":200}
+[2025-10-02 01:46:24] [PERFORMANCE] api_request {"endpoint":"\/api\/orders.php","method":"POST","response_time":1.2,"status_code":201}
+[2025-10-02 01:46:24] [PERFORMANCE] test_metric {"value":123,"unit":"ms"}

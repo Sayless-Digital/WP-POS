@@ -20,28 +20,35 @@ $limit = 100; // Limit the number of orders returned for performance
 $sql = "SELECT p.ID FROM {$wpdb->prefix}posts as p
      WHERE p.post_type = 'shop_order'";
 
-// Add source filter (POS vs Online orders)
+// Add source filter (POS vs Online orders) - using prepared statements
+$sql_params = [];
 if (isset($_GET['source_filter']) && !empty($_GET['source_filter']) && $_GET['source_filter'] !== 'all') {
     $source_filter = sanitize_text_field($_GET['source_filter']);
     if ($source_filter === 'pos') {
         // Only POS orders (created via JPOS)
         $sql .= " AND EXISTS (
             SELECT 1 FROM {$wpdb->prefix}postmeta pm
-            WHERE pm.post_id = p.ID AND pm.meta_key = '_created_via_jpos' AND pm.meta_value = '1'
+            WHERE pm.post_id = p.ID AND pm.meta_key = %s AND pm.meta_value = %s
         )";
+        $sql_params[] = '_created_via_jpos';
+        $sql_params[] = '1';
     } elseif ($source_filter === 'online') {
         // Only online orders (NOT created via JPOS)
         $sql .= " AND NOT EXISTS (
             SELECT 1 FROM {$wpdb->prefix}postmeta pm
-            WHERE pm.post_id = p.ID AND pm.meta_key = '_created_via_jpos' AND pm.meta_value = '1'
+            WHERE pm.post_id = p.ID AND pm.meta_key = %s AND pm.meta_value = %s
         )";
+        $sql_params[] = '_created_via_jpos';
+        $sql_params[] = '1';
     }
 } else {
     // Default: show all orders (both POS and online)
     $sql .= " AND EXISTS (
         SELECT 1 FROM {$wpdb->prefix}postmeta pm
-        WHERE pm.post_id = p.ID AND pm.meta_key = '_created_via_jpos' AND pm.meta_value = '1'
+        WHERE pm.post_id = p.ID AND pm.meta_key = %s AND pm.meta_value = %s
     )";
+    $sql_params[] = '_created_via_jpos';
+    $sql_params[] = '1';
 }
 
 // --- Append Date Filters ---

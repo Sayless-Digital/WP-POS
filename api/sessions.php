@@ -2,14 +2,12 @@
 // FILE: /jpos/api/sessions.php
 
 require_once __DIR__ . '/../../wp-load.php';
+require_once __DIR__ . '/error_handler.php';
 
 header('Content-Type: application/json');
 
 // --- AUTHENTICATION AND AUTHORIZATION ---
-if (!is_user_logged_in() || !current_user_can('manage_woocommerce')) {
-    wp_send_json_error(['message' => 'Authentication required.'], 403);
-    exit;
-}
+JPOS_Error_Handler::check_auth();
 // --- END AUTHENTICATION ---
 
 global $wpdb;
@@ -17,7 +15,10 @@ $table_name = $wpdb->prefix . 'jpos_drawer_history';
 
 // Fetch all closed sessions, most recent first.
 $sessions_raw = $wpdb->get_results(
-    "SELECT * FROM $table_name WHERE status = 'closed' ORDER BY time_closed DESC LIMIT 200",
+    $wpdb->prepare(
+        "SELECT * FROM $table_name WHERE status = %s ORDER BY time_closed DESC LIMIT 200",
+        'closed'
+    ),
     ARRAY_A // Get results as an associative array
 );
 

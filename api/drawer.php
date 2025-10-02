@@ -2,6 +2,8 @@
 // FILE: /jpos/api/drawer.php
 
 require_once __DIR__ . '/../../wp-load.php';
+require_once __DIR__ . '/validation.php';
+require_once __DIR__ . '/error_handler.php';
 
 header('Content-Type: application/json');
 global $wpdb;
@@ -34,14 +36,28 @@ if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") != $table_name) {
 }
 
 $response = ['success' => false, 'message' => 'Invalid request.'];
-$data = json_decode(file_get_contents('php://input'), true);
+$data = JPOS_Validation::validate_json_input(file_get_contents('php://input'));
 $action = $data['action'] ?? $_GET['action'] ?? null;
 
+// CSRF Protection: Verify nonce for POST requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($action, ['open', 'close'])) {
+    $nonce = $data['nonce'] ?? '';
+    if (!wp_verify_nonce($nonce, 'jpos_drawer_nonce')) {
+        wp_send_json_error(['message' => 'Security token invalid. Please refresh the page and try again.'], 403);
+        exit;
+    }
+}
+
 if ($action === 'open') {
+    // Validate opening amount
+    $validated_data = JPOS_Validation::validate_input($data, [
+        'openingAmount' => ['type' => 'float', 'required' => true, 'min' => 0]
+    ]);
+    
     $user_id = get_current_user_id();
     $user_info = get_userdata($user_id);
     $user_name = $user_info ? $user_info->display_name : 'Unknown';
-    $opening_amount = floatval($data['openingAmount']);
+    $opening_amount = $validated_data['openingAmount'];
 
     $open_drawer = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table_name WHERE user_id = %d AND status = 'open'", $user_id));
 
