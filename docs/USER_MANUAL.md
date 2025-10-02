@@ -69,6 +69,8 @@ The editor features two main views:
 - **Tag-based Interface**: Add/remove attribute options using tags
 - **Smart Search**: Type to search existing options from your database
 - **Database-driven**: All suggestions come from your actual product data (no hardcoded lists)
+- **Live Updates**: Suggestions update immediately when you add/remove options
+- **Persistent Options**: Removed options remain available for re-adding
 - **Multiple Attributes**: Each attribute maintains its own isolated options
 - **Visual Feedback**: Green checkmarks show already-added options
 
@@ -85,6 +87,8 @@ The JSON view includes:
 3. Review the JSON preview to verify your changes
 4. Click "Save Changes" to update the product
 5. The system will confirm successful updates
+6. **Dialog stays open** for additional edits - no need to reopen
+7. Click "Close" when finished editing
 
 ## Sales Process
 
@@ -301,6 +305,47 @@ Customize the interface:
 - User forums
 - Knowledge base
 - Feature requests
+
+## Troubleshooting
+
+### Product Editor Issues
+
+#### Attribute Options Not Showing
+- **Problem**: Attribute suggestions are empty or not loading
+- **Solution**: Ensure you're logged in as an admin user with proper permissions
+- **Check**: Verify the product has existing attributes in WordPress admin
+
+#### Suggestions Not Updating Live
+- **Problem**: When you add/remove options, suggestions don't update immediately
+- **Solution**: Refresh the page (Ctrl+F5) to ensure you have the latest version (v1.6.3+)
+- **Check**: Look for "JPOS v1.6.3 loaded" in browser console
+
+#### Dialog Closes After Save
+- **Problem**: Product editor closes automatically after saving
+- **Solution**: Update to version 1.6.3+ where dialog stays open for iterative editing
+- **Check**: Version should show "Keep dialog open after save" in console
+
+#### Tax Classes Not Loading
+- **Problem**: Tax classes dropdown is empty or shows error
+- **Solution**: Ensure WooCommerce is properly installed and configured
+- **Check**: Verify tax classes are set up in WooCommerce settings
+
+#### JSON View Not Highlighting
+- **Problem**: JSON preview shows plain text without colors
+- **Solution**: Refresh the page to reload the custom syntax highlighting
+- **Check**: Ensure JavaScript is enabled in your browser
+
+### General Issues
+
+#### Login Problems
+- **Problem**: Cannot log in to JPOS
+- **Solution**: Verify WordPress credentials and user permissions
+- **Check**: Ensure user has 'manage_woocommerce' capability
+
+#### Performance Issues
+- **Problem**: System is slow or unresponsive
+- **Solution**: Clear browser cache and check server resources
+- **Check**: Monitor system performance in the monitoring section
 
 ## Glossary
 

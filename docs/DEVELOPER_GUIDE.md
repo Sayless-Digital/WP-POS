@@ -195,6 +195,34 @@ Retrieve product catalog with filtering options.
 }
 ```
 
+## Complete API Reference
+
+### Authentication Endpoints
+- **POST** `/api/auth.php` - User login/logout
+- **GET** `/api/auth.php` - Check authentication status
+
+### Product Management
+- **GET** `/api/products.php` - Retrieve product catalog with filtering
+- **GET** `/api/product-edit-simple.php?action=get_product_details&id={id}` - Get product details for editing
+- **POST** `/api/product-edit-simple.php` - Update product data
+- **GET** `/api/product-edit-simple.php?action=get_tax_classes` - Get tax classes
+- **GET** `/api/stock.php` - Stock management operations
+
+### Order Processing
+- **GET** `/api/orders.php` - Fetch orders with filters
+- **POST** `/api/checkout.php` - Process checkout
+- **POST** `/api/refund.php` - Process refunds
+
+### Reporting & Analytics
+- **GET** `/api/reports.php` - Generate reports
+- **GET** `/api/reports-optimized.php` - Optimized reporting
+
+### System Management
+- **GET** `/api/settings.php` - Retrieve settings
+- **POST** `/api/settings.php` - Update settings
+- **GET** `/api/sessions.php` - Session management
+- **POST** `/api/drawer.php` - Cash drawer operations
+
 ### Product Editor Endpoints
 
 #### GET /api/product-edit-simple.php?action=get_product_details&id={product_id}
@@ -622,3 +650,6 @@ For technical support or questions:
 - v1.5.16: Cleaned up debugging code and finalized product editor implementation
 - v1.5.17: Production-ready comprehensive product editor with value-highlighted JSON preview
 - v1.6.0: Complete product editing system with database-driven attribute suggestions, tabbed interface (Form/JSON views), WordPress-style tag-based attribute options management, and attribute isolation for multiple attributes
+- v1.6.1: Fixed attribute options persistence and tax classes API - options now remain available after removal, added get_tax_classes action handler
+- v1.6.2: Fixed live state updates and tax classes API response structure - suggestions update immediately when options are added/removed
+- v1.6.3: Enhanced UX with persistent dialog for iterative editing and improved button labels (Cancel → Close)

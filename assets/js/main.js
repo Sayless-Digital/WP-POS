@@ -1,4 +1,4 @@
-// JPOS v1.6.3 - Keep dialog open after save and change Cancel to Close - CACHE BUST
+// JPOS v1.6.4 - Documentation update and API cleanup - CACHE BUST
 document.addEventListener('DOMContentLoaded', () => {
     console.log('JPOS v1.6.3 loaded - Keep dialog open after save and change Cancel to Close');
     // Initialize Routing Manager
@@ -2516,7 +2516,7 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.nonce = appState.nonces.productEdit;
         
         try {
-            const response = await fetch('api/product-edit.php', {
+            const response = await fetch('api/product-edit-simple.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

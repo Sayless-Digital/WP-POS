@@ -169,6 +169,45 @@ try {
         ]);
         exit;
         
+    } elseif ($action === 'update_product') {
+        // Handle POST requests for updating products
+        $input = file_get_contents('php://input');
+        $data = json_decode($input, true);
+        
+        if (!$data) {
+            JPOS_Error_Handler::send_error('Invalid JSON data', 400);
+        }
+        
+        $product_id = absint($data['id'] ?? 0);
+        if (!$product_id) {
+            JPOS_Error_Handler::send_error('Product ID required', 400);
+        }
+        
+        $product = wc_get_product($product_id);
+        if (!$product) {
+            JPOS_Error_Handler::send_error('Product not found', 404);
+        }
+        
+        // Update basic product data
+        if (isset($data['name'])) $product->set_name(sanitize_text_field($data['name']));
+        if (isset($data['sku'])) $product->set_sku(sanitize_text_field($data['sku']));
+        if (isset($data['price'])) $product->set_price(sanitize_text_field($data['price']));
+        if (isset($data['regular_price'])) $product->set_regular_price(sanitize_text_field($data['regular_price']));
+        if (isset($data['sale_price'])) $product->set_sale_price(sanitize_text_field($data['sale_price']));
+        if (isset($data['status'])) $product->set_status(sanitize_text_field($data['status']));
+        if (isset($data['stock_quantity'])) $product->set_stock_quantity(absint($data['stock_quantity']));
+        if (isset($data['manage_stock'])) $product->set_manage_stock($data['manage_stock'] === 'yes');
+        if (isset($data['stock_status'])) $product->set_stock_status(sanitize_text_field($data['stock_status']));
+        
+        // Save the product
+        $product->save();
+        
+        echo json_encode([
+            'success' => true,
+            'message' => 'Product updated successfully'
+        ]);
+        exit;
+        
     } else {
         JPOS_Error_Handler::send_error('Invalid action', 400);
     }
