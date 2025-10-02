@@ -1,6 +1,6 @@
-// JPOS v1.6.8 - Enhanced add attribute functionality with search/lookup system like existing attributes - CACHE BUST
+// JPOS v1.6.9 - Enhanced attribute search to show all options in scrollable format with filtering - CACHE BUST
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.6.8 loaded - Enhanced add attribute functionality with search/lookup system like existing attributes');
+    console.log('JPOS v1.6.9 loaded - Enhanced attribute search to show all options in scrollable format with filtering');
     // Initialize Routing Manager
     const routingManager = new RoutingManager();
 
@@ -2342,6 +2342,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const commonOptions = ['Red', 'Blue', 'Green', 'Yellow', 'Black', 'White', 'Gray', 'Brown', 'Pink', 'Purple', 'Orange', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'Small', 'Medium', 'Large', 'Extra Large', 'Cotton', 'Polyester', 'Wool', 'Silk', 'Leather', 'Denim', 'Linen', 'Cashmere', 'Nike', 'Adidas', 'Puma', 'Under Armour', 'Reebok', 'New Balance', 'Casual', 'Formal', 'Sport', 'Vintage', 'Modern', 'Classic', 'Trendy'];
         
         // Attribute name search functionality
+        nameInput.addEventListener('focus', function() {
+            showNewAttributeNameSuggestions(this.value, attributeSuggestions, nameSuggestions);
+        });
+        
         nameInput.addEventListener('input', function() {
             showNewAttributeNameSuggestions(this.value, attributeSuggestions, nameSuggestions);
         });
@@ -2356,6 +2360,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         // Attribute options search functionality
+        optionInput.addEventListener('focus', function() {
+            showNewAttributeOptionSuggestions(this.value, commonOptions, optionsContainer, optionSuggestions);
+        });
+        
         optionInput.addEventListener('input', function() {
             showNewAttributeOptionSuggestions(this.value, commonOptions, optionsContainer, optionSuggestions);
         });
@@ -2381,15 +2389,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Helper functions for new attribute functionality
     function showNewAttributeNameSuggestions(query, attributeSuggestions, suggestionsContainer) {
-        if (!query.trim()) {
-            hideNewAttributeNameSuggestions(suggestionsContainer);
-            return;
-        }
+        // Always show suggestions container, filter based on query
+        let filteredSuggestions;
         
-        // Filter suggestions based on query
-        const filteredSuggestions = attributeSuggestions.filter(attr => 
-            attr.toLowerCase().includes(query.toLowerCase())
-        ).slice(0, 5);
+        if (!query.trim()) {
+            // Show all suggestions when no query
+            filteredSuggestions = attributeSuggestions;
+        } else {
+            // Filter suggestions based on query
+            filteredSuggestions = attributeSuggestions.filter(attr => 
+                attr.toLowerCase().includes(query.toLowerCase())
+            );
+        }
         
         if (filteredSuggestions.length > 0) {
             suggestionsContainer.innerHTML = filteredSuggestions.map(suggestion => {
@@ -2400,14 +2411,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
             }).join('');
             suggestionsContainer.classList.remove('hidden');
-        } else {
-            // Show option to create new attribute
+        } else if (query.trim()) {
+            // Show option to create new attribute only when there's a query and no matches
             suggestionsContainer.innerHTML = `
                 <div class="px-3 py-2 text-sm text-blue-400 hover:bg-slate-600 cursor-pointer flex items-center" onclick="selectNewAttributeName('${query}', [], document.getElementById('new-attribute-name-suggestions'))">
                     + Create "${query}" as new attribute
                 </div>
             `;
             suggestionsContainer.classList.remove('hidden');
+        } else {
+            // Hide suggestions when no query and no suggestions
+            hideNewAttributeNameSuggestions(suggestionsContainer);
         }
     }
     
@@ -2422,21 +2436,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function showNewAttributeOptionSuggestions(query, commonOptions, optionsContainer, suggestionsContainer) {
-        if (!query.trim()) {
-            hideNewAttributeOptionSuggestions(suggestionsContainer);
-            return;
-        }
-        
         // Get existing options from the container
         const existingOptions = Array.from(optionsContainer.querySelectorAll('span')).map(el => 
             el.textContent.trim().split('×')[0].trim()
         );
         
-        // Filter suggestions based on query and exclude already added options
-        const filteredSuggestions = commonOptions.filter(option => 
-            option.toLowerCase().includes(query.toLowerCase()) && 
-            !existingOptions.includes(option)
-        ).slice(0, 8);
+        // Always show suggestions container, filter based on query
+        let filteredSuggestions;
+        
+        if (!query.trim()) {
+            // Show all suggestions when no query, excluding already added options
+            filteredSuggestions = commonOptions.filter(option => 
+                !existingOptions.includes(option)
+            );
+        } else {
+            // Filter suggestions based on query and exclude already added options
+            filteredSuggestions = commonOptions.filter(option => 
+                option.toLowerCase().includes(query.toLowerCase()) && 
+                !existingOptions.includes(option)
+            );
+        }
         
         if (filteredSuggestions.length > 0) {
             suggestionsContainer.innerHTML = filteredSuggestions.map(suggestion => {
@@ -2447,14 +2466,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
             }).join('');
             suggestionsContainer.classList.remove('hidden');
-        } else {
-            // Show option to create new option
+        } else if (query.trim()) {
+            // Show option to create new option only when there's a query and no matches
             suggestionsContainer.innerHTML = `
                 <div class="px-3 py-2 text-sm text-blue-400 hover:bg-slate-600 cursor-pointer flex items-center" onclick="addNewAttributeOption('${query}', document.getElementById('new-attribute-options'), document.getElementById('new-attribute-option-suggestions'))">
                     + Create "${query}" as new option
                 </div>
             `;
             suggestionsContainer.classList.remove('hidden');
+        } else {
+            // Hide suggestions when no query and no suggestions
+            hideNewAttributeOptionSuggestions(suggestionsContainer);
         }
     }
     
