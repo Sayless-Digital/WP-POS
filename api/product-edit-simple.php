@@ -177,6 +177,49 @@ try {
         ]);
         exit;
         
+    } elseif ($action === 'get_available_attributes') {
+        // Get all available product attributes from the system
+        $available_attributes = [];
+        
+        // Get global attributes (taxonomies)
+        $global_attributes = wc_get_attribute_taxonomies();
+        foreach ($global_attributes as $attribute) {
+            $available_attributes[] = [
+                'name' => $attribute->attribute_name,
+                'label' => $attribute->attribute_label,
+                'type' => 'taxonomy',
+                'slug' => 'pa_' . $attribute->attribute_name
+            ];
+        }
+        
+        // Get common custom attribute names from existing products
+        global $wpdb;
+        $custom_attrs = $wpdb->get_results("
+            SELECT DISTINCT meta_key 
+            FROM {$wpdb->postmeta} 
+            WHERE meta_key LIKE '_product_attributes%' 
+            AND meta_key NOT LIKE '%pa_%'
+            LIMIT 50
+        ");
+        
+        foreach ($custom_attrs as $attr) {
+            $attr_name = str_replace('_product_attributes_', '', $attr->meta_key);
+            if (!empty($attr_name)) {
+                $available_attributes[] = [
+                    'name' => $attr_name,
+                    'label' => ucwords(str_replace('_', ' ', $attr_name)),
+                    'type' => 'custom',
+                    'slug' => $attr_name
+                ];
+            }
+        }
+        
+        echo json_encode([
+            'success' => true,
+            'attributes' => $available_attributes
+        ]);
+        exit;
+        
     } elseif ($action === 'update_product') {
         // Handle POST requests for updating products
         $input = file_get_contents('php://input');

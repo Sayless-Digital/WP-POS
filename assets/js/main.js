@@ -1,6 +1,6 @@
-// JPOS v1.6.6 - Enhanced variation attributes styling to match attribute options prominence - CACHE BUST
+// JPOS v1.6.7 - Enhanced add attribute functionality with existing attribute selection and new attribute creation - CACHE BUST
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.6.6 loaded - Enhanced variation attributes styling to match attribute options prominence');
+    console.log('JPOS v1.6.7 loaded - Enhanced add attribute functionality with existing attribute selection and new attribute creation');
     // Initialize Routing Manager
     const routingManager = new RoutingManager();
 
@@ -2259,45 +2259,97 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function addAttributeRow() {
+    async function addAttributeRow() {
         const container = document.getElementById('product-attributes');
         const attributeRow = document.createElement('div');
         attributeRow.className = 'bg-slate-600 p-3 rounded border border-slate-500';
+        
+        // Load available attributes
+        let availableAttributes = [];
+        try {
+            const response = await fetch('api/product-edit-simple.php?action=get_available_attributes');
+            if (response.ok) {
+                const result = await response.json();
+                if (result.success) {
+                    availableAttributes = result.attributes || [];
+                }
+            }
+        } catch (error) {
+            console.error('Error loading available attributes:', error);
+        }
+        
+        // Create options for existing attributes
+        const existingOptions = availableAttributes.map(attr => 
+            `<option value="${attr.slug}" data-type="${attr.type}" data-label="${attr.label}">${attr.label} (${attr.type})</option>`
+        ).join('');
+        
         attributeRow.innerHTML = `
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
                 <div>
-                    <label class="block text-xs text-slate-300 mb-1">Attribute Name</label>
-                    <input type="text" placeholder="e.g., Color, Size" class="w-full px-2 py-1 bg-slate-600 text-slate-200 rounded border border-slate-500 text-sm">
+                    <label class="block text-xs text-slate-300 mb-1">Select Existing or Create New</label>
+                    <select id="attribute-selector" class="w-full px-2 py-1 bg-slate-600 text-slate-200 rounded border border-slate-500 text-sm">
+                        <option value="">Choose an existing attribute...</option>
+                        ${existingOptions}
+                        <option value="new">+ Create New Attribute</option>
+                    </select>
                 </div>
                 <div>
                     <label class="block text-xs text-slate-300 mb-1">Type</label>
-                    <select class="w-full px-2 py-1 bg-slate-600 text-slate-200 rounded border border-slate-500 text-sm">
+                    <select id="attribute-type" class="w-full px-2 py-1 bg-slate-600 text-slate-200 rounded border border-slate-500 text-sm">
                         <option value="custom">Custom</option>
                         <option value="taxonomy">Taxonomy</option>
                     </select>
                 </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
+                <div id="attribute-name-container" class="hidden">
+                    <label class="block text-xs text-slate-300 mb-1">Attribute Name</label>
+                    <input type="text" id="attribute-name-input" placeholder="e.g., Color, Size" class="w-full px-2 py-1 bg-slate-600 text-slate-200 rounded border border-slate-500 text-sm">
+                </div>
                 <div>
                     <label class="block text-xs text-slate-300 mb-1">Options (comma-separated)</label>
                     <input type="text" placeholder="e.g., Red, Blue, Green" class="w-full px-2 py-1 bg-slate-600 text-slate-200 rounded border border-slate-500 text-sm">
                 </div>
-                <div class="flex items-center space-x-4">
-                    <label class="flex items-center">
-                        <input type="checkbox" class="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500">
-                        <span class="ml-2 text-xs text-slate-300">Visible</span>
-                    </label>
-                    <label class="flex items-center">
-                        <input type="checkbox" class="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500">
-                        <span class="ml-2 text-xs text-slate-300">Variation</span>
-                    </label>
-                </div>
+            </div>
+            <div class="flex items-center space-x-4 mb-3">
+                <label class="flex items-center">
+                    <input type="checkbox" class="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500">
+                    <span class="ml-2 text-xs text-slate-300">Visible</span>
+                </label>
+                <label class="flex items-center">
+                    <input type="checkbox" class="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500">
+                    <span class="ml-2 text-xs text-slate-300">Variation</span>
+                </label>
             </div>
             <div class="flex justify-end">
                 <button type="button" onclick="this.parentElement.parentElement.remove()" class="px-2 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-500">Remove</button>
             </div>
         `;
         container.appendChild(attributeRow);
+        
+        // Add event listeners for the new functionality
+        const selector = attributeRow.querySelector('#attribute-selector');
+        const typeSelect = attributeRow.querySelector('#attribute-type');
+        const nameContainer = attributeRow.querySelector('#attribute-name-container');
+        const nameInput = attributeRow.querySelector('#attribute-name-input');
+        
+        selector.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            if (this.value === 'new') {
+                // Show name input for new attribute
+                nameContainer.classList.remove('hidden');
+                nameInput.required = true;
+            } else if (this.value) {
+                // Hide name input and set type based on selection
+                nameContainer.classList.add('hidden');
+                nameInput.required = false;
+                typeSelect.value = selectedOption.dataset.type || 'custom';
+            } else {
+                // Hide name input
+                nameContainer.classList.add('hidden');
+                nameInput.required = false;
+            }
+        });
     }
 
     function addVariationRow() {
