@@ -356,6 +356,12 @@ php tests/php/test-database-optimizer.php
 - **Solution**: Ensure all order-related functions use `appState.orders.filters` and `appState.orders.all`
 - **Prevention**: Always use centralized state management (`appState`) instead of global variables
 
+#### Stock Manager Loading Issues
+- **Symptom**: Stock manager page shows empty table or doesn't load product data
+- **Cause**: JavaScript variable reference errors (`allProducts`, `stockManagerFilters`, `currentProductForModal` not defined)
+- **Solution**: Use `appState.products.all`, `appState.stockFilters`, and `appState.products.currentForModal`
+- **Prevention**: Always use centralized state management (`appState`) instead of global variables
+
 ### Debug Mode
 Enable debug mode in configuration for detailed error information:
 

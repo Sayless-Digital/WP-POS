@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-
+    // Cache bust: Fixed stock manager variable references - v1.5.2
     // Initialize Routing Manager
     const routingManager = new RoutingManager();
 
@@ -315,7 +315,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const result = await response.json();
             if(!result.success) throw new Error(result.data.message || 'Failed to load products.');
 
-            allProducts = result.data.products || [];
+            appState.products.all = result.data.products || [];
             if (document.getElementById('category-filter').options.length <= 1) {
                 buildFilterUI(result.data.categories || [], result.data.tags || []);
             }
@@ -607,9 +607,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const smCat = document.getElementById('stock-manager-category-filter');
         const smTag = document.getElementById('stock-manager-tag-filter');
         const smStock = document.getElementById('stock-manager-stock-filter');
-        if (smCat) smCat.addEventListener('change', e => { stockManagerFilters.category = e.target.value; renderStockList(); });
-        if (smTag) smTag.addEventListener('change', e => { stockManagerFilters.tag = e.target.value; renderStockList(); });
-        if (smStock) smStock.addEventListener('click', e => { const target = e.target.closest('button'); if (!target) return; stockManagerFilters.stock = target.dataset.value; document.querySelectorAll('#stock-manager-stock-filter button').forEach(btn => btn.dataset.state = 'inactive'); target.dataset.state = 'active'; renderStockList(); });
+        if (smCat) smCat.addEventListener('change', e => { appState.stockFilters.category = e.target.value; renderStockList(); });
+        if (smTag) smTag.addEventListener('change', e => { appState.stockFilters.tag = e.target.value; renderStockList(); });
+        if (smStock) smStock.addEventListener('click', e => { const target = e.target.closest('button'); if (!target) return; appState.stockFilters.stock = target.dataset.value; document.querySelectorAll('#stock-manager-stock-filter button').forEach(btn => btn.dataset.state = 'inactive'); target.dataset.state = 'active'; renderStockList(); });
         const refreshPosBtn = document.getElementById('refresh-pos-btn');
         if (refreshPosBtn) refreshPosBtn.addEventListener('click', () => {
             // Hard refresh: force reload from server, bypass cache
@@ -678,7 +678,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const searchValue = searchInput.value.trim();
         if (!searchValue) return;
         
-        const foundProduct = allProducts.find(p => p.sku === searchValue || (p.variations && p.variations.some(v => v.sku === searchValue)));
+        const foundProduct = appState.products.all.find(p => p.sku === searchValue || (p.variations && p.variations.some(v => v.sku === searchValue)));
         if(foundProduct) {
             await handleProductClick(foundProduct.id, searchValue);
             searchInput.value = '';
@@ -691,7 +691,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderProducts() {
         const container = document.getElementById('product-list'); container.innerHTML = '';
-        const filteredProducts = allProducts.filter(p => {
+        const filteredProducts = appState.products.all.filter(p => {
             if (appState.filters.searchType === 'sku') return true;
             const searchLower = appState.filters.search.toLowerCase();
             const categoryMatch = appState.filters.category === 'all' || (p.category_ids || []).includes(parseInt(appState.filters.category));
@@ -747,16 +747,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function handleProductClick(productId, preselectedSku = null) {
-        const product = allProducts.find(p => p.id === productId); if (!product || product.stock_status === 'outofstock') return;
+        const product = appState.products.all.find(p => p.id === productId); if (!product || product.stock_status === 'outofstock') return;
         if (product.type === 'simple') { addToCart(product, 1); }
-        else { currentProductForModal = product; await showVariationModal(preselectedSku); }
+        else { appState.products.currentForModal = product; await showVariationModal(preselectedSku); }
     }
 
     async function showVariationModal(preselectedSku = null) {
-        if (!currentProductForModal) return;
-        document.getElementById('modal-product-name').textContent = currentProductForModal.name;
-        document.getElementById('modal-product-sku').textContent = `SKU: ${currentProductForModal.sku || 'N/A'}`;
-        document.getElementById('modal-image').src = currentProductForModal.image_url || '';
+        if (!appState.products.currentForModal) return;
+        document.getElementById('modal-product-name').textContent = appState.products.currentForModal.name;
+        document.getElementById('modal-product-sku').textContent = `SKU: ${appState.products.currentForModal.sku || 'N/A'}`;
+        document.getElementById('modal-image').src = appState.products.currentForModal.image_url || '';
         const optionsContainer = document.getElementById('modal-options-container');
         optionsContainer.innerHTML = '';
         
@@ -782,7 +782,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- END HELD STOCK LOGIC ---
 
         const attributes = {};
-        (currentProductForModal.variations || []).forEach(v => { for (const key in v.attributes) { if (!attributes[key]) attributes[key] = new Set(); attributes[key].add(v.attributes[key]); } });
+        (appState.products.currentForModal.variations || []).forEach(v => { for (const key in v.attributes) { if (!attributes[key]) attributes[key] = new Set(); attributes[key].add(v.attributes[key]); } });
 
         Object.entries(attributes).forEach(([attrKey, attrValues]) => {
             const attrDiv = document.createElement('div');
@@ -804,7 +804,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 let isSwatchHeld = false;
                 let heldCount = 0;
                 let totalStock = 0;
-                for (const v of currentProductForModal.variations) {
+                for (const v of appState.products.currentForModal.variations) {
                     if (v.attributes[attrKey] === optionValue) {
                         let availableQty = v.stock_quantity;
                         if (typeof availableQty === 'number') {
@@ -842,7 +842,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     swatch.style.pointerEvents = 'auto';
                     swatch.innerHTML = `<span>${optionValue.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span> <span style='color: orange; font-weight: bold; text-decoration:underline;' class='ml-1'>(Held: ${heldCount})</span>`;
                     let swatchVariationId = null;
-                    for (const v2 of currentProductForModal.variations) {
+                    for (const v2 of appState.products.currentForModal.variations) {
                         if (v2.attributes[attrKey] === optionValue) {
                             swatchVariationId = v2.id;
                             break;
@@ -888,7 +888,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         Object.entries(attributes).forEach(([attrKey, attrValues]) => {
             const availableOptionsForAttr = [...attrValues].filter(optionValue => {
-                for (const v of currentProductForModal.variations) {
+                for (const v of appState.products.currentForModal.variations) {
                     if (v.attributes[attrKey] === optionValue) {
                         // Check if this variation is effectively in stock (considering held stock)
                         if (v.stock_status === 'instock') {
@@ -923,7 +923,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('variation-modal').classList.remove('hidden');
 
         if(preselectedSku) {
-            const targetVariation = currentProductForModal.variations.find(v => v.sku === preselectedSku);
+            const targetVariation = appState.products.currentForModal.variations.find(v => v.sku === preselectedSku);
             if (targetVariation) {
                 Object.entries(targetVariation.attributes).forEach(([attr, val]) => {
                     const swatch = document.querySelector(`#modal-options-container [data-attribute="${attr}"] [data-value="${val}"]`);
@@ -959,7 +959,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (allOptionsSelected) {
-            const matchedVariation = currentProductForModal.variations.find(v => Object.keys(selectedOptions).every(key => v.attributes[key] === selectedOptions[key]));
+            const matchedVariation = appState.products.currentForModal.variations.find(v => Object.keys(selectedOptions).every(key => v.attributes[key] === selectedOptions[key]));
             if (matchedVariation && matchedVariation.stock_status === 'instock') {
                 priceDisplayEl.textContent = `$${parseFloat(matchedVariation.price).toFixed(2)}`;
             } else {
@@ -987,7 +987,7 @@ document.addEventListener('DOMContentLoaded', () => {
         addToCartBtn.disabled = true;
 
         if (allOptionsSelected) {
-            const matchedVariation = currentProductForModal.variations.find(v => Object.keys(selectedOptions).every(key => v.attributes[key] === selectedOptions[key]));
+            const matchedVariation = appState.products.currentForModal.variations.find(v => Object.keys(selectedOptions).every(key => v.attributes[key] === selectedOptions[key]));
             
             if (matchedVariation) {
                 if (matchedVariation.stock_status === 'instock') {
@@ -1013,9 +1013,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function addVariationToCart() {
         if (!appState.drawer.isOpen) { showDrawerModal('open'); return; }
         const selectedOptions = {}; document.querySelectorAll('#modal-options-container [data-attribute]').forEach(group => { const selectedBtn = group.querySelector('.bg-indigo-600'); if (selectedBtn) { selectedOptions[group.dataset.attribute] = selectedBtn.dataset.value; } });
-        const matchedVariation = currentProductForModal.variations.find(v => Object.keys(selectedOptions).every(key => v.attributes[key] === selectedOptions[key]));
+        const matchedVariation = appState.products.currentForModal.variations.find(v => Object.keys(selectedOptions).every(key => v.attributes[key] === selectedOptions[key]));
         if (matchedVariation) {
-            const variationForCart = { ...matchedVariation, name: `${currentProductForModal.name} - ${Object.values(matchedVariation.attributes).map(v => v.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())).join(', ')}` };
+            const variationForCart = { ...matchedVariation, name: `${appState.products.currentForModal.name} - ${Object.values(matchedVariation.attributes).map(v => v.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())).join(', ')}` };
             addToCart(variationForCart, 1);
             document.getElementById('variation-modal').classList.add('hidden');
         }
@@ -1335,7 +1335,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (originalItem) {
                     // Find full product info to get image_url
-                    const fullProductInfo = allProducts.find(p => p.id === originalItem.id) || (allProducts.find(p => p.variations && p.variations.find(v => v.id === originalItem.id))?.variations.find(v => v.id === originalItem.id));
+                    const fullProductInfo = appState.products.all.find(p => p.id === originalItem.id) || (appState.products.all.find(p => p.variations && p.variations.find(v => v.id === originalItem.id))?.variations.find(v => v.id === originalItem.id));
                     
                     const itemDataForCart = {
                         ...originalItem,
@@ -1553,15 +1553,22 @@ document.addEventListener('DOMContentLoaded', () => {
         tbody.innerHTML = '';
         const filterText = document.getElementById('stock-list-filter').value.toLowerCase();
         
-        const filteredList = allProducts.filter(p => { 
+        // Debug: Check if appState is properly initialized
+        if (!appState || !appState.products || !appState.stockFilters) {
+            console.error('JPOS: appState not properly initialized in renderStockList');
+            tbody.innerHTML = '<tr><td colspan="6" class="p-10 text-center text-red-400">Error: State not initialized</td></tr>';
+            return;
+        }
+        
+        const filteredList = appState.products.all.filter(p => { 
             const textMatch = p.name.toLowerCase().includes(filterText) || (p.sku && p.sku.toLowerCase().includes(filterText));
-            const categoryMatch = stockManagerFilters.category === 'all' || (p.category_ids || []).includes(parseInt(stockManagerFilters.category));
-            const tagMatch = stockManagerFilters.tag === 'all' || (p.tag_ids || []).includes(parseInt(stockManagerFilters.tag));
+            const categoryMatch = appState.stockFilters.category === 'all' || (p.category_ids || []).includes(parseInt(appState.stockFilters.category));
+            const tagMatch = appState.stockFilters.tag === 'all' || (p.tag_ids || []).includes(parseInt(appState.stockFilters.tag));
             let stockMatch;
-            if (stockManagerFilters.stock === 'private') {
+            if (appState.stockFilters.stock === 'private') {
                 stockMatch = p.post_status === 'private';
             } else {
-                stockMatch = stockManagerFilters.stock === 'all' || p.stock_status === stockManagerFilters.stock;
+                stockMatch = appState.stockFilters.stock === 'all' || p.stock_status === appState.stockFilters.stock;
             }
             return textMatch && categoryMatch && tagMatch && stockMatch;
         });
