@@ -1,6 +1,6 @@
-// JPOS v1.7.1 - Fixed component import errors and cleaned up unused files - CACHE BUST
+// JPOS v1.7.2 - Added debugging for add attribute button functionality - CACHE BUST
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.7.1 loaded - Fixed component import errors and cleaned up unused files');
+    console.log('JPOS v1.7.2 loaded - Added debugging for add attribute button functionality');
     // Initialize Routing Manager
     const routingManager = new RoutingManager();
 
@@ -671,7 +671,13 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Add Attribute Button
         const addAttributeBtn = document.getElementById('add-attribute');
-        if (addAttributeBtn) addAttributeBtn.addEventListener('click', addAttributeRow);
+        console.log('Add attribute button found:', addAttributeBtn);
+        if (addAttributeBtn) {
+            addAttributeBtn.addEventListener('click', addAttributeRow);
+            console.log('Event listener added to add attribute button');
+        } else {
+            console.error('Add attribute button not found');
+        }
         
         // Add Variation Button
         const addVariationBtn = document.getElementById('add-variation');
@@ -2258,7 +2264,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function addAttributeRow() {
+        console.log('addAttributeRow function called');
         const container = document.getElementById('product-attributes');
+        console.log('Container found:', container);
+        if (!container) {
+            console.error('product-attributes container not found');
+            return;
+        }
         const attributeRow = document.createElement('div');
         attributeRow.className = 'bg-slate-600 p-3 rounded border border-slate-500';
         
