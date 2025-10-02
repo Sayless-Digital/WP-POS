@@ -195,6 +195,114 @@ Retrieve product catalog with filtering options.
 }
 ```
 
+### Product Editor Endpoints
+
+#### GET /api/product-edit.php?action=get_product_details&id={product_id}
+Retrieve comprehensive product details for editing.
+
+**Query Parameters:**
+- `action`: Must be "get_product_details"
+- `id`: Product ID (required)
+
+**Response:**
+```json
+{
+    "success": true,
+    "data": {
+        "id": 123,
+        "name": "Product Name",
+        "sku": "SKU123",
+        "barcode": "123456789",
+        "type": "simple",
+        "regular_price": "25.99",
+        "sale_price": "",
+        "status": "publish",
+        "featured": false,
+        "tax_class": "",
+        "tax_status": "taxable",
+        "stock_quantity": 10,
+        "manage_stock": true,
+        "meta_data": [
+            {"key": "custom_field", "value": "custom_value"}
+        ],
+        "variations": [
+            {
+                "id": 124,
+                "sku": "VAR-SKU",
+                "price": "30.99",
+                "sale_price": "",
+                "stock_quantity": 5,
+                "stock_status": "instock"
+            }
+        ],
+        "attributes": [...]
+    }
+}
+```
+
+#### GET /api/product-edit.php?action=get_tax_classes
+Retrieve available tax classes.
+
+**Response:**
+```json
+{
+    "success": true,
+    "data": [
+        {"slug": "", "name": "Standard rate"},
+        {"slug": "reduced-rate", "name": "Reduced rate"},
+        {"slug": "zero-rate", "name": "Zero rate"}
+    ]
+}
+```
+
+#### POST /api/product-edit.php
+Update product with comprehensive data.
+
+**Request:**
+```json
+{
+    "action": "update_product",
+    "nonce": "wp_nonce_value",
+    "product_id": 123,
+    "name": "Updated Product Name",
+    "sku": "NEW-SKU",
+    "barcode": "987654321",
+    "regular_price": "29.99",
+    "sale_price": "24.99",
+    "status": "publish",
+    "featured": true,
+    "tax_class": "",
+    "tax_status": "taxable",
+    "stock_quantity": 15,
+    "manage_stock": true,
+    "meta_data": [
+        {"key": "custom_field", "value": "updated_value"}
+    ],
+    "variations": [
+        {
+            "id": 124,
+            "sku": "UPDATED-SKU",
+            "price": "35.99",
+            "sale_price": "30.99",
+            "stock_quantity": 8,
+            "stock_status": "instock"
+        }
+    ]
+}
+```
+
+**Response:**
+```json
+{
+    "success": true,
+    "message": "Product updated successfully",
+    "data": {
+        "product_id": 123,
+        "updated_fields": ["name", "sku", "price", "stock_quantity"]
+    }
+}
+```
+
 ### Order Endpoints
 
 #### POST /api/orders.php
@@ -506,3 +614,10 @@ For technical support or questions:
 - v1.5.8: Resolved timing and caching issues for products edit buttons - moved global function assignment to immediate execution after function definition
 - v1.5.9: Renamed Stock Manager to Products - updated URL parameters, page titles, and all references throughout the system
 - v1.5.10: Fixed Products sidebar click handler - resolved routing module cache issue that prevented navigation to products page
+- v1.5.11: Implemented comprehensive product editor with JSON preview - supports both simple and variable products with full text-based field editing
+- v1.5.12: Fixed API path issues and authentication debugging for product editor
+- v1.5.13: Corrected API paths to use relative URLs instead of absolute paths
+- v1.5.14: Removed Prism.js library and implemented custom JSON syntax highlighting
+- v1.5.15: Updated JSON highlighting to color values instead of keys for better readability
+- v1.5.16: Cleaned up debugging code and finalized product editor implementation
+- v1.5.17: Production-ready comprehensive product editor with value-highlighted JSON preview

@@ -1,6 +1,6 @@
-// JPOS v1.5.10 - Fixed Products sidebar click handler and routing cache issue - CACHE BUST
+// JPOS v1.5.39 - Fixed multiple attributes isolation and improved debugging - CACHE BUST
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.5.10 loaded - Fixed Products sidebar click handler and routing cache issue');
+    console.log('JPOS v1.5.39 loaded - Fixed multiple attributes isolation and improved debugging');
     // Initialize Routing Manager
     const routingManager = new RoutingManager();
 
@@ -293,6 +293,7 @@ document.addEventListener('DOMContentLoaded', () => {
             appState.nonces.drawer = document.getElementById('jpos-drawer-nonce')?.value || '';
             appState.nonces.stock = document.getElementById('jpos-stock-nonce')?.value || '';
             appState.nonces.refund = document.getElementById('jpos-refund-nonce')?.value || '';
+            appState.nonces.productEdit = document.getElementById('jpos-product-edit-nonce')?.value || '';
         } catch (error) {
             console.error('Error generating nonces:', error);
         }
@@ -622,6 +623,122 @@ document.addEventListener('DOMContentLoaded', () => {
         if (stockEditCancelBtn) stockEditCancelBtn.addEventListener('click', () => document.getElementById('stock-edit-modal').classList.add('hidden'));
         const stockEditSaveBtn = document.getElementById('stock-edit-save-btn');
         if (stockEditSaveBtn) stockEditSaveBtn.addEventListener('click', handleStockEditSave);
+        
+        // Product Editor Modal Event Listeners
+        const productEditorCloseBtn = document.getElementById('product-editor-close');
+        if (productEditorCloseBtn) productEditorCloseBtn.addEventListener('click', () => document.getElementById('product-editor-modal').classList.add('hidden'));
+        
+        const productEditorCancelBtn = document.getElementById('product-editor-cancel');
+        if (productEditorCancelBtn) productEditorCancelBtn.addEventListener('click', () => document.getElementById('product-editor-modal').classList.add('hidden'));
+        
+        // Product Editor Tab Event Listeners
+        const formTabBtn = document.getElementById('form-tab');
+        if (formTabBtn) formTabBtn.addEventListener('click', switchToFormView);
+        
+        const jsonTabBtn = document.getElementById('json-tab');
+        if (jsonTabBtn) jsonTabBtn.addEventListener('click', switchToJSONView);
+        
+        const productEditorSaveBtn = document.getElementById('product-editor-save');
+        if (productEditorSaveBtn) productEditorSaveBtn.addEventListener('click', saveProductEditor);
+        
+        // JSON View Action Buttons
+        const productEditorCancelJsonBtn = document.getElementById('product-editor-cancel-json');
+        if (productEditorCancelJsonBtn) productEditorCancelJsonBtn.addEventListener('click', () => document.getElementById('product-editor-modal').classList.add('hidden'));
+        
+        const productEditorSaveJsonBtn = document.getElementById('product-editor-save-json');
+        if (productEditorSaveJsonBtn) productEditorSaveJsonBtn.addEventListener('click', saveProductEditor);
+        
+        const addMetaDataBtn = document.getElementById('add-meta-data');
+        if (addMetaDataBtn) addMetaDataBtn.addEventListener('click', addMetaDataRow);
+        
+        // Meta Data Accordion Toggle
+        const metaDataAccordionToggle = document.getElementById('meta-data-accordion-toggle');
+        if (metaDataAccordionToggle) {
+            metaDataAccordionToggle.addEventListener('click', toggleMetaDataAccordion);
+        }
+        
+        // Attributes Accordion Toggle
+        const attributesAccordionToggle = document.getElementById('attributes-accordion-toggle');
+        if (attributesAccordionToggle) {
+            attributesAccordionToggle.addEventListener('click', toggleAttributesAccordion);
+        }
+        
+        // Variations Accordion Toggle
+        const variationsAccordionToggle = document.getElementById('variations-accordion-toggle');
+        if (variationsAccordionToggle) {
+            variationsAccordionToggle.addEventListener('click', toggleVariationsAccordion);
+        }
+        
+        // Add Attribute Button
+        const addAttributeBtn = document.getElementById('add-attribute');
+        if (addAttributeBtn) addAttributeBtn.addEventListener('click', addAttributeRow);
+        
+        // Add Variation Button
+        const addVariationBtn = document.getElementById('add-variation');
+        if (addVariationBtn) addVariationBtn.addEventListener('click', addVariationRow);
+        
+        // Add event listeners for attribute option inputs (will be added dynamically)
+        document.addEventListener('input', function(e) {
+            if (e.target.id && e.target.id.startsWith('attribute-option-input-')) {
+                const attributeIndex = e.target.id.split('-')[3];
+                showAttributeSuggestions(attributeIndex, e.target.value);
+            }
+        });
+        
+        // Also add keyup listener for better compatibility
+        document.addEventListener('keyup', function(e) {
+            if (e.target.id && e.target.id.startsWith('attribute-option-input-')) {
+                const attributeIndex = e.target.id.split('-')[3];
+                showAttributeSuggestions(attributeIndex, e.target.value);
+            }
+        });
+        
+        // Add focus listener to show suggestions when input is focused
+        document.addEventListener('focus', function(e) {
+            if (e.target.id && e.target.id.startsWith('attribute-option-input-')) {
+                const attributeIndex = e.target.id.split('-')[3];
+                if (e.target.value.trim()) {
+                    showAttributeSuggestions(attributeIndex, e.target.value);
+                }
+            }
+        }, true);
+        
+        // Add keypress listener for Enter/comma
+        document.addEventListener('keypress', function(e) {
+            if (e.target.id && e.target.id.startsWith('attribute-option-input-')) {
+                if (e.key === 'Enter' || e.key === ',') {
+                    e.preventDefault();
+                    const attributeIndex = e.target.id.split('-')[3];
+                    addAttributeOption(attributeIndex, e.target.value);
+                } else if (e.key === 'Escape') {
+                    const attributeIndex = e.target.id.split('-')[3];
+                    hideAttributeSuggestions(attributeIndex);
+                }
+            }
+        });
+        
+        // Hide suggestions when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.relative')) {
+                document.querySelectorAll('[id^="attribute-option-suggestions-"]').forEach(el => {
+                    el.classList.add('hidden');
+                });
+            }
+        });
+        
+        // Event delegation for remove option buttons
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.remove-option-btn')) {
+                const button = e.target.closest('.remove-option-btn');
+                const optionSpan = button.closest('span[data-option]');
+                if (optionSpan) {
+                    optionSpan.remove();
+                }
+            }
+        });
+        
+        // Add event listeners for form field changes to update JSON preview
+        // Form input event listeners removed - JSON preview now only in JSON tab
         
         const smCat = document.getElementById('products-category-filter');
         const smTag = document.getElementById('products-tag-filter');
@@ -1630,7 +1747,7 @@ document.addEventListener('DOMContentLoaded', () => {
         filteredList.forEach(p => {
             const row = document.createElement('div');
             row.className = 'grid grid-cols-12 gap-4 items-center bg-slate-800 hover:bg-slate-700/50 p-3 rounded-lg text-sm cursor-pointer';
-            row.onclick = () => openStockEditModal(p.id);
+            row.onclick = () => openProductEditor(p.id);
             
             let stockDisplayHtml = '';
             if (p.manages_stock && p.stock_quantity !== null) {
@@ -1656,7 +1773,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="col-span-2 text-right font-mono text-green-400 font-bold">${priceDisplay}</div>
                 <div class="col-span-2 text-right font-bold">${stockDisplayHtml}</div>
                 <div class="col-span-1 text-center">
-                    <button class="px-2 py-1 bg-indigo-600 text-xs rounded hover:bg-indigo-500 transition-colors" onclick="event.stopPropagation(); openStockEditModal(${p.id})">
+                    <button class="px-2 py-1 bg-indigo-600 text-xs rounded hover:bg-indigo-500 transition-colors" onclick="event.stopPropagation(); openProductEditor(${p.id})">
                         Edit
                     </button>
                 </div>
@@ -1676,7 +1793,7 @@ document.addEventListener('DOMContentLoaded', () => {
         titleEl.textContent = 'Edit Stock';
 
         try {
-            const response = await fetch(`/jpos/api/stock.php?action=get_details&id=${productId}`);
+            const response = await fetch(`api/stock.php?action=get_details&id=${productId}`);
             if (!response.ok) throw new Error(`Server responded with ${response.status}`);
             const result = await response.json();
             if (!result.success) throw new Error(result.data.message);
@@ -1722,7 +1839,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         const payload = { action: 'update_variations', parent_id: product.id, variations: variationsData, nonce: appState.nonces.stock };
         try {
-            const response = await fetch('/jpos/api/stock.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            const response = await fetch('api/stock.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             if (!response.ok) throw new Error(`Server responded with ${response.status}`);
             const result = await response.json();
             if (!result.success) throw new Error(result.data.message || 'Failed to update');
@@ -1736,6 +1853,755 @@ document.addEventListener('DOMContentLoaded', () => {
             statusEl.className = 'text-sm text-right h-5 text-red-400';
         }
     }
+
+    // Comprehensive Product Editor Functions
+    let currentEditingProduct = null;
+    let productEditorNonce = '';
+
+    async function openProductEditor(productId) {
+        currentEditingProduct = null;
+        const modal = document.getElementById('product-editor-modal');
+        modal.classList.remove('hidden');
+        
+        const titleEl = document.getElementById('product-editor-title');
+        titleEl.textContent = 'Loading Product...';
+        
+        // Clear form
+        clearProductEditorForm();
+        
+        // Start with form view by default
+        switchToFormView();
+        
+        try {
+            // Get product details
+            const response = await fetch(`api/product-edit-simple.php?action=get_product_details&id=${productId}`);
+            if (!response.ok) throw new Error(`Server responded with ${response.status}`);
+            const result = await response.json();
+            if (!result.success) throw new Error(result.data.message);
+            
+            currentEditingProduct = result.data;
+            titleEl.textContent = `Edit: ${result.data.name}`;
+            
+            // Populate form
+            populateProductEditorForm(result.data);
+            
+            // Load tax classes
+            await loadTaxClasses();
+            
+            // JSON preview now only updates in JSON tab
+            
+        } catch (error) {
+            console.error("Error loading product details:", error);
+            titleEl.textContent = 'Error Loading Product';
+            document.getElementById('product-editor-status').textContent = `Error: ${error.message}`;
+            document.getElementById('product-editor-status').className = 'text-sm text-right h-5 mt-2 text-red-400';
+        }
+    }
+
+    // Tab Switching Functions
+    function switchToFormView() {
+        document.getElementById('form-view').classList.remove('hidden');
+        document.getElementById('json-view').classList.add('hidden');
+        
+        // Update tab styling
+        document.getElementById('form-tab').className = 'px-4 py-2 text-sm font-medium text-slate-300 border-b-2 border-blue-500 bg-slate-700 rounded-t-lg';
+        document.getElementById('json-tab').className = 'px-4 py-2 text-sm font-medium text-slate-400 border-b-2 border-transparent hover:text-slate-300 hover:border-slate-500';
+    }
+    
+    function switchToJSONView() {
+        document.getElementById('form-view').classList.add('hidden');
+        document.getElementById('json-view').classList.remove('hidden');
+        
+        // Update tab styling
+        document.getElementById('form-tab').className = 'px-4 py-2 text-sm font-medium text-slate-400 border-b-2 border-transparent hover:text-slate-300 hover:border-slate-500';
+        document.getElementById('json-tab').className = 'px-4 py-2 text-sm font-medium text-slate-300 border-b-2 border-blue-500 bg-slate-700 rounded-t-lg';
+        
+        // Update the full JSON preview
+        updateFullJSONPreview();
+    }
+    
+    function updateFullJSONPreview() {
+        if (!currentEditingProduct) return;
+        
+        const jsonString = JSON.stringify(currentEditingProduct, null, 2);
+        const highlightedJSON = highlightJSON(jsonString);
+        document.getElementById('json-full-preview').innerHTML = highlightedJSON;
+    }
+
+    function clearProductEditorForm() {
+        document.getElementById('product-name').value = '';
+        document.getElementById('product-sku').value = '';
+        document.getElementById('product-barcode').value = '';
+        document.getElementById('product-regular-price').value = '';
+        document.getElementById('product-sale-price').value = '';
+        document.getElementById('product-status').value = 'publish';
+        document.getElementById('product-featured').checked = false;
+        document.getElementById('product-tax-class').value = '';
+        document.querySelector('input[name="tax-status"][value="taxable"]').checked = true;
+        document.getElementById('product-stock-quantity').value = '';
+        document.getElementById('product-manage-stock').checked = false;
+        
+        // Clear meta data
+        document.getElementById('product-meta-data').innerHTML = '';
+        
+        // Clear attributes
+        document.getElementById('product-attributes').innerHTML = '';
+        
+        // Clear variations and hide variations section
+        document.getElementById('product-variations').innerHTML = '';
+        document.getElementById('variations-section').classList.add('hidden');
+    }
+
+    function populateProductEditorForm(product) {
+        document.getElementById('product-name').value = product.name || '';
+        document.getElementById('product-sku').value = product.sku || '';
+        document.getElementById('product-barcode').value = product.barcode || '';
+        document.getElementById('product-regular-price').value = product.regular_price || '';
+        document.getElementById('product-sale-price').value = product.sale_price || '';
+        document.getElementById('product-status').value = product.status || 'publish';
+        document.getElementById('product-featured').checked = product.featured || false;
+        document.getElementById('product-tax-class').value = product.tax_class || '';
+        document.querySelector(`input[name="tax-status"][value="${product.tax_status || 'taxable'}"]`).checked = true;
+        document.getElementById('product-stock-quantity').value = product.stock_quantity || '';
+        document.getElementById('product-manage-stock').checked = product.manage_stock || false;
+        
+        // Populate meta data
+        populateMetaData(product.meta_data || []);
+        
+        // Populate attributes (always show attributes section)
+        populateAttributes(product.attributes || []);
+        
+        // Show variable product sections if applicable
+        if (product.type === 'variable') {
+            document.getElementById('variations-section').classList.remove('hidden');
+            populateVariations(product.variations || []);
+        } else {
+            document.getElementById('variations-section').classList.add('hidden');
+        }
+    }
+
+    function populateMetaData(metaData) {
+        const container = document.getElementById('product-meta-data');
+        container.innerHTML = '';
+        
+        metaData.forEach((meta, index) => {
+            const metaRow = document.createElement('div');
+            metaRow.className = 'flex gap-2 items-center';
+            metaRow.innerHTML = `
+                <input type="text" placeholder="Meta Key" value="${meta.key}" class="flex-1 px-2 py-1 bg-slate-600 text-slate-200 rounded border border-slate-500 text-sm">
+                <input type="text" placeholder="Meta Value" value="${meta.value}" class="flex-1 px-2 py-1 bg-slate-600 text-slate-200 rounded border border-slate-500 text-sm">
+                <button type="button" onclick="removeMetaDataRow(this)" class="px-2 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-500">Remove</button>
+            `;
+            container.appendChild(metaRow);
+        });
+    }
+
+    function populateVariations(variations) {
+        const container = document.getElementById('variations-list');
+        container.innerHTML = '';
+        
+        variations.forEach(variation => {
+            const variationDiv = document.createElement('div');
+            variationDiv.className = 'bg-slate-600 p-3 rounded border border-slate-500';
+            variationDiv.setAttribute('data-variation-id', variation.id);
+            variationDiv.innerHTML = `
+                <div class="flex justify-between items-start mb-3">
+                    <h4 class="font-semibold text-slate-200">Variation #${variation.id}</h4>
+                    <span class="text-sm text-slate-400">Status: ${variation.status || 'publish'}</span>
+                </div>
+                <div class="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                        <label class="block text-slate-300 mb-1">SKU</label>
+                        <input type="text" value="${variation.sku || ''}" class="w-full px-2 py-1 bg-slate-700 text-slate-200 rounded border border-slate-500" data-field="sku">
+                    </div>
+                    <div>
+                        <label class="block text-slate-300 mb-1">Price</label>
+                        <input type="number" step="0.01" value="${variation.price || ''}" class="w-full px-2 py-1 bg-slate-700 text-slate-200 rounded border border-slate-500" data-field="price">
+                    </div>
+                    <div>
+                        <label class="block text-slate-300 mb-1">Sale Price</label>
+                        <input type="number" step="0.01" value="${variation.sale_price || ''}" class="w-full px-2 py-1 bg-slate-700 text-slate-200 rounded border border-slate-500" data-field="sale_price">
+                    </div>
+                    <div>
+                        <label class="block text-slate-300 mb-1">Stock Quantity</label>
+                        <input type="number" value="${variation.stock_quantity || ''}" class="w-full px-2 py-1 bg-slate-700 text-slate-200 rounded border border-slate-500" data-field="stock_quantity">
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <label class="block text-slate-300 mb-1">Stock Status</label>
+                    <select class="w-full px-2 py-1 bg-slate-700 text-slate-200 rounded border border-slate-500" data-field="stock_status">
+                        <option value="instock" ${variation.stock_status === 'instock' ? 'selected' : ''}>In Stock</option>
+                        <option value="outofstock" ${variation.stock_status === 'outofstock' ? 'selected' : ''}>Out of Stock</option>
+                        <option value="onbackorder" ${variation.stock_status === 'onbackorder' ? 'selected' : ''}>On Backorder</option>
+                    </select>
+                </div>
+            `;
+            container.appendChild(variationDiv);
+        });
+    }
+
+    function populateAttributes(attributes) {
+        const container = document.getElementById('attributes-list');
+        container.innerHTML = '';
+        
+        attributes.forEach(attribute => {
+            const attrDiv = document.createElement('div');
+            attrDiv.className = 'bg-slate-600 p-3 rounded border border-slate-500';
+            attrDiv.innerHTML = `
+                <h4 class="font-semibold text-slate-200 mb-2">${attribute.name}</h4>
+                <div class="text-sm text-slate-300">
+                    <p>Type: ${attribute.type}</p>
+                    <p>Options: ${attribute.options.join(', ')}</p>
+                    <p>Visible: ${attribute.visible ? 'Yes' : 'No'}</p>
+                    <p>Variation: ${attribute.variation ? 'Yes' : 'No'}</p>
+                </div>
+            `;
+            container.appendChild(attrDiv);
+        });
+    }
+
+    async function loadTaxClasses() {
+        try {
+            const response = await fetch('api/product-edit-simple.php?action=get_tax_classes');
+            if (!response.ok) throw new Error(`Server responded with ${response.status}`);
+            const result = await response.json();
+            if (!result.success) throw new Error(result.data.message);
+            
+            const select = document.getElementById('product-tax-class');
+            select.innerHTML = '';
+            
+            result.data.forEach(taxClass => {
+                const option = document.createElement('option');
+                option.value = taxClass.slug;
+                option.textContent = taxClass.name;
+                select.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Error loading tax classes:', error);
+        }
+    }
+
+    function addMetaDataRow() {
+        const container = document.getElementById('product-meta-data');
+        const metaRow = document.createElement('div');
+        metaRow.className = 'flex gap-2 items-center';
+        metaRow.innerHTML = `
+            <input type="text" placeholder="Meta Key" class="flex-1 px-2 py-1 bg-slate-600 text-slate-200 rounded border border-slate-500 text-sm">
+            <input type="text" placeholder="Meta Value" class="flex-1 px-2 py-1 bg-slate-600 text-slate-200 rounded border border-slate-500 text-sm">
+            <button type="button" onclick="removeMetaDataRow(this)" class="px-2 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-500">Remove</button>
+        `;
+        container.appendChild(metaRow);
+    }
+
+    function toggleMetaDataAccordion() {
+        const content = document.getElementById('meta-data-accordion-content');
+        const icon = document.getElementById('meta-data-accordion-icon');
+        
+        if (content.classList.contains('hidden')) {
+            content.classList.remove('hidden');
+            icon.style.transform = 'rotate(180deg)';
+        } else {
+            content.classList.add('hidden');
+            icon.style.transform = 'rotate(0deg)';
+        }
+    }
+
+    function toggleAttributesAccordion() {
+        const content = document.getElementById('attributes-accordion-content');
+        const icon = document.getElementById('attributes-accordion-icon');
+        
+        if (content.classList.contains('hidden')) {
+            content.classList.remove('hidden');
+            icon.style.transform = 'rotate(180deg)';
+        } else {
+            content.classList.add('hidden');
+            icon.style.transform = 'rotate(0deg)';
+        }
+    }
+
+    function toggleVariationsAccordion() {
+        const content = document.getElementById('variations-accordion-content');
+        const icon = document.getElementById('variations-accordion-icon');
+        
+        if (content.classList.contains('hidden')) {
+            content.classList.remove('hidden');
+            icon.style.transform = 'rotate(180deg)';
+        } else {
+            content.classList.add('hidden');
+            icon.style.transform = 'rotate(0deg)';
+        }
+    }
+
+    function removeMetaDataRow(button) {
+        button.parentElement.remove();
+        // JSON preview now only updates in JSON tab
+    }
+
+    function populateAttributes(attributes) {
+        const container = document.getElementById('product-attributes');
+        container.innerHTML = '';
+        
+        attributes.forEach((attribute, index) => {
+            const attributeRow = document.createElement('div');
+            attributeRow.className = 'bg-slate-600 p-3 rounded border border-slate-500';
+            attributeRow.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
+                    <div>
+                        <label class="block text-xs text-slate-300 mb-1">Attribute Name</label>
+                        <input type="text" value="${attribute.friendly_name || attribute.name}" class="w-full px-2 py-1 bg-slate-700 text-slate-200 rounded border border-slate-500 text-sm" readonly>
+                        <div class="text-xs text-slate-500 mt-1">Technical: ${attribute.name}</div>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-300 mb-1">Type</label>
+                        <input type="text" value="${attribute.type}" class="w-full px-2 py-1 bg-slate-700 text-slate-200 rounded border border-slate-500 text-sm" readonly>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
+                    <div>
+                        <label class="block text-xs text-slate-300 mb-1">Options</label>
+                        <div class="bg-slate-600 border border-slate-500 rounded p-2 min-h-[40px]">
+                            <div id="attribute-options-${index}" class="flex flex-wrap gap-1 mb-2" data-attribute-index="${index}">
+                                ${(attribute.friendly_options || attribute.options).map(option => `
+                                    <span class="inline-flex items-center px-2 py-1 bg-blue-600 text-white text-xs rounded" data-option="${option}">
+                                        ${option}
+                                        <button type="button" class="ml-1 text-blue-200 hover:text-white remove-option-btn">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                            </svg>
+                                        </button>
+                                    </span>
+                                `).join('')}
+                            </div>
+                            <div class="relative">
+                                <input type="text" id="attribute-option-input-${index}" placeholder="Type to add option..." class="w-full px-2 py-1 bg-slate-700 text-slate-200 rounded border border-slate-500 text-sm focus:border-blue-500 focus:outline-none">
+                                <div id="attribute-option-suggestions-${index}" class="absolute top-full left-0 right-0 bg-slate-700 border border-slate-500 rounded mt-1 max-h-32 overflow-y-auto hidden z-10">
+                                    <!-- Suggestions will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+                        ${attribute.friendly_options ? `<div class="text-xs text-slate-500 mt-1">Technical IDs: ${attribute.options.join(', ')}</div>` : ''}
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <label class="flex items-center">
+                            <input type="checkbox" ${attribute.visible ? 'checked' : ''} class="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500">
+                            <span class="ml-2 text-xs text-slate-300">Visible</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" ${attribute.variation ? 'checked' : ''} class="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500">
+                            <span class="ml-2 text-xs text-slate-300">Variation</span>
+                        </label>
+                    </div>
+                </div>
+            `;
+            container.appendChild(attributeRow);
+        });
+    }
+
+    function populateVariations(variations) {
+        const container = document.getElementById('product-variations');
+        container.innerHTML = '';
+        
+        variations.forEach((variation, index) => {
+            const variationRow = document.createElement('div');
+            variationRow.className = 'bg-slate-600 p-3 rounded border border-slate-500';
+            variationRow.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-2">
+                    <div>
+                        <label class="block text-xs text-slate-300 mb-1">SKU</label>
+                        <input type="text" value="${variation.sku || ''}" class="w-full px-2 py-1 bg-slate-600 text-slate-200 rounded border border-slate-500 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-300 mb-1">Price</label>
+                        <input type="number" step="0.01" value="${variation.price || ''}" class="w-full px-2 py-1 bg-slate-600 text-slate-200 rounded border border-slate-500 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-300 mb-1">Stock</label>
+                        <input type="number" value="${variation.stock_quantity || ''}" class="w-full px-2 py-1 bg-slate-600 text-slate-200 rounded border border-slate-500 text-sm">
+                    </div>
+                </div>
+                <div class="text-xs text-slate-400">
+                    Attributes: ${Object.keys(variation.attributes || {}).map(attr => {
+                        // Convert technical names to friendly names
+                        if (attr.startsWith('pa_')) {
+                            return attr.replace('pa_', '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                        } else if (attr.startsWith('_')) {
+                            return attr.replace('_', '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                        }
+                        return attr;
+                    }).join(', ') || 'None'}
+                </div>
+            `;
+            container.appendChild(variationRow);
+        });
+    }
+
+    function addAttributeRow() {
+        const container = document.getElementById('product-attributes');
+        const attributeRow = document.createElement('div');
+        attributeRow.className = 'bg-slate-600 p-3 rounded border border-slate-500';
+        attributeRow.innerHTML = `
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
+                <div>
+                    <label class="block text-xs text-slate-300 mb-1">Attribute Name</label>
+                    <input type="text" placeholder="e.g., Color, Size" class="w-full px-2 py-1 bg-slate-600 text-slate-200 rounded border border-slate-500 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-300 mb-1">Type</label>
+                    <select class="w-full px-2 py-1 bg-slate-600 text-slate-200 rounded border border-slate-500 text-sm">
+                        <option value="custom">Custom</option>
+                        <option value="taxonomy">Taxonomy</option>
+                    </select>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
+                <div>
+                    <label class="block text-xs text-slate-300 mb-1">Options (comma-separated)</label>
+                    <input type="text" placeholder="e.g., Red, Blue, Green" class="w-full px-2 py-1 bg-slate-600 text-slate-200 rounded border border-slate-500 text-sm">
+                </div>
+                <div class="flex items-center space-x-4">
+                    <label class="flex items-center">
+                        <input type="checkbox" class="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500">
+                        <span class="ml-2 text-xs text-slate-300">Visible</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" class="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500">
+                        <span class="ml-2 text-xs text-slate-300">Variation</span>
+                    </label>
+                </div>
+            </div>
+            <div class="flex justify-end">
+                <button type="button" onclick="this.parentElement.parentElement.remove()" class="px-2 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-500">Remove</button>
+            </div>
+        `;
+        container.appendChild(attributeRow);
+    }
+
+    function addVariationRow() {
+        const container = document.getElementById('product-variations');
+        const variationRow = document.createElement('div');
+        variationRow.className = 'bg-slate-600 p-3 rounded border border-slate-500';
+        variationRow.innerHTML = `
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-2">
+                <div>
+                    <label class="block text-xs text-slate-300 mb-1">SKU</label>
+                    <input type="text" placeholder="Variation SKU" class="w-full px-2 py-1 bg-slate-600 text-slate-200 rounded border border-slate-500 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-300 mb-1">Price</label>
+                    <input type="number" step="0.01" placeholder="0.00" class="w-full px-2 py-1 bg-slate-600 text-slate-200 rounded border border-slate-500 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-300 mb-1">Stock</label>
+                    <input type="number" placeholder="0" class="w-full px-2 py-1 bg-slate-600 text-slate-200 rounded border border-slate-500 text-sm">
+                </div>
+            </div>
+            <div class="flex justify-end">
+                <button type="button" onclick="this.parentElement.parentElement.remove()" class="px-2 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-500">Remove</button>
+            </div>
+        `;
+        container.appendChild(variationRow);
+    }
+
+    // Attribute option management functions
+    window.removeAttributeOption = function(attributeIndex, option) {
+        const optionsContainer = document.getElementById(`attribute-options-${attributeIndex}`);
+        if (!optionsContainer) return;
+        
+        const optionElements = optionsContainer.querySelectorAll('span');
+        optionElements.forEach(element => {
+            // Get the text content without the X button
+            const textContent = element.textContent.trim();
+            const optionText = textContent.replace(/×$/, '').trim();
+            
+            if (optionText === option) {
+                element.remove();
+            }
+        });
+    }
+
+    window.addAttributeOption = function(attributeIndex, option) {
+        if (!option.trim()) return;
+        
+        const optionsContainer = document.getElementById(`attribute-options-${attributeIndex}`);
+        const input = document.getElementById(`attribute-option-input-${attributeIndex}`);
+        
+        // Check if option already exists
+        const existingOptions = Array.from(optionsContainer.querySelectorAll('span')).map(el => el.textContent.trim().split('×')[0].trim());
+        if (existingOptions.includes(option.trim())) {
+            input.value = '';
+            return;
+        }
+        
+        // Add new option tag
+        const optionTag = document.createElement('span');
+        optionTag.className = 'inline-flex items-center px-2 py-1 bg-blue-600 text-white text-xs rounded';
+        optionTag.setAttribute('data-option', option);
+        optionTag.innerHTML = `
+            ${option}
+            <button type="button" class="ml-1 text-blue-200 hover:text-white remove-option-btn">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        `;
+        optionsContainer.appendChild(optionTag);
+        
+        // Clear input
+        input.value = '';
+        hideAttributeSuggestions(attributeIndex);
+    }
+
+    function handleAttributeOptionKeypress(event, attributeIndex) {
+        if (event.key === 'Enter' || event.key === ',') {
+            event.preventDefault();
+            const input = document.getElementById(`attribute-option-input-${attributeIndex}`);
+            addAttributeOption(attributeIndex, input.value);
+        } else if (event.key === 'Escape') {
+            hideAttributeSuggestions(attributeIndex);
+        }
+    }
+
+    function showAttributeSuggestions(attributeIndex, query) {
+        console.log('showAttributeSuggestions called:', attributeIndex, query);
+        console.log('Looking for container with ID: attribute-option-suggestions-' + attributeIndex);
+        const suggestionsContainer = document.getElementById(`attribute-option-suggestions-${attributeIndex}`);
+        console.log('suggestionsContainer:', suggestionsContainer);
+        
+        if (!query.trim()) {
+            hideAttributeSuggestions(attributeIndex);
+            return;
+        }
+        
+        // Common attribute options for suggestions
+        const commonOptions = {
+            'color': ['Red', 'Blue', 'Green', 'Yellow', 'Black', 'White', 'Gray', 'Brown', 'Pink', 'Purple', 'Orange'],
+            'size': ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Small', 'Medium', 'Large', 'Extra Large'],
+            'material': ['Cotton', 'Polyester', 'Wool', 'Silk', 'Leather', 'Denim', 'Linen', 'Cashmere'],
+            'brand': ['Nike', 'Adidas', 'Puma', 'Under Armour', 'Reebok', 'New Balance'],
+            'style': ['Casual', 'Formal', 'Sport', 'Vintage', 'Modern', 'Classic', 'Trendy']
+        };
+        
+        // Get attribute name to determine suggestions - find the specific attribute row
+        const optionsContainer = document.getElementById(`attribute-options-${attributeIndex}`);
+        const attributeRow = optionsContainer.closest('.bg-slate-600');
+        
+        console.log('optionsContainer:', optionsContainer);
+        console.log('attributeRow found:', attributeRow);
+        
+        // Try multiple selectors to find the attribute name input
+        let attributeNameInput = attributeRow.querySelector('input[readonly]');
+        if (!attributeNameInput) {
+            // Try finding the first readonly input in the row
+            attributeNameInput = attributeRow.querySelector('input[readonly=""]');
+        }
+        if (!attributeNameInput) {
+            // Try finding any input with readonly attribute
+            attributeNameInput = attributeRow.querySelector('input[readonly]');
+        }
+        if (!attributeNameInput) {
+            // Try finding the first input in the first grid column
+            attributeNameInput = attributeRow.querySelector('.grid > div:first-child input');
+        }
+        
+        const attributeName = attributeNameInput ? attributeNameInput.value.toLowerCase() : '';
+        
+        console.log('attributeName:', attributeName);
+        console.log('attributeRow:', attributeRow);
+        console.log('attributeNameInput:', attributeNameInput);
+        
+        // Debug: show all inputs in the row
+        const allInputs = attributeRow.querySelectorAll('input');
+        console.log('All inputs in row:', allInputs);
+        allInputs.forEach((input, index) => {
+            console.log(`Input ${index}:`, input, 'value:', input.value, 'readonly:', input.readOnly);
+        });
+        
+        let suggestions = [];
+        
+        // More specific matching logic
+        if (attributeName.includes('color') || attributeName.includes('colour')) {
+            suggestions = commonOptions.color;
+            console.log('Matched color, added:', commonOptions.color);
+        } else if (attributeName.includes('size')) {
+            suggestions = commonOptions.size;
+            console.log('Matched size, added:', commonOptions.size);
+        } else if (attributeName.includes('material') || attributeName.includes('fabric')) {
+            suggestions = commonOptions.material;
+            console.log('Matched material, added:', commonOptions.material);
+        } else if (attributeName.includes('brand') || attributeName.includes('manufacturer')) {
+            suggestions = commonOptions.brand;
+            console.log('Matched brand, added:', commonOptions.brand);
+        } else if (attributeName.includes('style') || attributeName.includes('type')) {
+            suggestions = commonOptions.style;
+            console.log('Matched style, added:', commonOptions.style);
+        } else {
+            // If no specific match, show all common options
+            suggestions = Object.values(commonOptions).flat();
+            console.log('No specific match, showing all options:', suggestions);
+        }
+        
+        console.log('Final suggestions before filtering:', suggestions);
+        
+        // Filter suggestions based on query
+        const filteredSuggestions = suggestions.filter(option => 
+            option.toLowerCase().includes(query.toLowerCase())
+        ).slice(0, 5);
+        
+        console.log('filteredSuggestions:', filteredSuggestions);
+        
+        if (filteredSuggestions.length > 0) {
+            // Get currently added options
+            const optionsContainer = document.getElementById(`attribute-options-${attributeIndex}`);
+            const existingOptions = Array.from(optionsContainer.querySelectorAll('span[data-option]')).map(el => el.getAttribute('data-option'));
+            
+            suggestionsContainer.innerHTML = filteredSuggestions.map(suggestion => {
+                const isAlreadyAdded = existingOptions.includes(suggestion);
+                const bgColor = isAlreadyAdded ? 'bg-green-600' : 'hover:bg-slate-600';
+                const textColor = isAlreadyAdded ? 'text-white' : 'text-slate-200';
+                const icon = isAlreadyAdded ? 
+                    '<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>' : '';
+                const action = isAlreadyAdded ? `removeAttributeOption(${attributeIndex}, '${suggestion}')` : `addAttributeOption(${attributeIndex}, '${suggestion}')`;
+                
+                return `
+                    <div class="px-3 py-2 text-sm ${textColor} ${bgColor} cursor-pointer flex items-center" onclick="${action}">
+                        ${icon}${suggestion}
+                    </div>
+                `;
+            }).join('');
+            suggestionsContainer.classList.remove('hidden');
+            console.log('Suggestions shown');
+        } else {
+            hideAttributeSuggestions(attributeIndex);
+            console.log('No suggestions, hiding');
+        }
+    }
+
+    window.hideAttributeSuggestions = function(attributeIndex) {
+        const suggestionsContainer = document.getElementById(`attribute-option-suggestions-${attributeIndex}`);
+        suggestionsContainer.classList.add('hidden');
+    }
+
+    function highlightJSON(jsonString) {
+        return jsonString
+            .replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+                let cls = '';
+                if (/^"/.test(match)) {
+                    if (/:$/.test(match)) {
+                        cls = ''; // Keys stay default color
+                    } else {
+                        cls = 'json-string'; // String values get colored
+                    }
+                } else if (/true|false/.test(match)) {
+                    cls = 'json-boolean'; // Boolean values get colored
+                } else if (/null/.test(match)) {
+                    cls = 'json-null'; // Null values get colored
+                } else if (/^-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?$/.test(match)) {
+                    cls = 'json-number'; // Number values get colored
+                }
+                
+                if (cls) {
+                    return '<span class="' + cls + '">' + match + '</span>';
+                } else {
+                    return match; // Keys and punctuation stay uncolored
+                }
+            });
+    }
+
+    // updateJSONPreview function removed - JSON preview now only in JSON tab
+
+    function getProductEditorFormData() {
+        const metaData = [];
+        document.querySelectorAll('#product-meta-data > div').forEach(row => {
+            const keyInput = row.querySelector('input[placeholder="Meta Key"]');
+            const valueInput = row.querySelector('input[placeholder="Meta Value"]');
+            if (keyInput.value.trim() && valueInput.value.trim()) {
+                metaData.push({
+                    key: keyInput.value.trim(),
+                    value: valueInput.value.trim()
+                });
+            }
+        });
+
+        // Get variations data if it's a variable product
+        const variations = [];
+        if (currentEditingProduct?.type === 'variable') {
+            document.querySelectorAll('#variations-list > div[data-variation-id]').forEach(variationDiv => {
+                const variationId = variationDiv.getAttribute('data-variation-id');
+                const variationData = {
+                    id: parseInt(variationId),
+                    sku: variationDiv.querySelector('[data-field="sku"]').value,
+                    price: variationDiv.querySelector('[data-field="price"]').value,
+                    sale_price: variationDiv.querySelector('[data-field="sale_price"]').value,
+                    stock_quantity: variationDiv.querySelector('[data-field="stock_quantity"]').value,
+                    stock_status: variationDiv.querySelector('[data-field="stock_status"]').value
+                };
+                variations.push(variationData);
+            });
+        }
+
+        return {
+            product_id: currentEditingProduct?.id,
+            name: document.getElementById('product-name').value,
+            sku: document.getElementById('product-sku').value,
+            barcode: document.getElementById('product-barcode').value,
+            regular_price: document.getElementById('product-regular-price').value,
+            sale_price: document.getElementById('product-sale-price').value,
+            status: document.getElementById('product-status').value,
+            featured: document.getElementById('product-featured').checked,
+            tax_class: document.getElementById('product-tax-class').value,
+            tax_status: document.querySelector('input[name="tax-status"]:checked').value,
+            stock_quantity: document.getElementById('product-stock-quantity').value,
+            manage_stock: document.getElementById('product-manage-stock').checked,
+            meta_data: metaData,
+            variations: variations
+        };
+    }
+
+    async function saveProductEditor() {
+        if (!currentEditingProduct) return;
+        
+        const statusEl = document.getElementById('product-editor-status');
+        statusEl.textContent = 'Saving...';
+        statusEl.className = 'text-sm text-right h-5 mt-2 text-slate-400';
+        
+        const formData = getProductEditorFormData();
+        formData.nonce = appState.nonces.productEdit;
+        
+        try {
+            const response = await fetch('api/product-edit.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'update_product',
+                    ...formData
+                })
+            });
+            
+            if (!response.ok) throw new Error(`Server responded with ${response.status}`);
+            const result = await response.json();
+            if (!result.success) throw new Error(result.data.message);
+            
+            statusEl.textContent = 'Product updated successfully!';
+            statusEl.className = 'text-sm text-right h-5 mt-2 text-green-400';
+            
+            // Refresh data and close modal
+            await refreshAllData();
+            setTimeout(() => {
+                document.getElementById('product-editor-modal').classList.add('hidden');
+                renderStockList();
+            }, 1500);
+            
+        } catch (error) {
+            console.error('Error saving product:', error);
+            statusEl.textContent = `Error: ${error.message}`;
+            statusEl.className = 'text-sm text-right h-5 mt-2 text-red-400';
+        }
+    }
+
+    // Make functions globally accessible
+    window.openProductEditor = openProductEditor;
+    window.addMetaDataRow = addMetaDataRow;
+    window.removeMetaDataRow = removeMetaDataRow;
 
     function populateSettingsForm() {
         document.getElementById('setting-name').value = appState.settings.name || ''; document.getElementById('setting-logo-url').value = appState.settings.logo_url || ''; document.getElementById('setting-email').value = appState.settings.email || ''; document.getElementById('setting-phone').value = appState.settings.phone || ''; document.getElementById('setting-address').value = appState.settings.address || ''; document.getElementById('setting-footer1').value = appState.settings.footer_message_1 || ''; document.getElementById('setting-footer2').value = appState.settings.footer_message_2 || '';

@@ -8,9 +8,9 @@ JPOS is a modern, enterprise-grade point-of-sale system built on WordPress. The 
 
 **Status**: ✅ PRODUCTION READY  
 **Last Updated**: December 19, 2024  
-**Version**: 1.5.10  
+**Version**: 1.5.17  
 **All Phases Completed**: Security, Architecture, Performance, Quality & Monitoring  
-**Latest Update**: Fixed Products sidebar click handler - resolved routing module cache issue preventing navigation
+**Latest Update**: Comprehensive Product Editor with JSON Preview - supports both simple and variable products with full text-based field editing and value-highlighted JSON preview
 
 ## Architecture
 
@@ -35,6 +35,7 @@ wp-pos/
 ├── api/                           # API endpoints
 │   ├── auth.php                   # Authentication
 │   ├── products.php               # Product management (optimized)
+│   ├── product-edit.php           # Comprehensive product editor API
 │   ├── orders.php                 # Order processing
 │   ├── checkout.php               # Checkout processing
 │   ├── reports.php                # Reporting
@@ -236,6 +237,15 @@ JPOS implements a comprehensive routing system that maintains view state across 
 - **GET**: Retrieve product catalog with filtering
 - Support for search, category, and stock filters
 
+### Product Editor (`/api/product-edit.php`)
+- **GET**: Retrieve comprehensive product details for editing
+- **POST**: Update product with all text-based fields
+- **GET**: Get tax classes, categories, and tags
+- Support for both simple and variable products
+- JSON preview with syntax highlighting (values colored)
+- Meta data management
+- Variation editing for variable products
+
 ### Orders (`/api/orders.php`)
 - **GET**: Fetch orders with date/status/source filters
 - **POST**: Create new orders (via checkout)
@@ -411,6 +421,7 @@ JPOS implements a comprehensive routing system that maintains view state across 
 - **Reload Buttons**: Added consistent refresh buttons to all pages (Orders, Reports, Sessions, Stock, Settings, Held Carts) matching POS page style
 - **Products Edit Buttons**: Fixed edit button functionality in products page - resolved timing and caching issues, both row clicks and edit buttons now properly open product management dialog
 - **Products Sidebar Navigation**: Fixed sidebar click handler - resolved routing module cache issue that prevented Products button from navigating to products page
+- **Comprehensive Product Editor**: Implemented full-featured product editor supporting both simple and variable products with JSON preview, covering all text-based fields including name, SKU, barcode, pricing, status, tax settings, inventory, and meta data. Features custom JSON syntax highlighting that colors values (strings, numbers, booleans, null) while keeping keys subtle
 
 ### Debug Mode
 Enable debug mode in configuration for detailed error information and logging.
@@ -473,8 +484,8 @@ Use the built-in monitoring system to track system health, performance metrics, 
 
 ---
 
-**Documentation Version**: 1.5.10  
+**Documentation Version**: 1.5.17  
 **Last Updated**: December 19, 2024  
 **System Status**: Production Ready  
-**Latest Update**: Fixed Products sidebar click handler - resolved routing module cache issue preventing navigation  
+**Latest Update**: Comprehensive Product Editor with JSON Preview - supports both simple and variable products with full text-based field editing and value-highlighted JSON preview  
 **Maintenance Contact**: Development Team

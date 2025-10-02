@@ -42,6 +42,36 @@ Each product displays:
 - Low stock items are highlighted
 - Stock updates automatically after sales
 
+### Product Editing
+JPOS includes a comprehensive product editor that allows you to edit all text-based fields for both simple and variable products:
+
+#### Accessing the Product Editor
+1. Navigate to the Products page
+2. Click on any product row or the edit button
+3. The comprehensive product editor will open in a modal
+
+#### Available Fields
+- **Basic Information**: Product name, SKU, barcode
+- **Pricing**: Regular price, sale price
+- **Status**: Published, draft, private
+- **Tax Settings**: Tax class and tax status
+- **Inventory**: Stock quantity, stock management settings
+- **Meta Data**: Custom fields and additional product information
+- **Variations**: For variable products, edit individual variation details
+
+#### JSON Preview
+The editor includes a real-time JSON preview that shows:
+- All product data in a structured format
+- Syntax highlighting with colored values for easy reading
+- Live updates as you modify fields
+- Support for both simple and variable products
+
+#### Saving Changes
+1. Make your desired changes to any fields
+2. Review the JSON preview to verify your changes
+3. Click "Save Changes" to update the product
+4. The system will confirm successful updates
+
 ## Sales Process
 
 ### Adding Items to Cart
@@ -276,7 +306,7 @@ For technical support or questions:
 
 ## Version Information
 
-- Current Version: 1.5.10
+- Current Version: 1.5.17
 - Last Updated: December 2024
-- Latest Update: Fixed Products sidebar navigation - resolved routing cache issue preventing navigation to Products page
+- Latest Update: Comprehensive Product Editor with JSON Preview - supports both simple and variable products with full text-based field editing and value-highlighted JSON preview
 - Next Update: Q1 2025

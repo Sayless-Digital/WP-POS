@@ -12,11 +12,12 @@ require_once __DIR__ . '/../wp-load.php';
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Custom JSON syntax highlighting -->
     
     <!-- JPOS Routing Module -->
     <script src="assets/js/modules/routing.js?v=1.5.10"></script>
     <!-- JPOS Original JavaScript (temporarily reverting for debugging) -->
-    <script src="assets/js/main.js?v=1.5.10"></script>
+    <script src="assets/js/main.js?v=1.5.39"></script>
     <style>
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
@@ -44,6 +45,34 @@ require_once __DIR__ . '/../wp-load.php';
 
         /* Ensure grid rows don't stretch */
         #product-list { grid-auto-rows: min-content; }
+
+        /* Custom JSON syntax highlighting for dark theme */
+        #json-preview {
+            background: #0f172a !important;
+            border-radius: 0.5rem;
+        }
+        
+        #json-preview code {
+            background: transparent !important;
+            color: #e2e8f0 !important; /* Default text color */
+        }
+        
+        .json-string {
+            color: #79b8ff !important; /* Blue for string values */
+            font-weight: 500;
+        }
+        .json-number {
+            color: #f97583 !important; /* Red for number values */
+            font-weight: 500;
+        }
+        .json-boolean {
+            color: #ffab70 !important; /* Orange for boolean values */
+            font-weight: 500;
+        }
+        .json-null {
+            color: #8b949e !important; /* Gray for null values */
+            font-weight: 500;
+        }
 
         /* Side menu transition */
         #side-menu { 
@@ -194,6 +223,7 @@ require_once __DIR__ . '/../wp-load.php';
     <input type="hidden" id="jpos-drawer-nonce" value="<?php echo wp_create_nonce('jpos_drawer_nonce'); ?>">
     <input type="hidden" id="jpos-stock-nonce" value="<?php echo wp_create_nonce('jpos_stock_nonce'); ?>">
     <input type="hidden" id="jpos-refund-nonce" value="<?php echo wp_create_nonce('jpos_refund_nonce'); ?>">
+    <input type="hidden" id="jpos-product-edit-nonce" value="<?php echo wp_create_nonce('jpos_product_edit_nonce'); ?>">
 
     <!-- Login Screen -->
     <div id="login-screen" class="app-overlay hidden">
@@ -612,6 +642,213 @@ require_once __DIR__ . '/../wp-load.php';
             </div>
         </div>
     </div>
+    
+    <!-- Comprehensive Product Editor Modal -->
+    <div id="product-editor-modal" class="app-overlay hidden">
+        <div class="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow-2xl w-full max-w-6xl max-h-[95vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 id="product-editor-title" class="text-2xl font-bold">Edit Product</h2>
+                    <button id="product-editor-close" class="text-slate-400 hover:text-white">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <!-- Tab Navigation -->
+                <div class="flex border-b border-slate-600 mb-6">
+                    <button id="form-tab" class="px-4 py-2 text-sm font-medium text-slate-300 border-b-2 border-blue-500 bg-slate-700 rounded-t-lg">
+                        <i class="fas fa-edit mr-2"></i>Form View
+                    </button>
+                    <button id="json-tab" class="px-4 py-2 text-sm font-medium text-slate-400 border-b-2 border-transparent hover:text-slate-300 hover:border-slate-500">
+                        <i class="fas fa-code mr-2"></i>JSON View
+                    </button>
+                </div>
+            
+            <!-- Form View Content -->
+            <div id="form-view" class="space-y-6">
+                <!-- Basic Information -->
+                <div class="bg-slate-700/50 p-4 rounded-lg">
+                    <h3 class="text-lg font-semibold mb-4 text-slate-200">Basic Information</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-2">Name</label>
+                            <input type="text" id="product-name" class="w-full px-3 py-2 bg-slate-600 text-slate-200 rounded-lg border border-slate-500 focus:border-blue-500 focus:outline-none">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-300 mb-2">SKU</label>
+                                <input type="text" id="product-sku" class="w-full px-3 py-2 bg-slate-600 text-slate-200 rounded-lg border border-slate-500 focus:border-blue-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-300 mb-2">Barcode</label>
+                                <input type="text" id="product-barcode" class="w-full px-3 py-2 bg-slate-600 text-slate-200 rounded-lg border border-slate-500 focus:border-blue-500 focus:outline-none">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pricing & Status -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Pricing -->
+                    <div class="bg-slate-700/50 p-4 rounded-lg">
+                        <h3 class="text-lg font-semibold mb-4 text-slate-200">Pricing</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-300 mb-2">Regular Price</label>
+                                <input type="number" step="0.01" id="product-regular-price" class="w-full px-3 py-2 bg-slate-600 text-slate-200 rounded-lg border border-slate-500 focus:border-blue-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-300 mb-2">Sale Price</label>
+                                <input type="number" step="0.01" id="product-sale-price" class="w-full px-3 py-2 bg-slate-600 text-slate-200 rounded-lg border border-slate-500 focus:border-blue-500 focus:outline-none">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Status & Visibility -->
+                    <div class="bg-slate-700/50 p-4 rounded-lg">
+                        <h3 class="text-lg font-semibold mb-4 text-slate-200">Status & Visibility</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-300 mb-2">Status</label>
+                                <select id="product-status" class="w-full px-3 py-2 bg-slate-600 text-slate-200 rounded-lg border border-slate-500 focus:border-blue-500 focus:outline-none">
+                                    <option value="publish">Publish</option>
+                                    <option value="draft">Draft</option>
+                                    <option value="private">Private</option>
+                                </select>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <input type="checkbox" id="product-featured" class="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500">
+                                <label for="product-featured" class="text-sm font-medium text-slate-300">Featured</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tax & Inventory -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Tax Settings -->
+                    <div class="bg-slate-700/50 p-4 rounded-lg">
+                        <h3 class="text-lg font-semibold mb-4 text-slate-200">Tax Settings</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-300 mb-2">Tax Class</label>
+                                <select id="product-tax-class" class="w-full px-3 py-2 bg-slate-600 text-slate-200 rounded-lg border border-slate-500 focus:border-blue-500 focus:outline-none">
+                                    <option value="">Standard rate</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-300 mb-2">Tax Status</label>
+                                <div class="space-y-2">
+                                    <label class="flex items-center">
+                                        <input type="radio" name="tax-status" value="taxable" class="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 focus:ring-blue-500">
+                                        <span class="ml-2 text-sm text-slate-300">Taxable</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="radio" name="tax-status" value="none" class="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 focus:ring-blue-500">
+                                        <span class="ml-2 text-sm text-slate-300">None</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Inventory -->
+                    <div class="bg-slate-700/50 p-4 rounded-lg">
+                        <h3 class="text-lg font-semibold mb-4 text-slate-200">Inventory</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-300 mb-2">Stock Quantity</label>
+                                <input type="number" id="product-stock-quantity" class="w-full px-3 py-2 bg-slate-600 text-slate-200 rounded-lg border border-slate-500 focus:border-blue-500 focus:outline-none">
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <input type="checkbox" id="product-manage-stock" class="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500">
+                                <label for="product-manage-stock" class="text-sm font-medium text-slate-300">Manage Stock</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Meta Data Accordion Section -->
+                <div class="bg-slate-700/50 p-4 rounded-lg">
+                    <button id="meta-data-accordion-toggle" class="w-full flex items-center justify-between text-left">
+                        <h3 class="text-lg font-semibold text-slate-200">Meta Data</h3>
+                        <svg id="meta-data-accordion-icon" class="w-5 h-5 text-slate-400 transform transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+                    <div id="meta-data-accordion-content" class="hidden mt-4 space-y-4">
+                        <div id="product-meta-data" class="space-y-2">
+                            <!-- Meta data fields will be dynamically added here -->
+                        </div>
+                        <button id="add-meta-data" class="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-500">
+                            Add Meta Data
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Attributes Accordion Section -->
+                <div class="bg-slate-700/50 p-4 rounded-lg">
+                    <button id="attributes-accordion-toggle" class="w-full flex items-center justify-between text-left">
+                        <h3 class="text-lg font-semibold text-slate-200">Attributes</h3>
+                        <svg id="attributes-accordion-icon" class="w-5 h-5 text-slate-400 transform transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+                    <div id="attributes-accordion-content" class="hidden mt-4 space-y-4">
+                        <div id="product-attributes" class="space-y-2">
+                            <!-- Attribute fields will be dynamically added here -->
+                        </div>
+                        <button id="add-attribute" class="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-500">
+                            Add Attribute
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Variations Accordion Section (for variable products) -->
+                <div id="variations-section" class="bg-slate-700/50 p-4 rounded-lg hidden">
+                    <button id="variations-accordion-toggle" class="w-full flex items-center justify-between text-left">
+                        <h3 class="text-lg font-semibold text-slate-200">Variations</h3>
+                        <svg id="variations-accordion-icon" class="w-5 h-5 text-slate-400 transform transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+                    <div id="variations-accordion-content" class="hidden mt-4 space-y-4">
+                        <div id="product-variations" class="space-y-2">
+                            <!-- Variation fields will be dynamically added here -->
+                        </div>
+                        <button id="add-variation" class="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-500">
+                            Add Variation
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Form View Action Buttons -->
+                <div class="flex justify-end gap-3 pt-6 mt-6 border-t border-slate-700">
+                    <button id="product-editor-cancel" class="px-5 py-2 bg-slate-600 rounded-lg hover:bg-slate-500 text-white">Cancel</button>
+                    <button id="product-editor-save" class="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500">Save Changes</button>
+                </div>
+            </div>
+            
+            <!-- JSON View Content -->
+            <div id="json-view" class="hidden">
+                <div class="bg-slate-700/50 p-4 rounded-lg">
+                    <h3 class="text-lg font-semibold mb-4 text-slate-200">Product Data (JSON)</h3>
+                    <div class="bg-slate-900 p-4 rounded-lg border border-slate-600">
+                        <pre id="json-full-preview" class="text-sm overflow-auto max-h-[60vh] whitespace-pre-wrap"><code class="language-json"></code></pre>
+                    </div>
+                </div>
+                
+                <!-- JSON View Action Buttons -->
+                <div class="flex justify-end gap-3 pt-6 mt-6 border-t border-slate-700">
+                    <button id="product-editor-cancel-json" class="px-5 py-2 bg-slate-600 rounded-lg hover:bg-slate-500 text-white">Cancel</button>
+                    <button id="product-editor-save-json" class="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500">Save Changes</button>
+                </div>
+            </div>
+            
+            <!-- Status Message -->
+            <div id="product-editor-status" class="text-sm text-right h-5 mt-2"></div>
+        </div>
+    </div>
+
     <!-- Return/Exchange Modal -->
 <div id="return-modal" class="app-overlay hidden">
     <div class="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow-2xl w-full max-w-2xl transform transition-all">
