@@ -150,6 +150,25 @@ try {
         ]);
         exit;
         
+    } elseif ($action === 'get_tax_classes') {
+        // Get tax classes only
+        $tax_classes = [];
+        if (function_exists('WC_Tax')) {
+            $tax_classes_raw = WC_Tax::get_tax_classes();
+            foreach ($tax_classes_raw as $tax_class) {
+                $tax_classes[] = [
+                    'slug' => sanitize_title($tax_class),
+                    'name' => $tax_class
+                ];
+            }
+        }
+        
+        echo json_encode([
+            'success' => true,
+            'tax_classes' => $tax_classes
+        ]);
+        exit;
+        
     } else {
         JPOS_Error_Handler::send_error('Invalid action', 400);
     }

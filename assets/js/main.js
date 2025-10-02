@@ -1,6 +1,6 @@
-// JPOS v1.6.0 - Production-ready product editing system with database-driven attribute suggestions - CACHE BUST
+// JPOS v1.6.1 - Fixed attribute options persistence and tax classes API - CACHE BUST
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.6.0 loaded - Production-ready product editing system');
+    console.log('JPOS v1.6.1 loaded - Fixed attribute options persistence and tax classes API');
     // Initialize Routing Manager
     const routingManager = new RoutingManager();
 
@@ -2160,7 +2160,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div>
                         <label class="block text-xs text-slate-300 mb-1">Options</label>
                         <div class="bg-slate-600 border border-slate-500 rounded p-2 min-h-[40px]">
-                            <div id="attribute-options-${index}" class="flex flex-wrap gap-1 mb-2" data-attribute-index="${index}" data-attribute-name="${(attribute.friendly_name || attribute.name).toLowerCase()}">
+                            <div id="attribute-options-${index}" class="flex flex-wrap gap-1 mb-2" data-attribute-index="${index}" data-attribute-name="${(attribute.friendly_name || attribute.name).toLowerCase()}" data-original-options='${JSON.stringify(attribute.friendly_options || attribute.options)}'>
                                 ${(attribute.friendly_options || attribute.options).map(option => `
                                     <span class="inline-flex items-center px-2 py-1 bg-blue-600 text-white text-xs rounded" data-option="${option}">
                                         ${option}
@@ -2373,11 +2373,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const optionsContainer = document.getElementById(`attribute-options-${attributeIndex}`);
         const attributeName = optionsContainer.getAttribute('data-attribute-name') || '';
         
-        // Get existing options from the current attribute (from database)
-        const existingOptions = Array.from(optionsContainer.querySelectorAll('span[data-option]')).map(el => el.getAttribute('data-option'));
+        // Get original options from database (stored in data attribute)
+        const originalOptionsJson = optionsContainer.getAttribute('data-original-options') || '[]';
+        const originalOptions = JSON.parse(originalOptionsJson);
         
-        // Use only existing options from the database - no hardcoded lists
-        const suggestions = existingOptions;
+        // Use original database options for suggestions
+        const suggestions = originalOptions;
         
         // Filter suggestions based on query
         const filteredSuggestions = suggestions.filter(option => 
