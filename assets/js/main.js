@@ -1,6 +1,6 @@
-// JPOS v1.6.1 - Fixed attribute options persistence and tax classes API - CACHE BUST
+// JPOS v1.6.2 - Fixed live state updates and tax classes API response structure - CACHE BUST
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.6.1 loaded - Fixed attribute options persistence and tax classes API');
+    console.log('JPOS v1.6.2 loaded - Fixed live state updates and tax classes API response structure');
     // Initialize Routing Manager
     const routingManager = new RoutingManager();
 
@@ -2070,7 +2070,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const select = document.getElementById('product-tax-class');
             select.innerHTML = '';
             
-            result.data.forEach(taxClass => {
+            result.tax_classes.forEach(taxClass => {
                 const option = document.createElement('option');
                 option.value = taxClass.slug;
                 option.textContent = taxClass.name;
@@ -2317,6 +2317,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 element.remove();
             }
         });
+        
+        // Refresh suggestions to show updated state
+        refreshAttributeSuggestions(attributeIndex);
     }
 
     window.addAttributeOption = function(attributeIndex, option) {
@@ -2349,6 +2352,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Clear input
         input.value = '';
         hideAttributeSuggestions(attributeIndex);
+        
+        // Refresh suggestions to show updated state
+        refreshAttributeSuggestions(attributeIndex);
     }
 
     function handleAttributeOptionKeypress(event, attributeIndex) {
@@ -2414,6 +2420,13 @@ document.addEventListener('DOMContentLoaded', () => {
     window.hideAttributeSuggestions = function(attributeIndex) {
         const suggestionsContainer = document.getElementById(`attribute-option-suggestions-${attributeIndex}`);
         suggestionsContainer.classList.add('hidden');
+    }
+    
+    function refreshAttributeSuggestions(attributeIndex) {
+        const input = document.getElementById(`attribute-option-input-${attributeIndex}`);
+        if (input && input.value.trim()) {
+            showAttributeSuggestions(attributeIndex, input.value);
+        }
     }
 
     function highlightJSON(jsonString) {
