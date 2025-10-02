@@ -1,9 +1,11 @@
+import { BaseComponent } from '../ui/BaseComponent.js';
+
 /**
  * OptionsSearch Component
  * Reusable search component for attribute options
  * Similar to React/Next.js component structure
  */
-class OptionsSearch extends BaseComponent {
+export class OptionsSearch extends BaseComponent {
     get defaultProps() {
         return {
             placeholder: 'Type to add option...',
@@ -55,7 +57,12 @@ class OptionsSearch extends BaseComponent {
             }
         });
 
-        // Click outside to hide suggestions - will be added after element is rendered
+        // Click outside to hide suggestions
+        this.addEventListener(document, 'click', (e) => {
+            if (!this.element?.contains(e.target)) {
+                this.hideSuggestions();
+            }
+        });
     }
 
     render() {
@@ -101,20 +108,16 @@ class OptionsSearch extends BaseComponent {
         if (this.container) {
             this.container.appendChild(this.element);
         }
-        
-        // Add click outside listener after element is rendered
-        this.addEventListener(document, 'click', (e) => {
-            if (!this.element?.contains(e.target)) {
-                this.hideSuggestions();
-            }
-        });
     }
 
     showSuggestions() {
         if (!this.suggestionsElement) return;
         
-        // Show all suggestions, but mark already added ones differently
-        this.renderSuggestions(this.props.suggestions);
+        const filteredSuggestions = this.props.suggestions.filter(option => 
+            !this.props.existingOptions.includes(option)
+        );
+        
+        this.renderSuggestions(filteredSuggestions);
         this.show(this.suggestionsElement);
     }
 
@@ -155,49 +158,23 @@ class OptionsSearch extends BaseComponent {
 
         this.suggestionsElement.innerHTML = suggestions
             .slice(0, this.props.maxSuggestions)
-            .map(suggestion => {
-                const isAlreadyAdded = this.props.existingOptions.includes(suggestion);
-                const className = isAlreadyAdded 
-                    ? 'px-3 py-2 text-sm text-green-400 hover:bg-slate-600 cursor-pointer flex items-center suggestion-item opacity-60' 
-                    : 'px-3 py-2 text-sm text-slate-200 hover:bg-slate-600 cursor-pointer flex items-center suggestion-item';
-                
-                return `
-                    <div class="${className}" data-suggestion="${suggestion}" data-added="${isAlreadyAdded}">
-                        ${suggestion} ${isAlreadyAdded ? '✓' : ''}
-                    </div>
-                `;
-            }).join('');
-        
-        // Add event listeners for suggestion clicks
-        this.suggestionsElement.querySelectorAll('.suggestion-item').forEach(item => {
-            item.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const suggestion = item.getAttribute('data-suggestion');
-                const isAlreadyAdded = item.getAttribute('data-added') === 'true';
-                
-                if (!isAlreadyAdded) {
-                    this.addOption(suggestion);
-                }
-            });
-        });
+            .map(suggestion => `
+                <div class="px-3 py-2 text-sm text-slate-200 hover:bg-slate-600 cursor-pointer flex items-center" 
+                     onclick="window.optionsSearchSelectOption('${suggestion}')">
+                    ${suggestion}
+                </div>
+            `).join('');
     }
 
     renderCreateOption(query) {
         if (!this.suggestionsElement) return;
 
         this.suggestionsElement.innerHTML = `
-            <div class="px-3 py-2 text-sm text-blue-400 hover:bg-slate-600 cursor-pointer flex items-center create-option-item" 
-                 data-query="${query}">
+            <div class="px-3 py-2 text-sm text-blue-400 hover:bg-slate-600 cursor-pointer flex items-center" 
+                 onclick="window.optionsSearchCreateOption('${query}')">
                 + Create "${query}" as new option
             </div>
         `;
-        
-        // Add event listener for create option click
-        this.suggestionsElement.querySelector('.create-option-item').addEventListener('click', (e) => {
-            e.stopPropagation();
-            const query = e.target.getAttribute('data-query');
-            this.addOption(query);
-        });
     }
 
     hideSuggestions() {
@@ -222,26 +199,16 @@ class OptionsSearch extends BaseComponent {
         if (!this.optionsElement) return;
 
         this.optionsElement.innerHTML = this.props.existingOptions.map(option => `
-            <span class="inline-flex items-center px-2 py-1 bg-blue-600 text-white text-xs rounded" data-option="${option}">
+            <span class="inline-flex items-center px-2 py-1 bg-blue-600 text-white text-xs rounded">
                 ${option}
                 <button type="button" class="ml-1 text-blue-200 hover:text-white remove-option-btn" 
-                        data-option="${option}">
+                        onclick="window.optionsSearchRemoveOption('${option}')">
                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                     </svg>
                 </button>
             </span>
         `).join('');
-        
-        // Add event listeners for remove buttons
-        this.optionsElement.querySelectorAll('.remove-option-btn').forEach(button => {
-            button.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const option = button.getAttribute('data-option');
-                this.props.onRemoveOption(option);
-                this.renderOptions();
-            });
-        });
     }
 
     // Public methods
@@ -260,7 +227,23 @@ class OptionsSearch extends BaseComponent {
     }
 }
 
-// Global functions removed - component now handles all interactions internally
+// Global functions for onclick handlers
+window.optionsSearchSelectOption = function(option) {
+    // This will be set by the component instance
+    if (window.currentOptionsSearch) {
+        window.currentOptionsSearch.addOption(option);
+    }
+};
 
-// Make OptionsSearch globally available
-window.OptionsSearch = OptionsSearch;
+window.optionsSearchCreateOption = function(option) {
+    if (window.currentOptionsSearch) {
+        window.currentOptionsSearch.addOption(option);
+    }
+};
+
+window.optionsSearchRemoveOption = function(option) {
+    if (window.currentOptionsSearch) {
+        window.currentOptionsSearch.props.onRemoveOption(option);
+        window.currentOptionsSearch.renderOptions();
+    }
+};

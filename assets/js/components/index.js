@@ -3,36 +3,29 @@
  * Next.js style component organization
  */
 
+// UI Components
+export { BaseComponent } from './ui/BaseComponent.js';
+
+// Search Components
+export { OptionsSearch } from './search/OptionsSearch.js';
+export { AttributeSearch } from './search/AttributeSearch.js';
+
+// Form Components
+export { AttributeForm } from './forms/AttributeForm.js';
+
+// Component Registry (similar to Next.js pages)
+export const components = {
+    'ui/BaseComponent': BaseComponent,
+    'search/OptionsSearch': OptionsSearch,
+    'search/AttributeSearch': AttributeSearch,
+    'forms/AttributeForm': AttributeForm
+};
+
 // Helper function to create components (similar to Next.js dynamic imports)
-function createComponent(componentName, props = {}) {
-    const components = {
-        'ui/BaseComponent': window.BaseComponent,
-        'search/OptionsSearch': window.OptionsSearch,
-        'search/AttributeSearch': window.AttributeSearch,
-        'forms/AttributeForm': window.AttributeForm
-    };
-    
+export function createComponent(componentName, props = {}) {
     const Component = components[componentName];
     if (!Component) {
         throw new Error(`Component ${componentName} not found`);
     }
     return new Component(props);
 }
-
-// Component Registry (similar to Next.js pages)
-const components = {
-    'ui/BaseComponent': window.BaseComponent,
-    'search/OptionsSearch': window.OptionsSearch,
-    'search/AttributeSearch': window.AttributeSearch,
-    'forms/AttributeForm': window.AttributeForm
-};
-
-// Make components globally available
-window.JPOSComponents = {
-    BaseComponent: window.BaseComponent,
-    OptionsSearch: window.OptionsSearch,
-    AttributeSearch: window.AttributeSearch,
-    AttributeForm: window.AttributeForm,
-    components,
-    createComponent
-};

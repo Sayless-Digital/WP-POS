@@ -16,14 +16,8 @@ require_once __DIR__ . '/../wp-load.php';
     
     <!-- JPOS Routing Module -->
     <script src="assets/js/modules/routing.js?v=1.5.10"></script>
-    <!-- JPOS Components -->
-    <script src="assets/js/components/ui/BaseComponent.js?v=1.7.7"></script>
-    <script src="assets/js/components/search/OptionsSearch.js?v=1.7.7"></script>
-    <script src="assets/js/components/search/AttributeSearch.js?v=1.7.7"></script>
-    <script src="assets/js/components/forms/AttributeForm.js?v=1.7.7"></script>
-    <script src="assets/js/components/index.js?v=1.7.7"></script>
     <!-- JPOS Original JavaScript (temporarily reverting for debugging) -->
-    <script src="assets/js/main.js?v=1.7.7"></script>
+    <script src="assets/js/main.js?v=1.7.0"></script>
     <style>
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }

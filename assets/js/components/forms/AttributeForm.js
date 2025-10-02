@@ -1,9 +1,13 @@
+import { BaseComponent } from '../ui/BaseComponent.js';
+import { AttributeSearch } from '../search/AttributeSearch.js';
+import { OptionsSearch } from '../search/OptionsSearch.js';
+
 /**
  * AttributeForm Component
  * Complete form for adding new attributes
  * Similar to React/Next.js component structure
  */
-class AttributeForm extends BaseComponent {
+export class AttributeForm extends BaseComponent {
     get defaultProps() {
         return {
             availableAttributes: [],
@@ -236,6 +240,3 @@ class AttributeForm extends BaseComponent {
         this.setState({ existingOptions: [] });
     }
 }
-
-// Make AttributeForm globally available
-window.AttributeForm = AttributeForm;

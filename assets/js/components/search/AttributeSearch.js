@@ -1,9 +1,11 @@
+import { BaseComponent } from '../ui/BaseComponent.js';
+
 /**
  * AttributeSearch Component
  * Reusable search component for attribute names
  * Similar to React/Next.js component structure
  */
-class AttributeSearch extends BaseComponent {
+export class AttributeSearch extends BaseComponent {
     get defaultProps() {
         return {
             placeholder: 'Type attribute name...',
@@ -201,6 +203,3 @@ window.attributeSearchCreate = function(attribute) {
         window.currentAttributeSearch.selectAttribute(attribute);
     }
 };
-
-// Make AttributeSearch globally available
-window.AttributeSearch = AttributeSearch;

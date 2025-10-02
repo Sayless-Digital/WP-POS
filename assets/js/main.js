@@ -1,8 +1,6 @@
-// JPOS v1.7.7 - Fixed add options functionality for existing attributes - CACHE BUST
+// JPOS v1.7.0 - Enhanced existing attribute options to show active options and live updates - CACHE BUST
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.7.7 loaded - Fixed add options functionality for existing attributes');
-    
-    // Components are loaded via script tags in index.php
+    console.log('JPOS v1.7.0 loaded - Enhanced existing attribute options to show active options and live updates');
     // Initialize Routing Manager
     const routingManager = new RoutingManager();
 
@@ -679,9 +677,63 @@ document.addEventListener('DOMContentLoaded', () => {
         const addVariationBtn = document.getElementById('add-variation');
         if (addVariationBtn) addVariationBtn.addEventListener('click', addVariationRow);
         
-        // Event listeners now handled by OptionsSearch components
+        // Add event listeners for attribute option inputs (will be added dynamically)
+        document.addEventListener('focus', function(e) {
+            if (e.target.id && e.target.id.startsWith('attribute-option-input-')) {
+                const attributeIndex = e.target.id.split('-')[3];
+                showAttributeSuggestions(attributeIndex, e.target.value);
+            }
+        });
         
-        // Remove button functionality now handled by OptionsSearch components
+        document.addEventListener('input', function(e) {
+            if (e.target.id && e.target.id.startsWith('attribute-option-input-')) {
+                const attributeIndex = e.target.id.split('-')[3];
+                showAttributeSuggestions(attributeIndex, e.target.value);
+            }
+        });
+        
+        // Also add keyup listener for better compatibility
+        document.addEventListener('keyup', function(e) {
+            if (e.target.id && e.target.id.startsWith('attribute-option-input-')) {
+                const attributeIndex = e.target.id.split('-')[3];
+                showAttributeSuggestions(attributeIndex, e.target.value);
+            }
+        });
+        
+        
+        // Add keypress listener for Enter/comma
+        document.addEventListener('keypress', function(e) {
+            if (e.target.id && e.target.id.startsWith('attribute-option-input-')) {
+                if (e.key === 'Enter' || e.key === ',') {
+                    e.preventDefault();
+                    const attributeIndex = e.target.id.split('-')[3];
+                    addAttributeOption(attributeIndex, e.target.value);
+                } else if (e.key === 'Escape') {
+                    const attributeIndex = e.target.id.split('-')[3];
+                    hideAttributeSuggestions(attributeIndex);
+                }
+            }
+        });
+        
+        // Hide suggestions when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.relative')) {
+                document.querySelectorAll('[id^="attribute-option-suggestions-"]').forEach(el => {
+                    el.classList.add('hidden');
+                });
+            }
+        });
+        
+        // Event delegation for remove option buttons
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.remove-option-btn')) {
+                const button = e.target.closest('.remove-option-btn');
+                const optionSpan = button.closest('span[data-option]');
+                if (optionSpan) {
+                    optionSpan.remove();
+                }
+            }
+        });
         
         // Add event listeners for form field changes to update JSON preview
         // Form input event listeners removed - JSON preview now only in JSON tab
@@ -2095,14 +2147,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const container = document.getElementById('product-attributes');
         container.innerHTML = '';
         
-        // Common options for suggestions
-        const commonOptions = ['Red', 'Blue', 'Green', 'Yellow', 'Black', 'White', 'Gray', 'Brown', 'Pink', 'Purple', 'Orange', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'Small', 'Medium', 'Large', 'Extra Large', 'Cotton', 'Polyester', 'Wool', 'Silk', 'Leather', 'Denim', 'Linen', 'Cashmere', 'Nike', 'Adidas', 'Puma', 'Under Armour', 'Reebok', 'New Balance', 'Casual', 'Formal', 'Sport', 'Vintage', 'Modern', 'Classic', 'Trendy'];
-        
         attributes.forEach((attribute, index) => {
             const attributeRow = document.createElement('div');
             attributeRow.className = 'bg-slate-600 p-3 rounded border border-slate-500';
-            
-            // Create the basic structure
             attributeRow.innerHTML = `
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
                     <div>
@@ -2118,8 +2165,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
                     <div>
                         <label class="block text-xs text-slate-300 mb-1">Options</label>
-                        <div id="options-search-container-${index}" class="bg-slate-600 border border-slate-500 rounded p-2 min-h-[40px]">
-                            <!-- OptionsSearch component will be mounted here -->
+                        <div class="bg-slate-600 border border-slate-500 rounded p-2 min-h-[40px]">
+                            <div id="attribute-options-${index}" class="flex flex-wrap gap-1 mb-2" data-attribute-index="${index}" data-attribute-name="${(attribute.friendly_name || attribute.name).toLowerCase()}" data-original-options='${JSON.stringify(attribute.friendly_options || attribute.options)}'>
+                                ${(attribute.friendly_options || attribute.options).map(option => `
+                                    <span class="inline-flex items-center px-2 py-1 bg-blue-600 text-white text-xs rounded" data-option="${option}">
+                                        ${option}
+                                        <button type="button" class="ml-1 text-blue-200 hover:text-white remove-option-btn">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                            </svg>
+                                        </button>
+                                    </span>
+                                `).join('')}
+                            </div>
+                            <div class="relative">
+                                <input type="text" id="attribute-option-input-${index}" placeholder="Type to add option..." class="w-full px-2 py-1 bg-slate-700 text-slate-200 rounded border border-slate-500 text-sm focus:border-blue-500 focus:outline-none">
+                                <div id="attribute-option-suggestions-${index}" class="absolute top-full left-0 right-0 bg-slate-700 border border-slate-500 rounded mt-1 max-h-32 overflow-y-auto hidden z-10">
+                                    <!-- Suggestions will be populated here -->
+                                </div>
+                            </div>
                         </div>
                         ${attribute.friendly_options ? `<div class="text-xs text-slate-500 mt-1">Technical IDs: ${attribute.options.join(', ')}</div>` : ''}
                     </div>
@@ -2134,42 +2198,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         </label>
                     </div>
                 </div>
-                <div class="flex justify-end">
-                    <button type="button" onclick="this.parentElement.parentElement.remove()" class="px-2 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-500">Remove</button>
-                </div>
             `;
-            
             container.appendChild(attributeRow);
-            
-            // Create OptionsSearch component for this attribute
-            if (window.JPOSComponents) {
-                const { OptionsSearch } = window.JPOSComponents;
-                const optionsContainer = attributeRow.querySelector(`#options-search-container-${index}`);
-                
-                const optionsSearch = new OptionsSearch({
-                    placeholder: 'Type to add option...',
-                    suggestions: commonOptions,
-                    inputId: `attribute-option-input-${index}`,
-                    suggestionsId: `attribute-option-suggestions-${index}`,
-                    optionsId: `attribute-options-${index}`,
-                    existingOptions: attribute.friendly_options || attribute.options,
-                    onSelectOption: (option) => {
-                        // Add option to the attribute
-                        const currentOptions = optionsSearch.props.existingOptions || [];
-                        optionsSearch.setExistingOptions([...currentOptions, option]);
-                    },
-                    onRemoveOption: (option) => {
-                        // Remove option from the attribute
-                        const currentOptions = optionsSearch.props.existingOptions || [];
-                        optionsSearch.setExistingOptions(currentOptions.filter(opt => opt !== option));
-                    }
-                });
-                
-                optionsSearch.mount(optionsContainer);
-                
-                // Store reference for global functions
-                window[`currentOptionsSearch_${index}`] = optionsSearch;
-            }
         });
     }
 
@@ -2229,6 +2259,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function addAttributeRow() {
         const container = document.getElementById('product-attributes');
+        const attributeRow = document.createElement('div');
+        attributeRow.className = 'bg-slate-600 p-3 rounded border border-slate-500';
         
         // Load available attributes
         let availableAttributes = [];
@@ -2244,34 +2276,291 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Error loading available attributes:', error);
         }
         
-        // Common options for suggestions
+        // Store available attributes for suggestions
+        const attributeSuggestions = availableAttributes.map(attr => attr.label);
+        
+        attributeRow.innerHTML = `
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
+                <div>
+                    <label class="block text-xs text-slate-300 mb-1">Attribute Name</label>
+                    <div class="relative">
+                        <input type="text" id="new-attribute-name-input" placeholder="Type attribute name..." class="w-full px-2 py-1 bg-slate-600 text-slate-200 rounded border border-slate-500 text-sm focus:border-blue-500 focus:outline-none">
+                        <div id="new-attribute-name-suggestions" class="absolute top-full left-0 right-0 bg-slate-700 border border-slate-500 rounded mt-1 max-h-32 overflow-y-auto hidden z-10">
+                            <!-- Suggestions will be populated here -->
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-300 mb-1">Type</label>
+                    <select id="new-attribute-type" class="w-full px-2 py-1 bg-slate-600 text-slate-200 rounded border border-slate-500 text-sm">
+                        <option value="custom">Custom</option>
+                        <option value="taxonomy">Taxonomy</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mb-2">
+                <label class="block text-xs text-slate-300 mb-1">Options</label>
+                <div class="bg-slate-600 border border-slate-500 rounded p-2 min-h-[40px]">
+                    <div id="new-attribute-options" class="flex flex-wrap gap-1 mb-2">
+                        <!-- Selected options will appear here -->
+                    </div>
+                    <div class="relative">
+                        <input type="text" id="new-attribute-option-input" placeholder="Type to add option..." class="w-full px-2 py-1 bg-slate-700 text-slate-200 rounded border border-slate-500 text-sm focus:border-blue-500 focus:outline-none">
+                        <div id="new-attribute-option-suggestions" class="absolute top-full left-0 right-0 bg-slate-700 border border-slate-500 rounded mt-1 max-h-32 overflow-y-auto hidden z-10">
+                            <!-- Suggestions will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4 mb-3">
+                <label class="flex items-center">
+                    <input type="checkbox" class="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500">
+                    <span class="ml-2 text-xs text-slate-300">Visible</span>
+                </label>
+                <label class="flex items-center">
+                    <input type="checkbox" class="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500">
+                    <span class="ml-2 text-xs text-slate-300">Variation</span>
+                </label>
+            </div>
+            <div class="flex justify-end">
+                <button type="button" onclick="this.parentElement.parentElement.remove()" class="px-2 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-500">Remove</button>
+            </div>
+        `;
+        
+        container.appendChild(attributeRow);
+        
+        // Add event listeners for new attribute functionality
+        const nameInput = attributeRow.querySelector('#new-attribute-name-input');
+        const nameSuggestions = attributeRow.querySelector('#new-attribute-name-suggestions');
+        const optionInput = attributeRow.querySelector('#new-attribute-option-input');
+        const optionsContainer = attributeRow.querySelector('#new-attribute-options');
+        const optionSuggestions = attributeRow.querySelector('#new-attribute-option-suggestions');
+        
+        // Store common options for suggestions
         const commonOptions = ['Red', 'Blue', 'Green', 'Yellow', 'Black', 'White', 'Gray', 'Brown', 'Pink', 'Purple', 'Orange', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'Small', 'Medium', 'Large', 'Extra Large', 'Cotton', 'Polyester', 'Wool', 'Silk', 'Leather', 'Denim', 'Linen', 'Cashmere', 'Nike', 'Adidas', 'Puma', 'Under Armour', 'Reebok', 'New Balance', 'Casual', 'Formal', 'Sport', 'Vintage', 'Modern', 'Classic', 'Trendy'];
         
-        // Create AttributeForm component
-        if (!window.JPOSComponents) {
-            console.error('JPOS Components not loaded. Please refresh the page.');
-            return;
-        }
+        // Attribute name search functionality
+        nameInput.addEventListener('focus', function() {
+            showNewAttributeNameSuggestions(this.value, attributeSuggestions, nameSuggestions);
+        });
         
-        const { AttributeForm } = window.JPOSComponents;
-        const attributeForm = new AttributeForm({
-            availableAttributes: availableAttributes.map(attr => attr.label),
-            commonOptions,
-            onSave: (attributeData) => {
-                console.log('New attribute data:', attributeData);
-                alert(`Attribute "${attributeData.name}" with ${attributeData.options.length} options added successfully!`);
-                attributeForm.unmount();
-            },
-            onCancel: () => {
-                attributeForm.unmount();
+        nameInput.addEventListener('input', function() {
+            showNewAttributeNameSuggestions(this.value, attributeSuggestions, nameSuggestions);
+        });
+        
+        nameInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                selectNewAttributeName(this.value, attributeSuggestions, nameSuggestions);
+            } else if (e.key === 'Escape') {
+                hideNewAttributeNameSuggestions(nameSuggestions);
             }
         });
         
-        // Mount the component
-        attributeForm.mount(container);
+        // Attribute options search functionality
+        optionInput.addEventListener('focus', function() {
+            showNewAttributeOptionSuggestions(this.value, commonOptions, optionsContainer, optionSuggestions);
+        });
+        
+        optionInput.addEventListener('input', function() {
+            showNewAttributeOptionSuggestions(this.value, commonOptions, optionsContainer, optionSuggestions);
+        });
+        
+        optionInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' || e.key === ',') {
+                e.preventDefault();
+                addNewAttributeOption(this.value, optionsContainer, optionSuggestions);
+                this.value = '';
+            } else if (e.key === 'Escape') {
+                hideNewAttributeOptionSuggestions(optionSuggestions);
+            }
+        });
+        
+        // Hide suggestions when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!attributeRow.contains(e.target)) {
+                hideNewAttributeNameSuggestions(nameSuggestions);
+                hideNewAttributeOptionSuggestions(optionSuggestions);
+            }
+        });
     }
 
-    // Component-based functionality now handled by AttributeForm component
+    // Helper functions for new attribute functionality
+    function showNewAttributeNameSuggestions(query, attributeSuggestions, suggestionsContainer) {
+        // Always show suggestions container, filter based on query
+        let filteredSuggestions;
+        
+        if (!query.trim()) {
+            // Show all suggestions when no query
+            filteredSuggestions = attributeSuggestions;
+        } else {
+            // Filter suggestions based on query
+            filteredSuggestions = attributeSuggestions.filter(attr => 
+                attr.toLowerCase().includes(query.toLowerCase())
+            );
+        }
+        
+        if (filteredSuggestions.length > 0) {
+            suggestionsContainer.innerHTML = filteredSuggestions.map(suggestion => {
+                return `
+                    <div class="px-3 py-2 text-sm text-slate-200 hover:bg-slate-600 cursor-pointer flex items-center" onclick="selectNewAttributeName('${suggestion}', [], document.getElementById('new-attribute-name-suggestions'))">
+                        ${suggestion}
+                    </div>
+                `;
+            }).join('');
+            suggestionsContainer.classList.remove('hidden');
+        } else if (query.trim()) {
+            // Show option to create new attribute only when there's a query and no matches
+            suggestionsContainer.innerHTML = `
+                <div class="px-3 py-2 text-sm text-blue-400 hover:bg-slate-600 cursor-pointer flex items-center" onclick="selectNewAttributeName('${query}', [], document.getElementById('new-attribute-name-suggestions'))">
+                    + Create "${query}" as new attribute
+                </div>
+            `;
+            suggestionsContainer.classList.remove('hidden');
+        } else {
+            // Hide suggestions when no query and no suggestions
+            hideNewAttributeNameSuggestions(suggestionsContainer);
+        }
+    }
+    
+    function hideNewAttributeNameSuggestions(suggestionsContainer) {
+        suggestionsContainer.classList.add('hidden');
+    }
+    
+    window.selectNewAttributeName = function(name, attributeSuggestions, suggestionsContainer) {
+        const nameInput = document.getElementById('new-attribute-name-input');
+        nameInput.value = name;
+        hideNewAttributeNameSuggestions(suggestionsContainer);
+    }
+    
+    function showNewAttributeOptionSuggestions(query, commonOptions, optionsContainer, suggestionsContainer) {
+        // Get existing options from the container
+        const existingOptions = Array.from(optionsContainer.querySelectorAll('span')).map(el => 
+            el.textContent.trim().split('×')[0].trim()
+        );
+        
+        // Always show suggestions container, filter based on query
+        let filteredSuggestions;
+        
+        if (!query.trim()) {
+            // Show all suggestions when no query, excluding already added options
+            filteredSuggestions = commonOptions.filter(option => 
+                !existingOptions.includes(option)
+            );
+        } else {
+            // Filter suggestions based on query and exclude already added options
+            filteredSuggestions = commonOptions.filter(option => 
+                option.toLowerCase().includes(query.toLowerCase()) && 
+                !existingOptions.includes(option)
+            );
+        }
+        
+        if (filteredSuggestions.length > 0) {
+            suggestionsContainer.innerHTML = filteredSuggestions.map(suggestion => {
+                return `
+                    <div class="px-3 py-2 text-sm text-slate-200 hover:bg-slate-600 cursor-pointer flex items-center" onclick="addNewAttributeOption('${suggestion}', document.getElementById('new-attribute-options'), document.getElementById('new-attribute-option-suggestions'))">
+                        ${suggestion}
+                    </div>
+                `;
+            }).join('');
+            suggestionsContainer.classList.remove('hidden');
+        } else if (query.trim()) {
+            // Show option to create new option only when there's a query and no matches
+            suggestionsContainer.innerHTML = `
+                <div class="px-3 py-2 text-sm text-blue-400 hover:bg-slate-600 cursor-pointer flex items-center" onclick="addNewAttributeOption('${query}', document.getElementById('new-attribute-options'), document.getElementById('new-attribute-option-suggestions'))">
+                    + Create "${query}" as new option
+                </div>
+            `;
+            suggestionsContainer.classList.remove('hidden');
+        } else {
+            // Hide suggestions when no query and no suggestions
+            hideNewAttributeOptionSuggestions(suggestionsContainer);
+        }
+    }
+    
+    function hideNewAttributeOptionSuggestions(suggestionsContainer) {
+        suggestionsContainer.classList.add('hidden');
+    }
+    
+    window.addNewAttributeOption = function(option, optionsContainer, suggestionsContainer) {
+        if (!option.trim()) return;
+        
+        const trimmedOption = option.trim();
+        
+        // Check if option already exists
+        const existingOptions = Array.from(optionsContainer.querySelectorAll('span')).map(el => 
+            el.textContent.trim().split('×')[0].trim()
+        );
+        
+        if (existingOptions.includes(trimmedOption)) {
+            return;
+        }
+        
+        // Create option tag
+        const optionTag = document.createElement('span');
+        optionTag.className = 'inline-flex items-center px-2 py-1 bg-blue-600 text-white text-xs rounded';
+        optionTag.innerHTML = `
+            ${trimmedOption}
+            <button type="button" class="ml-1 text-blue-200 hover:text-white remove-new-attribute-option-btn">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        `;
+        
+        // Add remove functionality
+        optionTag.querySelector('.remove-new-attribute-option-btn').addEventListener('click', function() {
+            optionTag.remove();
+        });
+        
+        optionsContainer.appendChild(optionTag);
+        hideNewAttributeOptionSuggestions(suggestionsContainer);
+    }
+    
+    window.saveNewAttribute = function(button) {
+        const attributeRow = button.closest('.bg-slate-600');
+        const nameInput = attributeRow.querySelector('#new-attribute-name-input');
+        const typeSelect = attributeRow.querySelector('#new-attribute-type');
+        const optionsContainer = attributeRow.querySelector('#new-attribute-options');
+        const visibleCheckbox = attributeRow.querySelector('input[type="checkbox"]');
+        const variationCheckbox = attributeRow.querySelectorAll('input[type="checkbox"]')[1];
+        
+        const attributeName = nameInput.value.trim();
+        const attributeType = typeSelect.value;
+        const options = Array.from(optionsContainer.querySelectorAll('span')).map(el => 
+            el.textContent.trim().split('×')[0].trim()
+        );
+        const visible = visibleCheckbox.checked;
+        const variation = variationCheckbox.checked;
+        
+        if (!attributeName) {
+            alert('Please enter an attribute name');
+            return;
+        }
+        
+        if (options.length === 0) {
+            alert('Please add at least one option');
+            return;
+        }
+        
+        // Create the attribute data structure
+        const attributeData = {
+            name: attributeName,
+            type: attributeType,
+            options: options,
+            visible: visible,
+            variation: variation
+        };
+        
+        // Add to the attributes list (this would normally save to the server)
+        console.log('New attribute data:', attributeData);
+        
+        // For now, just show success message
+        alert(`Attribute "${attributeName}" with ${options.length} options added successfully!`);
+        
+        // Remove the row after successful save
+        attributeRow.remove();
+    }
 
     function addVariationRow() {
         const container = document.getElementById('product-variations');
@@ -2364,7 +2653,77 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Old attribute suggestion functions removed - now handled by OptionsSearch components
+    function showAttributeSuggestions(attributeIndex, query) {
+        const suggestionsContainer = document.getElementById(`attribute-option-suggestions-${attributeIndex}`);
+        
+        // Get attribute name from data attribute - much more reliable!
+        const optionsContainer = document.getElementById(`attribute-options-${attributeIndex}`);
+        const attributeName = optionsContainer.getAttribute('data-attribute-name') || '';
+        
+        // Get original options from database (stored in data attribute)
+        const originalOptionsJson = optionsContainer.getAttribute('data-original-options') || '[]';
+        const originalOptions = JSON.parse(originalOptionsJson);
+        
+        // Use original database options for suggestions
+        const suggestions = originalOptions;
+        
+        // Get currently added options
+        const existingOptions = Array.from(optionsContainer.querySelectorAll('span[data-option]')).map(el => el.getAttribute('data-option'));
+        
+        // Always show suggestions container, filter based on query
+        let filteredSuggestions;
+        
+        if (!query.trim()) {
+            // Show all suggestions when no query
+            filteredSuggestions = suggestions;
+        } else {
+            // Filter suggestions based on query
+            filteredSuggestions = suggestions.filter(option => 
+                option.toLowerCase().includes(query.toLowerCase())
+            );
+        }
+        
+        if (filteredSuggestions.length > 0) {
+            suggestionsContainer.innerHTML = filteredSuggestions.map(suggestion => {
+                const isAlreadyAdded = existingOptions.includes(suggestion);
+                const bgColor = isAlreadyAdded ? 'bg-green-600' : 'hover:bg-slate-600';
+                const textColor = isAlreadyAdded ? 'text-white' : 'text-slate-200';
+                const icon = isAlreadyAdded ? 
+                    '<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>' : '';
+                const action = isAlreadyAdded ? `removeAttributeOption(${attributeIndex}, '${suggestion}')` : `addAttributeOption(${attributeIndex}, '${suggestion}')`;
+                
+                return `
+                    <div class="px-3 py-2 text-sm ${textColor} ${bgColor} cursor-pointer flex items-center" onclick="${action}">
+                        ${icon}${suggestion}
+                    </div>
+                `;
+            }).join('');
+            suggestionsContainer.classList.remove('hidden');
+        } else if (query.trim()) {
+            // Show option to create new option only when there's a query and no matches
+            suggestionsContainer.innerHTML = `
+                <div class="px-3 py-2 text-sm text-blue-400 hover:bg-slate-600 cursor-pointer flex items-center" onclick="addAttributeOption(${attributeIndex}, '${query}')">
+                    + Create "${query}" as new option
+                </div>
+            `;
+            suggestionsContainer.classList.remove('hidden');
+        } else {
+            // Hide suggestions when no query and no suggestions
+            hideAttributeSuggestions(attributeIndex);
+        }
+    }
+
+    window.hideAttributeSuggestions = function(attributeIndex) {
+        const suggestionsContainer = document.getElementById(`attribute-option-suggestions-${attributeIndex}`);
+        suggestionsContainer.classList.add('hidden');
+    }
+    
+    function refreshAttributeSuggestions(attributeIndex) {
+        const input = document.getElementById(`attribute-option-input-${attributeIndex}`);
+        if (input) {
+            showAttributeSuggestions(attributeIndex, input.value);
+        }
+    }
 
     function highlightJSON(jsonString) {
         return jsonString
