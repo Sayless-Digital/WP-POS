@@ -1,6 +1,6 @@
-// JPOS v1.8.1 - Prevent adding duplicate attributes - CACHE BUST
+// JPOS v1.8.2 - Filter out existing attributes from add attribute suggestions - CACHE BUST
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.8.1 loaded - Prevent adding duplicate attributes');
+    console.log('JPOS v1.8.2 loaded - Filter out existing attributes from add attribute suggestions');
     // Initialize Routing Manager
     console.log('Initializing Routing Manager...');
     const routingManager = new RoutingManager();
@@ -2401,15 +2401,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Helper functions for new attribute functionality
     function showNewAttributeNameSuggestions(query, attributeSuggestions, suggestionsContainer) {
+        // Get existing attributes to filter them out
+        const existingAttributes = Array.from(document.querySelectorAll('#product-attributes .bg-slate-600')).map(attr => {
+            const nameInput = attr.querySelector('input[readonly]');
+            return nameInput ? nameInput.value.trim().toLowerCase() : '';
+        }).filter(name => name !== '');
+        
+        // Filter out existing attributes from suggestions
+        const availableSuggestions = attributeSuggestions.filter(attr => 
+            !existingAttributes.includes(attr.toLowerCase())
+        );
+        
         // Always show suggestions container, filter based on query
         let filteredSuggestions;
         
         if (!query.trim()) {
-            // Show all suggestions when no query
-            filteredSuggestions = attributeSuggestions;
+            // Show all available suggestions when no query
+            filteredSuggestions = availableSuggestions;
         } else {
             // Filter suggestions based on query
-            filteredSuggestions = attributeSuggestions.filter(attr => 
+            filteredSuggestions = availableSuggestions.filter(attr => 
                 attr.toLowerCase().includes(query.toLowerCase())
             );
         }
