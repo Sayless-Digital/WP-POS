@@ -1,6 +1,6 @@
-// JPOS v1.8.0 - Fixed add attribute search input clearing on add/remove - CACHE BUST
+// JPOS v1.8.1 - Prevent adding duplicate attributes - CACHE BUST
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.8.0 loaded - Fixed add attribute search input clearing on add/remove');
+    console.log('JPOS v1.8.1 loaded - Prevent adding duplicate attributes');
     // Initialize Routing Manager
     console.log('Initializing Routing Manager...');
     const routingManager = new RoutingManager();
@@ -2619,6 +2619,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!attributeName) {
             alert('Please enter an attribute name');
             return;
+        }
+        
+        // Check if attribute already exists
+        const existingAttributes = document.querySelectorAll('#product-attributes .bg-slate-600');
+        for (let existingAttr of existingAttributes) {
+            const existingNameInput = existingAttr.querySelector('input[readonly]');
+            if (existingNameInput && existingNameInput.value.trim().toLowerCase() === attributeName.toLowerCase()) {
+                alert(`Attribute "${attributeName}" already exists. Please choose a different name or edit the existing attribute.`);
+                return;
+            }
         }
         
         if (options.length === 0) {
