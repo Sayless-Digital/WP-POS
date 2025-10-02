@@ -1,5 +1,6 @@
+// JPOS v1.5.2 - Fixed stock manager variable references - CACHE BUST
 document.addEventListener('DOMContentLoaded', () => {
-    // Cache bust: Fixed stock manager variable references - v1.5.2
+    console.log('JPOS v1.5.2 loaded - Stock manager fixes applied');
     // Initialize Routing Manager
     const routingManager = new RoutingManager();
 
