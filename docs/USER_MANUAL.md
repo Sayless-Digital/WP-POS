@@ -65,8 +65,12 @@ The editor features two main views:
 - **Attributes**: Product attributes with WordPress-style tag-based options management
 - **Variations**: For variable products, edit individual variation details
 
-#### Comprehensive Attribute Management (v1.7.3)
+#### Advanced Attribute Management (v1.8.3)
 - **Intelligent Search**: Type to search through available attributes with real-time suggestions
+- **Duplicate Prevention**: Cannot add attributes that already exist on the product
+- **Filtered Suggestions**: Add attribute suggestions exclude already-added attributes
+- **Automatic Input Clearing**: Search inputs clear automatically when adding/removing options
+- **User-Controlled Dropdowns**: Options suggestions only show when you focus on the input field
 - **Scrollable Options**: All available options displayed in scrollable dropdown initially
 - **Active Options Display**: Visual indication of selected vs available options (green background + checkmark)
 - **Live State Updates**: Real-time updates when selecting/deselecting attribute options
@@ -322,17 +326,27 @@ Customize the interface:
 
 #### Suggestions Not Updating Live
 - **Problem**: When you add/remove options, suggestions don't update immediately
-- **Solution**: Refresh the page (Ctrl+F5) to ensure you have the latest version (v1.7.3+)
-- **Check**: Look for "JPOS v1.7.3 loaded" in browser console
+- **Solution**: Refresh the page (Ctrl+F5) to ensure you have the latest version (v1.8.3+)
+- **Check**: Look for "JPOS v1.8.3 loaded" in browser console
 
 #### Dialog Closes After Save
 - **Problem**: Product editor closes automatically after saving
-- **Solution**: Update to version 1.7.3+ where dialog stays open for iterative editing
+- **Solution**: Update to version 1.8.3+ where dialog stays open for iterative editing
 - **Check**: Version should show "Keep dialog open after save" in console
 
 #### Tax Classes Not Loading
 - **Problem**: Tax classes dropdown is empty or shows error
 - **Solution**: Ensure WooCommerce is properly installed and configured
+
+#### Options Dropdown Opens Automatically
+- **Problem**: Options suggestions appear when typing attribute names
+- **Solution**: Update to version 1.8.3+ where options only show when you focus on the options input
+- **Check**: Version should show "User-controlled dropdowns" in console
+
+#### Duplicate Attributes
+- **Problem**: Trying to add an attribute that already exists
+- **Solution**: Update to version 1.8.3+ which prevents duplicate attributes with clear error messages
+- **Check**: System will show "Attribute already exists" message
 - **Check**: Verify tax classes are set up in WooCommerce settings
 
 #### JSON View Not Highlighting
@@ -370,7 +384,7 @@ For technical support or questions:
 
 ## Version Information
 
-- Current Version: 1.7.3
+- Current Version: 1.8.3
 - Last Updated: January 2, 2025
-- Latest Update: Comprehensive Attribute Management System v1.7.3 - Complete product editor with intelligent attribute management, scrollable option suggestions, live state updates, active options display, focus-triggered suggestions, real-time filtering, create new functionality, enhanced UX with WordPress-style patterns
+- Latest Update: Advanced Attribute Management System v1.8.3 - Complete product editor with intelligent attribute management, duplicate prevention, filtered suggestions, automatic input clearing, and user-controlled dropdown behavior
 - Next Update: Q1 2025

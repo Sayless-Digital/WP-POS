@@ -1,10 +1,8 @@
-// JPOS v1.8.3 - Fix options dropdown opening automatically - CACHE BUST
+// JPOS v1.8.3 - Advanced Attribute Management System
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.8.3 loaded - Fix options dropdown opening automatically');
+    console.log('JPOS v1.8.3 loaded - Advanced Attribute Management System');
     // Initialize Routing Manager
-    console.log('Initializing Routing Manager...');
     const routingManager = new RoutingManager();
-    console.log('Routing Manager initialized:', routingManager);
 
     // Centralized State Management
     const appState = {
@@ -194,11 +192,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function init() {
-        console.log('Starting initialization...');
+        // Starting initialization
         setupEventListeners();
-        console.log('Event listeners set up');
         await generateNonces(); // Generate nonces immediately for login form
-        console.log('Nonces generated');
         await checkAuthStatus();
     }
 
@@ -218,7 +214,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 appState.auth.isLoggedIn = true;
                 await loadFullApp();
             } else {
-                console.log('Authentication failed - showing login screen');
+                // Authentication failed - showing login screen
                 showLoginScreen(true);
             }
         } catch (error) {
@@ -675,12 +671,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         // Add Attribute Button
-        console.log('Setting up Add Attribute Button...');
         const addAttributeBtn = document.getElementById('add-attribute');
-        console.log('Add Attribute Button found:', addAttributeBtn);
         if (addAttributeBtn) {
             addAttributeBtn.addEventListener('click', addAttributeRow);
-            console.log('Add Attribute Button event listener added');
         } else {
             console.error('Add Attribute Button not found!');
         }

@@ -663,3 +663,7 @@ For technical support or questions:
 - v1.7.1: Component Cleanup - Manually removed unused component files causing 404 errors, cleaned up file system
 - v1.7.2: Debugging and Troubleshooting - Added comprehensive debugging for add attribute button functionality
 - v1.7.3: Comprehensive Attribute Management System - Complete product editor with intelligent attribute management, scrollable option suggestions, live state updates, active options display, focus-triggered suggestions, real-time filtering, create new functionality, enhanced UX with WordPress-style patterns
+- v1.8.0: Input Clearing Enhancement - Fixed add attribute search input clearing on add/remove operations for consistent user experience
+- v1.8.1: Duplicate Prevention - Added validation to prevent adding attributes that already exist on the product with case-insensitive checking
+- v1.8.2: Smart Suggestions Filtering - Updated add attribute suggestions to exclude already-added attributes from the dropdown
+- v1.8.3: User-Controlled Dropdowns - Fixed options dropdown opening automatically when searching attribute names, now only shows on user focus
