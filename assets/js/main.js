@@ -1,6 +1,6 @@
-// JPOS v1.7.3 - Final clean version with comprehensive attribute management system - CACHE BUST
+// JPOS v1.7.4 - Merged existing and add attribute search functionality with best features from both - CACHE BUST
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.7.3 loaded - Final clean version with comprehensive attribute management system');
+    console.log('JPOS v1.7.4 loaded - Merged existing and add attribute search functionality with best features from both');
     // Initialize Routing Manager
     const routingManager = new RoutingManager();
 
@@ -2457,9 +2457,16 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (filteredSuggestions.length > 0) {
             suggestionsContainer.innerHTML = filteredSuggestions.map(suggestion => {
+                const isAlreadyAdded = existingOptions.includes(suggestion);
+                const bgColor = isAlreadyAdded ? 'bg-green-600' : 'hover:bg-slate-600';
+                const textColor = isAlreadyAdded ? 'text-white' : 'text-slate-200';
+                const icon = isAlreadyAdded ? 
+                    '<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>' : '';
+                const action = isAlreadyAdded ? `removeNewAttributeOption('${suggestion}', document.getElementById('new-attribute-options'), document.getElementById('new-attribute-option-suggestions'))` : `addNewAttributeOption('${suggestion}', document.getElementById('new-attribute-options'), document.getElementById('new-attribute-option-suggestions'))`;
+                
                 return `
-                    <div class="px-3 py-2 text-sm text-slate-200 hover:bg-slate-600 cursor-pointer flex items-center" onclick="addNewAttributeOption('${suggestion}', document.getElementById('new-attribute-options'), document.getElementById('new-attribute-option-suggestions'))">
-                        ${suggestion}
+                    <div class="px-3 py-2 text-sm ${textColor} ${bgColor} cursor-pointer flex items-center" onclick="${action}">
+                        ${icon}${suggestion}
                     </div>
                 `;
             }).join('');
@@ -2499,6 +2506,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Create option tag
         const optionTag = document.createElement('span');
         optionTag.className = 'inline-flex items-center px-2 py-1 bg-blue-600 text-white text-xs rounded';
+        optionTag.setAttribute('data-option', trimmedOption);
         optionTag.innerHTML = `
             ${trimmedOption}
             <button type="button" class="ml-1 text-blue-200 hover:text-white remove-new-attribute-option-btn">
@@ -2511,10 +2519,32 @@ document.addEventListener('DOMContentLoaded', () => {
         // Add remove functionality
         optionTag.querySelector('.remove-new-attribute-option-btn').addEventListener('click', function() {
             optionTag.remove();
+            // Refresh suggestions to show updated state
+            const input = document.getElementById('new-attribute-option-input');
+            if (input) {
+                // Get common options from the addAttributeRow function scope
+                const commonOptions = ['Red', 'Blue', 'Green', 'Yellow', 'Black', 'White', 'Gray', 'Brown', 'Pink', 'Purple', 'Orange', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'Small', 'Medium', 'Large', 'Extra Large', 'Cotton', 'Polyester', 'Wool', 'Silk', 'Leather', 'Denim', 'Linen', 'Cashmere', 'Nike', 'Adidas', 'Puma', 'Under Armour', 'Reebok', 'New Balance', 'Casual', 'Formal', 'Sport', 'Vintage', 'Modern', 'Classic', 'Trendy'];
+                showNewAttributeOptionSuggestions(input.value, commonOptions, optionsContainer, suggestionsContainer);
+            }
         });
         
         optionsContainer.appendChild(optionTag);
         hideNewAttributeOptionSuggestions(suggestionsContainer);
+    }
+    
+    window.removeNewAttributeOption = function(option, optionsContainer, suggestionsContainer) {
+        // Find and remove the option tag
+        const optionTag = optionsContainer.querySelector(`span[data-option="${option}"]`);
+        if (optionTag) {
+            optionTag.remove();
+            // Refresh suggestions to show updated state
+            const input = document.getElementById('new-attribute-option-input');
+            if (input) {
+                // Get common options from the addAttributeRow function scope
+                const commonOptions = ['Red', 'Blue', 'Green', 'Yellow', 'Black', 'White', 'Gray', 'Brown', 'Pink', 'Purple', 'Orange', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'Small', 'Medium', 'Large', 'Extra Large', 'Cotton', 'Polyester', 'Wool', 'Silk', 'Leather', 'Denim', 'Linen', 'Cashmere', 'Nike', 'Adidas', 'Puma', 'Under Armour', 'Reebok', 'New Balance', 'Casual', 'Formal', 'Sport', 'Vintage', 'Modern', 'Classic', 'Trendy'];
+                showNewAttributeOptionSuggestions(input.value, commonOptions, optionsContainer, suggestionsContainer);
+            }
+        }
     }
     
     window.saveNewAttribute = function(button) {
