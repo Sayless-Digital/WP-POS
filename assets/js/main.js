@@ -1,7 +1,6 @@
-// JPOS v1.7.8 - Debug functionality issues and ensure proper initialization - CACHE BUST
+// JPOS v1.7.9 - Fixed add attribute to show selected style for already added options - CACHE BUST
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.7.8 loaded - Debug functionality issues and ensure proper initialization');
-    console.log('DOM loaded, checking for functionality issues...');
+    console.log('JPOS v1.7.9 loaded - Fixed add attribute to show selected style for already added options');
     // Initialize Routing Manager
     console.log('Initializing Routing Manager...');
     const routingManager = new RoutingManager();
@@ -2494,15 +2493,12 @@ document.addEventListener('DOMContentLoaded', () => {
         let filteredSuggestions;
         
         if (!query.trim()) {
-            // Show all suggestions when no query, excluding already added options
-            filteredSuggestions = attributeOptions.filter(option => 
-                !existingOptions.includes(option)
-            );
+            // Show all suggestions when no query (including already added options)
+            filteredSuggestions = attributeOptions;
         } else {
-            // Filter suggestions based on query and exclude already added options
+            // Filter suggestions based on query (including already added options)
             filteredSuggestions = attributeOptions.filter(option => 
-                option.toLowerCase().includes(query.toLowerCase()) && 
-                !existingOptions.includes(option)
+                option.toLowerCase().includes(query.toLowerCase())
             );
         }
         
@@ -2523,7 +2519,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }).join('');
             suggestionsContainer.classList.remove('hidden');
         } else if (query.trim()) {
-            // Show option to create new option only when there's a query and no matches
+            // Show option to create new option only when there's a query and no matches at all
             suggestionsContainer.innerHTML = `
                 <div class="px-3 py-2 text-sm text-blue-400 hover:bg-slate-600 cursor-pointer flex items-center" onclick="addNewAttributeOption('${query}', document.getElementById('new-attribute-options'), document.getElementById('new-attribute-option-suggestions'))">
                     + Create "${query}" as new option
