@@ -1,6 +1,6 @@
-// JPOS v1.7.4 - Moved remove button functionality into OptionsSearch component - CACHE BUST
+// JPOS v1.7.5 - Fixed option selection from suggestions list - CACHE BUST
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.7.4 loaded - Moved remove button functionality into OptionsSearch component');
+    console.log('JPOS v1.7.5 loaded - Fixed option selection from suggestions list');
     
     // Components are loaded via script tags in index.php
     // Initialize Routing Manager

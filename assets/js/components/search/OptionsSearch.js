@@ -157,22 +157,38 @@ class OptionsSearch extends BaseComponent {
         this.suggestionsElement.innerHTML = suggestions
             .slice(0, this.props.maxSuggestions)
             .map(suggestion => `
-                <div class="px-3 py-2 text-sm text-slate-200 hover:bg-slate-600 cursor-pointer flex items-center" 
-                     onclick="window.optionsSearchSelectOption('${suggestion}')">
+                <div class="px-3 py-2 text-sm text-slate-200 hover:bg-slate-600 cursor-pointer flex items-center suggestion-item" 
+                     data-suggestion="${suggestion}">
                     ${suggestion}
                 </div>
             `).join('');
+        
+        // Add event listeners for suggestion clicks
+        this.suggestionsElement.querySelectorAll('.suggestion-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const suggestion = item.getAttribute('data-suggestion');
+                this.addOption(suggestion);
+            });
+        });
     }
 
     renderCreateOption(query) {
         if (!this.suggestionsElement) return;
 
         this.suggestionsElement.innerHTML = `
-            <div class="px-3 py-2 text-sm text-blue-400 hover:bg-slate-600 cursor-pointer flex items-center" 
-                 onclick="window.optionsSearchCreateOption('${query}')">
+            <div class="px-3 py-2 text-sm text-blue-400 hover:bg-slate-600 cursor-pointer flex items-center create-option-item" 
+                 data-query="${query}">
                 + Create "${query}" as new option
             </div>
         `;
+        
+        // Add event listener for create option click
+        this.suggestionsElement.querySelector('.create-option-item').addEventListener('click', (e) => {
+            e.stopPropagation();
+            const query = e.target.getAttribute('data-query');
+            this.addOption(query);
+        });
     }
 
     hideSuggestions() {
@@ -235,26 +251,7 @@ class OptionsSearch extends BaseComponent {
     }
 }
 
-// Global functions for onclick handlers (now handled internally by components)
-window.optionsSearchSelectOption = function(option) {
-    // Find the current options search instance
-    for (let key in window) {
-        if (key.startsWith('currentOptionsSearch_') && window[key]) {
-            window[key].addOption(option);
-            break;
-        }
-    }
-};
-
-window.optionsSearchCreateOption = function(option) {
-    // Find the current options search instance
-    for (let key in window) {
-        if (key.startsWith('currentOptionsSearch_') && window[key]) {
-            window[key].addOption(option);
-            break;
-        }
-    }
-};
+// Global functions removed - component now handles all interactions internally
 
 // Make OptionsSearch globally available
 window.OptionsSearch = OptionsSearch;
