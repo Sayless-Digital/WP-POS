@@ -20,7 +20,7 @@ require_once __DIR__ . '/../wp-load.php';
     <!-- JPOS Routing Module -->
     <script src="assets/js/modules/routing.js?v=1.5.10"></script>
     <!-- JPOS Original JavaScript (temporarily reverting for debugging) -->
-    <script src="assets/js/main.js?v=1.8.16"></script>
+    <script src="assets/js/main.js?v=1.8.17"></script>
     <style>
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
@@ -164,14 +164,7 @@ require_once __DIR__ . '/../wp-load.php';
         .skeleton-loader.variation-edit-rows .block:nth-child(3) { grid-column: span 2 / span 2; }
         .skeleton-loader.variation-edit-rows .block:nth-child(4) { grid-column: span 3 / span 3; }
         
-        /* Reports Page Skeleton */
-        .skeleton-loader.reports-page .kpi-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem; }
-        .skeleton-loader.reports-page .kpi-block { background-color: #1e293b; border-radius: 0.75rem; padding: 1.5rem; animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-        .skeleton-loader.reports-page .kpi-block .block { background-color: #334155; border-radius: 0.25rem; }
-        .skeleton-loader.reports-page .kpi-block .block:first-child { height: 0.75rem; width: 50%; margin-bottom: 0.75rem; }
-        .skeleton-loader.reports-page .kpi-block .block:last-child { height: 1.5rem; width: 75%; }
-        .skeleton-loader.reports-page .chart-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem; margin-top: 1.5rem; }
-        .skeleton-loader.reports-page .chart-block { background-color: #1e293b; border-radius: 0.75rem; height: 300px; animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        /* Reports Page Skeleton Removed */
         
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
         
@@ -314,11 +307,7 @@ require_once __DIR__ . '/../wp-load.php';
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
                         <span>Orders</span>
                     </button></li>
-                    <!-- NEW: Reports Button -->
-                    <li><button id="menu-button-reports" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                        <span>Reports</span>
-                    </button></li>
+                    <!-- Reports Button Removed -->
                     <li><button id="menu-button-sessions" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                         <span>Sessions</span>
@@ -487,24 +476,7 @@ require_once __DIR__ . '/../wp-load.php';
                  </main>
             </section>
             
-            <!-- NEW: Reports Page -->
-            <section id="reports-page" class="page-content w-full hidden flex flex-col p-3 gap-3">
-                 <header class="flex items-center gap-4 p-2 bg-slate-800/80 backdrop-blur-sm border border-slate-700 rounded-xl shadow-lg flex-shrink-0">
-                    <button class="menu-toggle p-2 rounded-lg hover:bg-slate-700 transition-colors"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg></button>
-                    <h1 class="text-xl font-bold mr-auto">Sales Reports</h1>
-                    <button id="refresh-reports-btn" class="ml-2 p-2 rounded-lg bg-slate-700 border border-slate-600 hover:bg-slate-600 transition-colors flex-shrink-0 flex items-center" title="Refresh Reports Data">
-                        <i class="fa fa-refresh"></i>
-                    </button>
-                    <button id="export-pdf-btn" class="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500 transition-colors font-medium">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                        </svg>
-                        Export PDF
-                    </button>
-                 </header>
-                 <main id="reports-content-area" class="flex-grow overflow-y-auto p-4 space-y-6">
-                 </main>
-            </section>
+            <!-- Reports Page Removed -->
 
             <!-- Sessions Page -->
             <section id="sessions-page" class="page-content w-full hidden flex flex-col p-3 gap-3">

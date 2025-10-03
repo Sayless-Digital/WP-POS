@@ -1,6 +1,6 @@
-// JPOS v1.8.16 - Reports Functionality Completely Removed
+// JPOS v1.8.17 - Reports HTML Elements Removed
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.8.16 loaded - Reports Functionality Completely Removed');
+    console.log('JPOS v1.8.17 loaded - Reports HTML Elements Removed');
     // Initialize Routing Manager
     const routingManager = new RoutingManager();
 
