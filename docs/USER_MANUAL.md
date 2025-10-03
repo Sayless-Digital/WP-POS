@@ -1,19 +1,19 @@
-# JPOS User Manual
+# WP POS User Manual
 
 ## Getting Started
 
 ### Login
-1. Open your web browser and navigate to the JPOS system
+1. Open your web browser and navigate to the WP POS system
 2. Enter your username and password
 3. Click "Login" to access the system
 4. Your user information (name and email) will be displayed in the side menu
 
 ### Navigation
-The JPOS interface is designed for easy navigation with clear sections:
+The WP POS interface is designed for easy navigation with clear sections:
 - **Products**: Browse and search products
 - **Cart**: Manage current transaction
 - **Orders**: View order history
-- **Reports**: Access sales analytics
+- **Sessions**: View session history
 - **Settings**: Configure system preferences
 
 ### User Information Display
@@ -43,7 +43,7 @@ Each product displays:
 - Stock updates automatically after sales
 
 ### Product Editing
-JPOS includes a comprehensive product editor that allows you to edit all text-based fields for both simple and variable products:
+WP POS includes a comprehensive product editor that allows you to edit all text-based fields for both simple and variable products:
 
 #### Accessing the Product Editor
 1. Navigate to the Products page
@@ -143,25 +143,21 @@ Orders can have different statuses:
 - **Processing**: Being prepared
 - **Cancelled**: Order cancelled
 
-## Reporting
+## Session Management
 
-### Sales Reports
-Access comprehensive sales analytics:
-- Daily, weekly, and monthly summaries
-- Revenue by payment method
-- Product performance metrics
-- Staff performance data
+### Session History
+Access comprehensive session tracking:
+- View all user sessions
+- Track login/logout times
+- Monitor system activity
+- Review user interactions
 
-### Report Types
-- **Sales Summary**: Overall sales performance
-- **Product Reports**: Individual product analytics
-- **Payment Reports**: Payment method breakdown
-- **Time-based Reports**: Sales trends over time
-
-### Exporting Reports
-- Export reports to PDF
-- Download data as CSV
-- Email reports to stakeholders
+### Session Details
+Each session shows:
+- User information
+- Login and logout times
+- Session duration
+- Activity summary
 
 ## Settings and Configuration
 
@@ -357,7 +353,7 @@ Customize the interface:
 ### General Issues
 
 #### Login Problems
-- **Problem**: Cannot log in to JPOS
+- **Problem**: Cannot log in to WP POS
 - **Solution**: Verify WordPress credentials and user permissions
 - **Check**: Ensure user has 'manage_woocommerce' capability
 
@@ -384,7 +380,8 @@ For technical support or questions:
 
 ## Version Information
 
-- Current Version: 1.8.3
+- Current Version: 1.8.17
 - Last Updated: January 2, 2025
-- Latest Update: Advanced Attribute Management System v1.8.3 - Complete product editor with intelligent attribute management, duplicate prevention, filtered suggestions, automatic input clearing, and user-controlled dropdown behavior
+- Latest Update: WP POS v1.8.17 - Removed reporting functionality completely and corrected application branding from JPOS to WP POS (WordPress Point of Sale)
+- Previous Updates: Advanced Attribute Management System v1.8.3 - Complete product editor with intelligent attribute management, duplicate prevention, filtered suggestions, automatic input clearing, and user-controlled dropdown behavior
 - Next Update: Q1 2025

@@ -1,8 +1,8 @@
-# JPOS Developer Guide
+# WP POS Developer Guide
 
 ## Overview
 
-JPOS (WordPress POS) is a modern, modular point-of-sale system built on WordPress. This guide provides comprehensive information for developers working with the JPOS codebase.
+WP POS (WordPress Point of Sale) is a modern, modular point-of-sale system built on WordPress. This guide provides comprehensive information for developers working with the WP POS codebase.
 
 ## Architecture
 
@@ -25,7 +25,7 @@ wp-pos/
 │   ├── auth.php           # Authentication
 │   ├── products.php       # Product management (optimized)
 │   ├── orders.php         # Order processing
-│   ├── reports.php        # Reporting
+│   ├── # reports.php REMOVED - Reporting functionality removed
 │   ├── database-optimizer.php # Database optimization
 │   ├── cache-manager.php  # Caching system
 │   ├── performance-monitor.php # Performance monitoring
@@ -69,12 +69,11 @@ The system uses JSON-based configuration files located in the `config/` director
 ## Routing System
 
 ### URL Parameter-Based Routing
-JPOS uses a URL parameter-based routing system to maintain view state across page reloads. This ensures users stay on their current view when refreshing the page.
+WP POS uses a URL parameter-based routing system to maintain view state across page reloads. This ensures users stay on their current view when refreshing the page.
 
 ### Supported Views
 - `pos-page` - Point of Sale (default)
 - `orders-page` - Order History
-- `reports-page` - Sales Reports
 - `sessions-page` - Session History
 - `products-page` - Products
 - `held-carts-page` - Held Carts
@@ -89,14 +88,14 @@ routingManager.navigateToView('orders-page');
 const currentView = routingManager.getCurrentView();
 
 // Check if view is valid
-const isValid = routingManager.isValidView('reports-page');
+const isValid = routingManager.isValidView('orders-page');
 ```
 
 ### URL Format
 Views are accessed via URL parameters:
 - `?view=pos-page` - Point of Sale
 - `?view=orders-page` - Orders
-- `?view=reports-page` - Reports
+- `?view=sessions-page` - Sessions
 - etc.
 
 ### Browser Navigation
@@ -116,7 +115,6 @@ The routing system requires specific global functions to be available for data l
 **Required Global Functions:**
 - `window.toggleMenu()` - Menu toggle functionality
 - `window.fetchOrders()` - Load order history data
-- `window.fetchReportsData()` - Load sales reports data
 - `window.fetchSessions()` - Load session history data
 - `window.renderStockList()` - Render stock management list
 - `window.populateSettingsForm()` - Load settings form data
@@ -214,8 +212,7 @@ Retrieve product catalog with filtering options.
 - **POST** `/api/refund.php` - Process refunds
 
 ### Reporting & Analytics
-- **GET** `/api/reports.php` - Generate reports
-- **GET** `/api/reports-optimized.php` - Optimized reporting
+- **REMOVED** - Reporting functionality has been completely removed from WP POS
 
 ### System Management
 - **GET** `/api/settings.php` - Retrieve settings
@@ -448,9 +445,9 @@ php tests/php/test-database-optimizer.php
 - System resource usage
 
 ### Log Files
-- `jpos-YYYY-MM-DD.log`: General logs
-- `jpos-errors-YYYY-MM-DD.log`: Error logs
-- `jpos-performance-YYYY-MM-DD.log`: Performance logs
+- `wp-pos-YYYY-MM-DD.log`: General logs
+- `wp-pos-errors-YYYY-MM-DD.log`: Error logs
+- `wp-pos-performance-YYYY-MM-DD.log`: Performance logs
 
 ## Deployment
 
@@ -667,3 +664,4 @@ For technical support or questions:
 - v1.8.1: Duplicate Prevention - Added validation to prevent adding attributes that already exist on the product with case-insensitive checking
 - v1.8.2: Smart Suggestions Filtering - Updated add attribute suggestions to exclude already-added attributes from the dropdown
 - v1.8.3: User-Controlled Dropdowns - Fixed options dropdown opening automatically when searching attribute names, now only shows on user focus
+- v1.8.17: Complete Reporting Removal - Removed all reporting functionality and corrected application branding from JPOS to WP POS (WordPress Point of Sale)

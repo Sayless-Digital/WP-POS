@@ -1,16 +1,16 @@
-# JPOS (WordPress POS) - Complete System Documentation
+# WP POS (WordPress Point of Sale) - Complete System Documentation
 
 ## System Overview
 
-JPOS is a modern, enterprise-grade point-of-sale system built on WordPress. The system has been completely refactored and optimized across 4 phases, transforming it from a monolithic application with security vulnerabilities into a secure, performant, and well-documented solution.
+WP POS is a modern, enterprise-grade point-of-sale system built on WordPress. The system has been completely refactored and optimized across 4 phases, transforming it from a monolithic application with security vulnerabilities into a secure, performant, and well-documented solution.
 
 ## Current System Status
 
 **Status**: ✅ PRODUCTION READY  
 **Last Updated**: January 2, 2025  
-**Version**: 1.8.3  
+**Version**: 1.8.17  
 **All Phases Completed**: Security, Architecture, Performance, Quality & Monitoring  
-**Latest Update**: Advanced Attribute Management System v1.8.3 - Complete product editor with intelligent attribute management, duplicate prevention, filtered suggestions, automatic input clearing, and user-controlled dropdown behavior
+**Latest Update**: WP POS v1.8.17 - Removed reporting functionality completely and corrected application branding from JPOS to WP POS (WordPress Point of Sale)
 
 ## Architecture
 
@@ -38,7 +38,7 @@ wp-pos/
 │   ├── product-edit-simple.php    # Comprehensive product editor API
 │   ├── orders.php                 # Order processing
 │   ├── checkout.php               # Checkout processing
-│   ├── reports.php                # Reporting
+│   ├── # reports.php REMOVED - Reporting functionality removed
 │   ├── settings.php               # Settings management
 │   ├── drawer.php                 # Cash drawer management
 │   ├── stock.php                  # Stock management
@@ -117,7 +117,6 @@ JPOS implements a comprehensive routing system that maintains view state across 
 ### Supported Views
 - `pos-page` - Point of Sale (default)
 - `orders-page` - Order History
-- `reports-page` - Sales Reports
 - `sessions-page` - Session History
 - `products-page` - Products
 - `held-carts-page` - Held Carts
@@ -129,7 +128,6 @@ JPOS implements a comprehensive routing system that maintains view state across 
 - **Global Functions**: Required global functions for data loading:
   - `window.toggleMenu()` - Menu toggle functionality
   - `window.fetchOrders()` - Load order history data
-  - `window.fetchReportsData()` - Load sales reports data
   - `window.fetchSessions()` - Load session history data
   - `window.renderStockList()` - Render stock management list
   - `window.populateSettingsForm()` - Load settings form data
@@ -274,10 +272,8 @@ JPOS implements a comprehensive routing system that maintains view state across 
 - **GET**: Get product details with variations
 - **POST**: Update product variations and stock
 
-### Reports (`/api/reports.php`)
-- **GET**: Generate sales reports and analytics
-- Daily, weekly, and monthly summaries
-- Payment method breakdowns
+### Reports
+- **REMOVED**: Reporting functionality has been completely removed from WP POS
 
 ### Refunds (`/api/refund.php`)
 - **POST**: Process refunds and returns
@@ -350,11 +346,11 @@ JPOS implements a comprehensive routing system that maintains view state across 
 - Refund and return processing
 - Split payment support
 
-### Reporting & Analytics
-- Sales summaries and trends
-- Payment method analytics
-- Product performance metrics
-- Staff performance tracking
+### Session Management
+- User session tracking and history
+- Login/logout monitoring
+- Activity logging and analytics
+- System access records
 
 ### Inventory Management
 - Stock level tracking
@@ -505,7 +501,7 @@ Use the built-in monitoring system to track system health, performance metrics, 
 ### Core POS Features
 - **Real-time Inventory**: Live stock management with automatic updates
 - **Order Processing**: Complete checkout flow with payment processing
-- **Reporting**: Comprehensive sales analytics and reporting
+- **Session Management**: User session tracking and activity monitoring
 - **User Management**: Role-based access control and authentication
 - **Settings**: Configurable system preferences and customization
 
@@ -529,8 +525,8 @@ Use the built-in monitoring system to track system health, performance metrics, 
 
 ---
 
-**Documentation Version**: 1.8.3  
+**Documentation Version**: 1.8.17  
 **Last Updated**: January 2, 2025  
 **System Status**: Production Ready  
-**Latest Update**: Advanced Attribute Management System v1.8.3 - Complete product editor with intelligent attribute management, duplicate prevention, filtered suggestions, automatic input clearing, and user-controlled dropdown behavior  
+**Latest Update**: WP POS v1.8.17 - Removed reporting functionality completely and corrected application branding from JPOS to WP POS (WordPress Point of Sale)  
 **Maintenance Contact**: Development Team
