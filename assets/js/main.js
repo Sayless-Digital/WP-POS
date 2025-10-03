@@ -1,6 +1,6 @@
-// JPOS v1.8.17 - Reports HTML Elements Removed
+// WP POS v1.8.17 - Reports HTML Elements Removed
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('JPOS v1.8.17 loaded - Reports HTML Elements Removed');
+    console.log('WP POS v1.8.17 loaded - Reports HTML Elements Removed');
     // Initialize Routing Manager
     const routingManager = new RoutingManager();
 

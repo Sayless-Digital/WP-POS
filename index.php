@@ -17,9 +17,9 @@ require_once __DIR__ . '/../wp-load.php';
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- Custom JSON syntax highlighting -->
     
-    <!-- JPOS Routing Module -->
+    <!-- WP POS Routing Module -->
     <script src="assets/js/modules/routing.js?v=1.5.10"></script>
-    <!-- JPOS Original JavaScript (temporarily reverting for debugging) -->
+    <!-- WP POS JavaScript -->
     <script src="assets/js/main.js?v=1.8.17"></script>
     <style>
         /* Custom Scrollbar */
