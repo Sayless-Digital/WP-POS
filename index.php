@@ -18,9 +18,9 @@ require_once __DIR__ . '/../wp-load.php';
     <!-- Custom JSON syntax highlighting -->
     
     <!-- WP POS Routing Module -->
-    <script src="assets/js/modules/routing.js?v=1.5.10"></script>
+    <script src="assets/js/modules/routing.js?v=1.5.11"></script>
     <!-- WP POS JavaScript -->
-    <script src="assets/js/main.js?v=1.8.17"></script>
+    <script src="assets/js/main.js?v=1.8.26"></script>
     <style>
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
@@ -220,6 +220,7 @@ require_once __DIR__ . '/../wp-load.php';
     <input type="hidden" id="jpos-stock-nonce" value="<?php echo wp_create_nonce('jpos_stock_nonce'); ?>">
     <input type="hidden" id="jpos-refund-nonce" value="<?php echo wp_create_nonce('jpos_refund_nonce'); ?>">
     <input type="hidden" id="jpos-product-edit-nonce" value="<?php echo wp_create_nonce('jpos_product_edit_nonce'); ?>">
+    <input type="hidden" id="jpos-reports-nonce" value="<?php echo wp_create_nonce('jpos_reports_nonce'); ?>">
 
     <!-- Login Screen -->
     <div id="login-screen" class="app-overlay hidden">
@@ -307,7 +308,10 @@ require_once __DIR__ . '/../wp-load.php';
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
                         <span>Orders</span>
                     </button></li>
-                    <!-- Reports Button Removed -->
+                    <li><button id="menu-button-reports" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                        <span>Reports</span>
+                    </button></li>
                     <li><button id="menu-button-sessions" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                         <span>Sessions</span>
@@ -476,7 +480,106 @@ require_once __DIR__ . '/../wp-load.php';
                  </main>
             </section>
             
-            <!-- Reports Page Removed -->
+            <!-- Reports Page -->
+            <section id="reports-page" class="page-content w-full hidden flex flex-col p-3 gap-3">
+                <header class="flex items-center gap-4 p-2 bg-slate-800/80 backdrop-blur-sm border border-slate-700 rounded-xl shadow-lg flex-shrink-0">
+                    <button class="menu-toggle p-2 rounded-lg hover:bg-slate-700 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                    </button>
+                    <h1 class="text-xl font-bold mr-auto">Sales Reports</h1>
+                    
+                    <!-- Period Selection -->
+                    <div class="flex items-center gap-2">
+                        <select id="reports-period-select" class="p-2 rounded-lg bg-slate-700 border border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="today">Today</option>
+                            <option value="yesterday">Yesterday</option>
+                            <option value="this_week">This Week</option>
+                            <option value="last_week">Last Week</option>
+                            <option value="this_month">This Month</option>
+                            <option value="this_year">This Year</option>
+                            <option value="custom">Custom Range</option>
+                        </select>
+                        
+                        <!-- Custom Date Range (hidden by default) -->
+                        <div id="custom-date-range" class="hidden flex items-center gap-2">
+                            <input type="date" id="custom-start-date" class="p-2 rounded-lg bg-slate-700 border border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <span class="text-slate-400">to</span>
+                            <input type="date" id="custom-end-date" class="p-2 rounded-lg bg-slate-700 border border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        
+                        <button id="refresh-reports-btn" class="p-2 rounded-lg bg-slate-700 border border-slate-600 hover:bg-slate-600 transition-colors flex-shrink-0 flex items-center" title="Refresh Reports Data">
+                            <i class="fa fa-refresh"></i>
+                        </button>
+                        
+                        <button id="print-reports-btn" class="p-2 rounded-lg bg-indigo-600 border border-indigo-500 hover:bg-indigo-500 transition-colors flex-shrink-0 flex items-center text-white" title="Print Report">
+                            <i class="fa fa-print"></i>
+                        </button>
+                    </div>
+                </header>
+                
+                <main class="flex-grow flex flex-col overflow-y-auto gap-4">
+                    <!-- Component 1: Full-width Chart -->
+                    <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700 flex-shrink-0">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-lg font-semibold text-slate-200">Sales Overview</h2>
+                            <div class="flex items-center gap-4 text-sm">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-3 h-3 bg-indigo-500 rounded-full"></div>
+                                    <span class="text-slate-400">Revenue</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                                    <span class="text-slate-400">Orders</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="h-80">
+                            <canvas id="sales-chart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Component 2: Summary Statistics -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 flex-shrink-0">
+                        <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                            <div class="text-2xl font-bold text-white" id="total-orders">0</div>
+                            <div class="text-sm text-slate-400">Total Orders</div>
+                        </div>
+                        <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                            <div class="text-2xl font-bold text-white" id="total-revenue">$0.00</div>
+                            <div class="text-sm text-slate-400">Total Revenue</div>
+                        </div>
+                        <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                            <div class="text-2xl font-bold text-white" id="avg-order-value">$0.00</div>
+                            <div class="text-sm text-slate-400">Avg Order Value</div>
+                        </div>
+                        <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                            <div class="text-2xl font-bold text-white" id="period-range">Today</div>
+                            <div class="text-sm text-slate-400">Period</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Component 3: Orders List -->
+                    <div class="bg-slate-800/50 rounded-xl border border-slate-700 flex-grow flex flex-col">
+                        <div class="p-4 border-b border-slate-700">
+                            <h3 class="text-lg font-semibold text-slate-200">Order Details</h3>
+                        </div>
+                        <div class="flex-grow overflow-y-auto">
+                            <div class="grid grid-cols-12 gap-4 sticky top-0 bg-slate-900 py-3 px-4 text-xs font-bold text-slate-400 uppercase border-b border-slate-700">
+                                <div class="col-span-2">Order #</div>
+                                <div class="col-span-2">Date</div>
+                                <div class="col-span-1">Source</div>
+                                <div class="col-span-2">Status</div>
+                                <div class="col-span-1 text-center">Items</div>
+                                <div class="col-span-2 text-right">Total</div>
+                                <div class="col-span-2 text-center">Customer</div>
+                            </div>
+                            <div id="reports-order-list" class="p-2 space-y-2">
+                                <!-- Orders will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                </main>
+            </section>
 
             <!-- Sessions Page -->
             <section id="sessions-page" class="page-content w-full hidden flex flex-col p-3 gap-3">
@@ -878,6 +981,26 @@ require_once __DIR__ . '/../wp-load.php';
   </div>
 </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- Print Report Modal -->
+    <div id="print-report-modal" class="app-overlay hidden">
+        <div class="bg-white text-black p-6 rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold">Sales Report</h2>
+                <div class="flex gap-2">
+                    <button id="print-report-print-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        <i class="fa fa-print mr-2"></i>Print
+                    </button>
+                    <button id="print-report-close-btn" class="px-4 py-2 bg-slate-200 text-slate-800 rounded-lg hover:bg-slate-300 transition-colors">
+                        <i class="fa fa-times mr-2"></i>Close
+                    </button>
+                </div>
+            </div>
+            <div id="print-report-content" class="font-mono text-sm space-y-4">
+                <!-- Report content will be populated here -->
+            </div>
+        </div>
+    </div>
+
     <div id="jpos-toast" style="display:none"></div>
     </body>
 </html>

@@ -25,7 +25,7 @@ wp-pos/
 │   ├── auth.php           # Authentication
 │   ├── products.php       # Product management (optimized)
 │   ├── orders.php         # Order processing
-│   ├── # reports.php REMOVED - Reporting functionality removed
+│   ├── reports.php          # Comprehensive reporting with intelligent time granularity
 │   ├── database-optimizer.php # Database optimization
 │   ├── cache-manager.php  # Caching system
 │   ├── performance-monitor.php # Performance monitoring
@@ -74,6 +74,7 @@ WP POS uses a URL parameter-based routing system to maintain view state across p
 ### Supported Views
 - `pos-page` - Point of Sale (default)
 - `orders-page` - Order History
+- `reports-page` - Sales Reports
 - `sessions-page` - Session History
 - `products-page` - Products
 - `held-carts-page` - Held Carts
@@ -95,6 +96,7 @@ const isValid = routingManager.isValidView('orders-page');
 Views are accessed via URL parameters:
 - `?view=pos-page` - Point of Sale
 - `?view=orders-page` - Orders
+- `?view=reports-page` - Sales Reports
 - `?view=sessions-page` - Sessions
 - etc.
 
@@ -328,6 +330,102 @@ Update product with comprehensive data.
 }
 ```
 
+### Reports Endpoints
+
+#### GET /api/reports.php
+Retrieve comprehensive sales reports with intelligent time granularity.
+
+**Query Parameters:**
+- `period`: (required) Time period for the report
+  - `today` - Current day
+  - `yesterday` - Previous day
+  - `this_week` - Current week (Monday to today)
+  - `last_week` - Previous week
+  - `this_month` - Current month
+  - `this_year` - Current year
+  - `custom` - Custom date range (requires custom_start and custom_end)
+- `custom_start`: (optional) Start date for custom period (YYYY-MM-DD format)
+- `custom_end`: (optional) End date for custom period (YYYY-MM-DD format)
+
+**Response:**
+```json
+{
+    "success": true,
+    "data": {
+        "period": {
+            "type": "today",
+            "start": "2025-01-02 00:00:00",
+            "end": "2025-01-02 23:59:59",
+            "granularity": "hour"
+        },
+        "summary": {
+            "total_orders": 45,
+            "total_revenue": 1250.75,
+            "avg_order_value": 27.79,
+            "min_order_value": 5.99,
+            "max_order_value": 150.00
+        },
+        "chart_data": [
+            {
+                "period": "2025-01-02 09:00:00",
+                "order_count": 5,
+                "total_amount": 125.50,
+                "avg_order_value": 25.10
+            }
+        ],
+        "chart_labels": ["9:00 AM", "10:00 AM", "11:00 AM"],
+        "chart_values": [125.50, 200.25, 175.00],
+        "chart_order_counts": [5, 8, 7],
+        "orders": [
+            {
+                "id": 123,
+                "number": "1001",
+                "date": "Jan 2, 2025, 9:15 am",
+                "status": "completed",
+                "source": "POS",
+                "total": 25.99,
+                "item_count": 3,
+                "customer": "John Doe",
+                "payment_method": "Cash",
+                "items": [
+                    {
+                        "name": "Product Name",
+                        "quantity": 2,
+                        "total": 25.99
+                    }
+                ]
+            }
+        ]
+    }
+}
+```
+
+**Intelligent Time Granularity:**
+- **Intraday periods** (same day): Hourly breakdown with time labels
+- **Weekly or monthly periods**: Daily breakdown with date labels
+- **2+ months up to 2 years**: Monthly breakdown with month labels
+- **Multi-year periods**: Yearly breakdown with year labels
+
+**Error Responses:**
+```json
+{
+    "success": false,
+    "message": "Invalid period specified"
+}
+```
+
+**Example Usage:**
+```javascript
+// Get today's report
+const response = await fetch('/wp-pos/api/reports.php?period=today');
+
+// Get custom date range
+const response = await fetch('/wp-pos/api/reports.php?period=custom&custom_start=2025-01-01&custom_end=2025-01-31');
+
+// Get this month's report
+const response = await fetch('/wp-pos/api/reports.php?period=this_month');
+```
+
 ### Order Endpoints
 
 #### POST /api/orders.php
@@ -500,7 +598,7 @@ php tests/php/test-database-optimizer.php
 - **Cause**: Browser aggressively caching JavaScript files, serving outdated versions
 - **Solution**: Implement cache busting techniques:
   - Add version parameter to script tags: `<script src="assets/js/main.js?v=1.5.3"></script>`
-  - Add unique comments at top of JS files: `// JPOS v1.5.3 - CACHE BUST`
+  - Add unique comments at top of JS files: `// WP-POS v1.5.3 - CACHE BUST`
   - Increment version numbers for each deployment
 - **Prevention**: Always use cache busting for production deployments, test in incognito mode
 
@@ -664,4 +762,4 @@ For technical support or questions:
 - v1.8.1: Duplicate Prevention - Added validation to prevent adding attributes that already exist on the product with case-insensitive checking
 - v1.8.2: Smart Suggestions Filtering - Updated add attribute suggestions to exclude already-added attributes from the dropdown
 - v1.8.3: User-Controlled Dropdowns - Fixed options dropdown opening automatically when searching attribute names, now only shows on user focus
-- v1.8.17: Complete Reporting Removal - Removed all reporting functionality and corrected application branding from JPOS to WP POS (WordPress Point of Sale)
+- v1.8.17: Complete Reporting Removal - Removed all reporting functionality and corrected application branding from WP-POS to WP POS (WordPress Point of Sale)

@@ -13,6 +13,7 @@ The WP POS interface is designed for easy navigation with clear sections:
 - **Products**: Browse and search products
 - **Cart**: Manage current transaction
 - **Orders**: View order history
+- **Reports**: View sales reports and analytics
 - **Sessions**: View session history
 - **Settings**: Configure system preferences
 
@@ -142,6 +143,89 @@ Orders can have different statuses:
 - **Completed**: Successfully processed
 - **Processing**: Being prepared
 - **Cancelled**: Order cancelled
+
+## Sales Reports
+
+### Accessing Reports
+1. Click on "Reports" in the side menu
+2. The reports page will load with today's data by default
+3. Use the period selector to choose different time ranges
+
+### Period Selection
+Choose from preset periods or create custom ranges:
+- **Today**: Current day's sales
+- **Yesterday**: Previous day's sales
+- **This Week**: Monday to today
+- **Last Week**: Previous week's sales
+- **This Month**: Current month's sales
+- **This Year**: Current year's sales
+- **Custom Range**: Select specific start and end dates
+
+### Report Components
+
+#### 1. Sales Chart
+- **Full-width visualization** showing sales trends
+- **Dual-axis chart** displaying both revenue ($) and order counts
+- **Intelligent time granularity**:
+  - Same day: Hourly breakdown (9:00 AM, 10:00 AM, etc.)
+  - Weekly/Monthly: Daily breakdown (Jan 1, Jan 2, etc.)
+  - Multi-month: Monthly breakdown (Jan 2025, Feb 2025, etc.)
+  - Multi-year: Yearly breakdown (2023, 2024, etc.)
+
+#### 2. Summary Statistics
+Four key metrics displayed in cards:
+- **Total Orders**: Number of completed transactions
+- **Total Revenue**: Sum of all sales in the period
+- **Average Order Value**: Revenue divided by number of orders
+- **Period**: Current time range being displayed
+
+#### 3. Order Details List
+Comprehensive list showing all orders for the selected period:
+- **Order #**: Unique order identifier
+- **Date**: When the order was placed
+- **Source**: POS (in-store) or Online
+- **Status**: Order status (completed, processing, etc.)
+- **Items**: Number of items in the order
+- **Total**: Order total amount
+- **Customer**: Customer name (if available)
+
+### Print Reports
+1. Click the **Print** button in the top navigation bar
+2. A modal window opens with a formatted report
+3. The report includes:
+   - Store name and report title
+   - Period information
+   - Summary statistics
+   - Complete order details table
+4. Click **Print** to print the report or **Close** to return
+
+### Report Features
+- **Real-time data**: Reports show current information
+- **Refresh button**: Update data manually with the refresh icon
+- **Responsive design**: Works on all screen sizes
+- **Print-optimized**: Reports format properly for printing
+- **Receipt-style formatting**: Professional layout matching POS receipts
+
+### Custom Date Ranges
+1. Select "Custom Range" from the period dropdown
+2. Choose your start date using the date picker
+3. Choose your end date using the date picker
+4. The report will automatically update when both dates are selected
+5. Default custom range is set to the last 30 days
+
+### Troubleshooting Reports
+
+#### **Problem**: Chart not displaying
+- **Solution**: Refresh the page or click the refresh button
+- **Check**: Ensure you have internet connection for Chart.js library
+
+#### **Problem**: No data showing
+- **Solution**: Verify the date range has orders, or try a different period
+- **Check**: Ensure orders exist for the selected time period
+
+#### **Problem**: Print button not working
+- **Solution**: Enable pop-ups for the site, or try right-click → Print
+- **Check**: Ensure JavaScript is enabled in your browser
 
 ## Session Management
 
@@ -323,7 +407,7 @@ Customize the interface:
 #### Suggestions Not Updating Live
 - **Problem**: When you add/remove options, suggestions don't update immediately
 - **Solution**: Refresh the page (Ctrl+F5) to ensure you have the latest version (v1.8.3+)
-- **Check**: Look for "JPOS v1.8.3 loaded" in browser console
+- **Check**: Look for "WP-POS v1.8.3 loaded" in browser console
 
 #### Dialog Closes After Save
 - **Problem**: Product editor closes automatically after saving
@@ -382,6 +466,6 @@ For technical support or questions:
 
 - Current Version: 1.8.17
 - Last Updated: January 2, 2025
-- Latest Update: WP POS v1.8.17 - Removed reporting functionality completely and corrected application branding from JPOS to WP POS (WordPress Point of Sale)
+- Latest Update: WP POS v1.8.17 - Removed reporting functionality completely and corrected application branding from WP-POS to WP POS (WordPress Point of Sale)
 - Previous Updates: Advanced Attribute Management System v1.8.3 - Complete product editor with intelligent attribute management, duplicate prevention, filtered suggestions, automatic input clearing, and user-controlled dropdown behavior
 - Next Update: Q1 2025

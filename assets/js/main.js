@@ -74,6 +74,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         },
         
+        // Reports Data
+        reports: {
+            currentPeriod: 'today',
+            chartData: null,
+            summary: null,
+            orders: [],
+            chart: null
+        },
+        
         // Security Tokens
         nonces: {
             login: '',
@@ -82,7 +91,8 @@ document.addEventListener('DOMContentLoaded', () => {
             settings: '',
             drawer: '',
             stock: '',
-            refund: ''
+            refund: '',
+            reports: ''
         },
         
         // UI State
@@ -284,6 +294,7 @@ document.addEventListener('DOMContentLoaded', () => {
             appState.nonces.stock = document.getElementById('jpos-stock-nonce')?.value || '';
             appState.nonces.refund = document.getElementById('jpos-refund-nonce')?.value || '';
             appState.nonces.productEdit = document.getElementById('jpos-product-edit-nonce')?.value || '';
+            appState.nonces.reports = document.getElementById('jpos-reports-nonce')?.value || '';
         } catch (error) {
             console.error('Error generating nonces:', error);
         }
@@ -546,7 +557,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (menuButtonPos) menuButtonPos.addEventListener('click', () => routingManager.navigateToView('pos-page'));
         const menuButtonOrders = document.getElementById('menu-button-orders');
         if (menuButtonOrders) menuButtonOrders.addEventListener('click', () => routingManager.navigateToView('orders-page'));
-        // Reports menu button removed
+        const menuButtonReports = document.getElementById('menu-button-reports');
+        if (menuButtonReports) menuButtonReports.addEventListener('click', () => routingManager.navigateToView('reports-page'));
         const menuButtonSessions = document.getElementById('menu-button-sessions');
         if (menuButtonSessions) menuButtonSessions.addEventListener('click', () => routingManager.navigateToView('sessions-page'));
         const menuButtonProducts = document.getElementById('menu-button-products');
@@ -3604,9 +3616,399 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // PDF-related functions removed
 
+    // ===== REPORTS FUNCTIONALITY =====
+    
+    /**
+     * Fetch reports data from API
+     */
+    async function fetchReportsData() {
+        try {
+            const period = appState.reports.currentPeriod;
+            const customStart = document.getElementById('custom-start-date')?.value || '';
+            const customEnd = document.getElementById('custom-end-date')?.value || '';
+            
+            let url = `/wp-pos/api/reports.php?period=${period}`;
+            if (period === 'custom' && customStart && customEnd) {
+                url += `&custom_start=${customStart}&custom_end=${customEnd}`;
+            }
+            
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (data.success) {
+                appState.reports.chartData = data.data;
+                appState.reports.summary = data.data.summary;
+                appState.reports.orders = data.data.orders;
+                
+                updateReportsDisplay();
+                renderReportsChart();
+            } else {
+                console.error('Failed to fetch reports data:', data.message);
+                showToast('Failed to load reports data', 'error');
+            }
+        } catch (error) {
+            console.error('Error fetching reports data:', error);
+            showToast('Error loading reports data', 'error');
+        }
+    }
+    
+    /**
+     * Update reports display with summary data
+     */
+    function updateReportsDisplay() {
+        const summary = appState.reports.summary;
+        if (!summary) return;
+        
+        document.getElementById('total-orders').textContent = summary.total_orders.toLocaleString();
+        document.getElementById('total-revenue').textContent = `$${summary.total_revenue.toFixed(2)}`;
+        document.getElementById('avg-order-value').textContent = `$${summary.avg_order_value.toFixed(2)}`;
+        
+        // Update period display
+        const periodType = appState.reports.currentPeriod;
+        const periodText = periodType.charAt(0).toUpperCase() + periodType.slice(1).replace('_', ' ');
+        document.getElementById('period-range').textContent = periodText;
+        
+        // Render orders list
+        renderReportsOrdersList();
+    }
+    
+    /**
+     * Render the reports chart
+     */
+    function renderReportsChart() {
+        const ctx = document.getElementById('sales-chart');
+        if (!ctx || !appState.reports.chartData) return;
+        
+        // Destroy existing chart if it exists
+        if (appState.reports.chart) {
+            appState.reports.chart.destroy();
+        }
+        
+        const data = appState.reports.chartData;
+        
+        appState.reports.chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.chart_labels,
+                datasets: [
+                    {
+                        label: 'Revenue ($)',
+                        data: data.chart_values,
+                        borderColor: '#6366f1',
+                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'Orders',
+                        data: data.chart_order_counts,
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        borderWidth: 2,
+                        fill: false,
+                        tension: 0.4,
+                        yAxisID: 'y1'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#e2e8f0'
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: {
+                            color: '#94a3b8'
+                        },
+                        grid: {
+                            color: '#374151'
+                        }
+                    },
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        ticks: {
+                            color: '#94a3b8',
+                            callback: function(value) {
+                                return '$' + value.toFixed(0);
+                            }
+                        },
+                        grid: {
+                            color: '#374151'
+                        }
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        ticks: {
+                            color: '#94a3b8'
+                        },
+                        grid: {
+                            drawOnChartArea: false,
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    /**
+     * Render the orders list for reports
+     */
+    function renderReportsOrdersList() {
+        const container = document.getElementById('reports-order-list');
+        if (!container || !appState.reports.orders) return;
+        
+        container.innerHTML = '';
+        
+        appState.reports.orders.forEach(order => {
+            const orderElement = document.createElement('div');
+            orderElement.className = 'grid grid-cols-12 gap-4 p-3 bg-slate-700/50 rounded-lg hover:bg-slate-700 transition-colors';
+            
+            const statusColor = {
+                'completed': 'text-green-400',
+                'processing': 'text-blue-400',
+                'on-hold': 'text-yellow-400',
+                'cancelled': 'text-red-400',
+                'refunded': 'text-purple-400',
+                'failed': 'text-red-400'
+            }[order.status] || 'text-slate-400';
+            
+            orderElement.innerHTML = `
+                <div class="col-span-2 font-mono text-sm">#${order.number}</div>
+                <div class="col-span-2 text-sm">${order.date}</div>
+                <div class="col-span-1 text-sm">
+                    <span class="px-2 py-1 rounded text-xs ${order.source === 'POS' ? 'bg-blue-900 text-blue-300' : 'bg-green-900 text-green-300'}">${order.source}</span>
+                </div>
+                <div class="col-span-2 text-sm">
+                    <span class="px-2 py-1 rounded text-xs ${statusColor}">${order.status}</span>
+                </div>
+                <div class="col-span-1 text-center text-sm">${order.item_count}</div>
+                <div class="col-span-2 text-right font-mono text-sm">$${order.total.toFixed(2)}</div>
+                <div class="col-span-2 text-center text-sm">${order.customer || 'Guest'}</div>
+            `;
+            
+            container.appendChild(orderElement);
+        });
+    }
+    
+    /**
+     * Handle period selection change
+     */
+    function handlePeriodChange() {
+        const periodSelect = document.getElementById('reports-period-select');
+        const customDateRange = document.getElementById('custom-date-range');
+        
+        if (periodSelect) {
+            periodSelect.addEventListener('change', (e) => {
+                appState.reports.currentPeriod = e.target.value;
+                
+                if (e.target.value === 'custom') {
+                    customDateRange.classList.remove('hidden');
+                    // Set default dates (last 30 days)
+                    const endDate = new Date();
+                    const startDate = new Date();
+                    startDate.setDate(endDate.getDate() - 30);
+                    
+                    document.getElementById('custom-start-date').value = startDate.toISOString().split('T')[0];
+                    document.getElementById('custom-end-date').value = endDate.toISOString().split('T')[0];
+                } else {
+                    customDateRange.classList.add('hidden');
+                }
+                
+                fetchReportsData();
+            });
+        }
+    }
+    
+    /**
+     * Handle custom date range changes
+     */
+    function handleCustomDateRange() {
+        const startDate = document.getElementById('custom-start-date');
+        const endDate = document.getElementById('custom-end-date');
+        
+        if (startDate && endDate) {
+            const handleDateChange = () => {
+                if (appState.reports.currentPeriod === 'custom' && startDate.value && endDate.value) {
+                    fetchReportsData();
+                }
+            };
+            
+            startDate.addEventListener('change', handleDateChange);
+            endDate.addEventListener('change', handleDateChange);
+        }
+    }
+    
+    /**
+     * Handle print reports functionality
+     */
+    function handlePrintReports() {
+        const printBtn = document.getElementById('print-reports-btn');
+        const printModal = document.getElementById('print-report-modal');
+        const printContent = document.getElementById('print-report-content');
+        const printModalPrintBtn = document.getElementById('print-report-print-btn');
+        const printModalCloseBtn = document.getElementById('print-report-close-btn');
+        
+        if (printBtn && printModal && printContent) {
+            printBtn.addEventListener('click', () => {
+                generatePrintReport();
+                printModal.classList.remove('hidden');
+            });
+            
+            if (printModalPrintBtn) {
+                printModalPrintBtn.addEventListener('click', () => {
+                    window.print();
+                });
+            }
+            
+            if (printModalCloseBtn) {
+                printModalCloseBtn.addEventListener('click', () => {
+                    printModal.classList.add('hidden');
+                });
+            }
+        }
+    }
+    
+    /**
+     * Generate print report content
+     */
+    function generatePrintReport() {
+        const summary = appState.reports.summary;
+        const orders = appState.reports.orders;
+        const periodData = appState.reports.chartData?.period;
+        
+        if (!summary || !orders) return;
+        
+        const storeName = appState.settings?.receipt?.store_name || 'Store';
+        const currentDate = new Date().toLocaleDateString();
+        
+        // Format period display based on actual dates
+        let periodDisplay = '';
+        if (periodData) {
+            const startDate = new Date(periodData.start);
+            const endDate = new Date(periodData.end);
+            
+            // Check if it's a single day
+            if (startDate.toDateString() === endDate.toDateString()) {
+                periodDisplay = startDate.toLocaleDateString();
+            } else {
+                periodDisplay = `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`;
+            }
+        }
+        
+        let reportContent = `
+            <div class="text-center mb-6">
+                <h1 class="text-2xl font-bold mb-2">${storeName}</h1>
+                <h2 class="text-lg font-semibold mb-4">Sales Report</h2>
+                <div class="text-sm text-gray-600 mb-4">
+                    Period: ${periodDisplay}<br>
+                    Generated: ${currentDate}
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4 mb-6 text-sm">
+                <div>
+                    <strong>Total Orders:</strong> ${summary.total_orders}<br>
+                    <strong>Total Revenue:</strong> $${summary.total_revenue.toFixed(2)}<br>
+                </div>
+                <div>
+                    <strong>Average Order Value:</strong> $${summary.avg_order_value.toFixed(2)}<br>
+                    <strong>Min Order:</strong> $${summary.min_order_value.toFixed(2)}<br>
+                    <strong>Max Order:</strong> $${summary.max_order_value.toFixed(2)}
+                </div>
+            </div>
+            
+            <h3 class="text-lg font-semibold mb-3">Order Details</h3>
+        `;
+        
+        orders.forEach(order => {
+            reportContent += `
+                <div class="mb-4 border border-gray-300 rounded p-3">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <strong>Order #${order.number}</strong><br>
+                            <span class="text-sm text-gray-600">${order.date}</span><br>
+                            <span class="text-sm text-gray-600">${order.customer || 'Guest'}</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-sm text-gray-600">${order.payment_method}</span><br>
+                            <span class="text-sm text-gray-600 capitalize">${order.status}</span>
+                        </div>
+                    </div>
+                    
+                    <table class="w-full text-xs border-collapse mt-2">
+                        <thead>
+                            <tr class="border-b bg-gray-50">
+                                <th class="text-left p-1">Item</th>
+                                <th class="text-right p-1">Subtotals</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            // Add order items
+            if (order.items && typeof order.items === 'object') {
+                // Convert object to array of values
+                const itemsArray = Object.values(order.items);
+                itemsArray.forEach(item => {
+                    reportContent += `
+                        <tr class="border-b">
+                            <td class="p-1">${item.quantity}x ${item.name}</td>
+                            <td class="p-1 text-right">$${item.total.toFixed(2)}</td>
+                        </tr>
+                    `;
+                });
+            } else {
+                // Fallback if items structure is different
+                reportContent += `
+                    <tr class="border-b">
+                        <td class="p-1" colspan="2">Items data not available</td>
+                    </tr>
+                `;
+            }
+            
+            reportContent += `
+                        </tbody>
+                    </table>
+                    
+                    <div class="flex justify-between items-center mt-2 pt-2 border-t">
+                        <span class="text-sm font-semibold">Total:</span>
+                        <span class="text-sm font-semibold">$${order.total.toFixed(2)}</span>
+                    </div>
+                </div>
+            `;
+        });
+        
+        reportContent += ``;
+        
+        document.getElementById('print-report-content').innerHTML = reportContent;
+    }
+    
+    // Initialize reports event listeners
+    handlePeriodChange();
+    handleCustomDateRange();
+    handlePrintReports();
+    
+    // Refresh reports button
+    const refreshReportsBtn = document.getElementById('refresh-reports-btn');
+    if (refreshReportsBtn) {
+        refreshReportsBtn.addEventListener('click', fetchReportsData);
+    }
+
     // Make all page data functions globally available for routing system
     window.fetchOrders = fetchOrders;
-    // Reports functionality removed
+    window.fetchReportsData = fetchReportsData;
     window.fetchSessions = fetchSessions;
     window.renderStockList = renderStockList;
     window.populateSettingsForm = populateSettingsForm;
