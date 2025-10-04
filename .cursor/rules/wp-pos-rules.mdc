@@ -1,0 +1,4 @@
+---
+alwaysApply: true
+---
+always apply the rules in the @agent.md file before and after every change

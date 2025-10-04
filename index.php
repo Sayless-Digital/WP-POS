@@ -18,9 +18,9 @@ require_once __DIR__ . '/../wp-load.php';
     <!-- Custom JSON syntax highlighting -->
     
     <!-- WP POS Routing Module -->
-    <script src="assets/js/modules/routing.js?v=1.5.11"></script>
+    <script src="assets/js/modules/routing.js?v=1.5.11&t=<?php echo time(); ?>"></script>
     <!-- WP POS JavaScript -->
-    <script src="assets/js/main.js?v=1.8.26"></script>
+    <script src="assets/js/main.js?v=1.8.29&t=<?php echo time(); ?>"></script>
     <style>
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }

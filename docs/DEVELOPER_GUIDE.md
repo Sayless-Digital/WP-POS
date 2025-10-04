@@ -593,6 +593,34 @@ php tests/php/test-database-optimizer.php
 - **Solution**: Use `appState.products.all`, `appState.stockFilters`, and `appState.products.currentForModal`
 - **Prevention**: Always use centralized state management (`appState`) instead of global variables
 
+#### Checkout Cart Reference Error (v1.8.27)
+- **Problem**: Checkout process fails with "Uncaught (in promise) ReferenceError: cart is not defined" error when attempting to process transactions or open split payment modal
+- **Symptoms**:
+  - Error occurs at [`getCartTotal()`](../assets/js/main.js:3591) line 3591
+  - Error occurs at [`openSplitPaymentModal()`](../assets/js/main.js:3557) line 3557
+  - Split payment modal fails to open
+  - Cart totals cannot be calculated
+  - Checkout process is blocked
+- **Root Cause**: During the migration from global variables to centralized `appState` object architecture, two `cart` variable references were not updated:
+  - Line 3591: `(cart || [])` should be `(appState.cart.items || [])`
+  - Line 3557: `cart_items: cart` should be `cart_items: appState.cart.items`
+- **Solution**:
+  - Updated [`getCartTotal()`](../assets/js/main.js:3591) line 3591 from `(cart || [])` to `(appState.cart.items || [])`
+  - Updated [`openSplitPaymentModal()`](../assets/js/main.js:3557) line 3557 from `cart_items: cart` to `cart_items: appState.cart.items`
+  - Updated cache busting version from v1.8.26 to v1.8.27 in [`index.php`](../index.php:23) line 23
+- **Prevention**:
+  - Always use centralized state management (`appState`) instead of global variables
+  - Use global search for variable names when refactoring to catch all references
+  - Implement TypeScript or JSDoc type checking to catch undefined variables
+  - Add unit tests that verify all state references use `appState` object
+- **Testing**:
+  1. Clear browser cache (Ctrl+F5)
+  2. Add items to cart
+  3. Click checkout button
+  4. Verify split payment modal opens without errors
+  5. Verify cart total calculates correctly
+  6. Complete a test transaction
+
 #### Browser Caching Issues
 - **Symptom**: JavaScript changes not taking effect, old code still running, ReferenceError persists after fixes
 - **Cause**: Browser aggressively caching JavaScript files, serving outdated versions

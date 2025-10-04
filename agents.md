@@ -1787,11 +1787,11 @@ WP POS is a modern, enterprise-grade point-of-sale system built on WordPress. Th
 
 ## Current System Status
 
-**Status**: ✅ PRODUCTION READY  
-**Last Updated**: January 2, 2025  
-**Version**: 1.8.26  
-**All Phases Completed**: Security, Architecture, Performance, Quality & Monitoring  
-**Latest Update**: WP POS v1.8.26 - Enhanced print report period display, shows actual dates instead of relative terms like "today" or "this week"
+**Status**: ✅ PRODUCTION READY
+**Last Updated**: January 3, 2025
+**Version**: 1.8.28
+**All Phases Completed**: Security, Architecture, Performance, Quality & Monitoring
+**Latest Update**: WP POS v1.8.28 - Incremented cache-busting version to force browser refresh and resolve cached v1.8.26 causing "cart is not defined" errors
 
 ## Architecture
 
@@ -2318,14 +2318,16 @@ Use the built-in monitoring system to track system health, performance metrics, 
 
 ---
 
-**Documentation Version**: 1.8.26  
-**Last Updated**: January 2, 2025  
-**System Status**: Production Ready  
-**Latest Update**: WP POS v1.8.26 - Enhanced print report period display, shows actual dates instead of relative terms like "today" or "this week"  
+**Documentation Version**: 1.8.28
+**Last Updated**: January 3, 2025
+**System Status**: Production Ready
+**Latest Update**: WP POS v1.8.28 - Incremented cache-busting version to force browser refresh and resolve cached v1.8.26 causing "cart is not defined" errors
 **Maintenance Contact**: Development Team
 
 ## Version History
 
+- v1.8.28: Incremented version parameter in [`index.php`](index.php:23) from v1.8.27 to v1.8.28 - force browser cache invalidation to resolve issue where users loading cached v1.8.26 encountered "cart is not defined" ReferenceError during checkout, current code correctly uses `appState.cart.items` throughout but browsers were serving outdated cached versions
+- v1.8.27: Fixed checkout ReferenceError in [`getCartTotal()`](assets/js/main.js:3591) and [`openSplitPaymentModal()`](assets/js/main.js:3557) - updated undefined `cart` variable references to `appState.cart.items` to match centralized state management architecture, resolves "cart is not defined" error that prevented split payment modal from opening and cart totals from calculating correctly during checkout
 - v1.8.26: Enhanced print report period display in [`generatePrintReport()`](assets/js/main.js:3897) - replaced relative period terms ("today", "yesterday", "this week") with actual dates from API data, shows single date for single-day periods (e.g., "1/2/2025") or date range for multi-day periods (e.g., "1/1/2025 - 1/7/2025"), provides more precise and professional period information
 - v1.8.25: Fixed print report terminology in [`generatePrintReport()`](assets/js/main.js:3940) - changed items table header from "Total" to "Subtotals" to distinguish individual item amounts from the main order total displayed at bottom, improves clarity and follows standard receipt formatting conventions
 - v1.8.24: Improved print report layout in [`generatePrintReport()`](assets/js/main.js:3971) - moved order total from top-right header to bottom of each order card with "Total:" label and amount aligned horizontally, added border separator above total section, removed total from header area to focus on order info (number, date, customer, payment method, status)

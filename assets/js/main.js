@@ -3554,7 +3554,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     // Use split payments if multiple methods, otherwise single payment
                     let payload = {
-                        cart_items: cart,
+                        cart_items: appState.cart.items,
                         payment_method: splits[0].method,
                         fee_discount: appState.feeDiscount.type ? appState.feeDiscount : null
                     };
@@ -3588,7 +3588,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function getCartTotal() {
         let total = 0;
-        (cart || []).forEach(item => {
+        (appState.cart.items || []).forEach(item => {
             total += (parseFloat(item.price) || 0) * (item.qty || 0);
         });
         if (appState.fee && appState.fee.amount) {
