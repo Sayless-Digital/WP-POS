@@ -312,6 +312,16 @@ Customize the interface:
 - Check network connection
 - Review transaction details
 
+#### Print Report Issues (Fixed in v1.8.30)
+- **Problem**: Print reports show blank first page or incomplete content
+- **Solution**: This issue has been resolved - print reports now display all content correctly
+- **What was fixed**:
+  - Eliminated blank first page issue
+  - All report content now prints without truncation
+  - Improved print formatting and page breaks
+  - Reports now use the same reliable printing method as receipts
+- **How to use**: Simply click the Print button in the Reports section - it will now work correctly
+
 #### Receipt Printing Issues
 - Check printer connection
 - Verify receipt settings

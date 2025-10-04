@@ -1847,9 +1847,9 @@ WP POS is a modern, enterprise-grade point-of-sale system built on WordPress. Th
 
 **Status**: ✅ PRODUCTION READY
 **Last Updated**: January 3, 2025
-**Version**: 1.8.28
+**Version**: 1.8.33
 **All Phases Completed**: Security, Architecture, Performance, Quality & Monitoring
-**Latest Update**: WP POS v1.8.28 - Incremented cache-busting version to force browser refresh and resolve cached v1.8.26 causing "cart is not defined" errors
+**Latest Update**: WP POS v1.8.30 - Fixed print report functionality - replaced problematic window.print() with reliable window.open() approach matching receipt printing
 
 ## Architecture
 
@@ -2384,6 +2384,7 @@ Use the built-in monitoring system to track system health, performance metrics, 
 
 ## Version History
 
+- v1.8.30: Fixed print report functionality in [`handlePrintReports()`](assets/js/main.js:3856) and [`printReport()`](assets/js/main.js:3886) - replaced problematic `window.print()` with reliable `window.open()` approach matching receipt printing, eliminated complex CSS visibility system causing blank pages, added comprehensive print-optimized CSS styles, ensures all report content displays without truncation and handles page breaks correctly
 - v1.8.28: Incremented version parameter in [`index.php`](index.php:23) from v1.8.27 to v1.8.28 - force browser cache invalidation to resolve issue where users loading cached v1.8.26 encountered "cart is not defined" ReferenceError during checkout, current code correctly uses `appState.cart.items` throughout but browsers were serving outdated cached versions
 - v1.8.27: Fixed checkout ReferenceError in [`getCartTotal()`](assets/js/main.js:3591) and [`openSplitPaymentModal()`](assets/js/main.js:3557) - updated undefined `cart` variable references to `appState.cart.items` to match centralized state management architecture, resolves "cart is not defined" error that prevented split payment modal from opening and cart totals from calculating correctly during checkout
 - v1.8.26: Enhanced print report period display in [`generatePrintReport()`](assets/js/main.js:3897) - replaced relative period terms ("today", "yesterday", "this week") with actual dates from API data, shows single date for single-day periods (e.g., "1/2/2025") or date range for multi-day periods (e.g., "1/1/2025 - 1/7/2025"), provides more precise and professional period information

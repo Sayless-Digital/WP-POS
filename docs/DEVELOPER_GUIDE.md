@@ -593,6 +593,28 @@ php tests/php/test-database-optimizer.php
 - **Solution**: Use `appState.products.all`, `appState.stockFilters`, and `appState.products.currentForModal`
 - **Prevention**: Always use centralized state management (`appState`) instead of global variables
 
+#### Print Report Issues (v1.8.30)
+- **Problem**: Print reports display only 2 pages with first page being blank, content truncated, and poor print formatting
+- **Symptoms**:
+  - First page of printed report is completely blank
+  - Only 2 pages print regardless of report content length
+  - Report content appears truncated or cut off
+  - Print preview shows incomplete data
+  - Complex CSS visibility system causes rendering issues
+- **Root Cause**: Print report functionality used problematic `window.print()` approach with complex CSS visibility system:
+  - Modal-based printing with visibility: hidden/visible CSS conflicts
+  - Complex print styles that interfered with content rendering
+  - Different approach from working receipt printing system
+  - CSS visibility system caused blank pages and content truncation
+- **Solution**:
+  - Replaced `window.print()` with reliable `window.open()` approach in [`printReport()`](../assets/js/main.js:3886)
+  - Removed complex CSS visibility system from [`handlePrintReports()`](../assets/js/main.js:3856)
+  - Added comprehensive print-optimized CSS styles for clean formatting
+  - Implemented same successful pattern used for receipt printing
+  - Ensures all report content displays without truncation
+  - Handles page breaks correctly for multi-page reports
+- **Prevention**: Use proven `window.open()` approach for all print functionality instead of complex CSS visibility systems
+
 #### Checkout Cart Reference Error (v1.8.27)
 - **Problem**: Checkout process fails with "Uncaught (in promise) ReferenceError: cart is not defined" error when attempting to process transactions or open split payment modal
 - **Symptoms**:

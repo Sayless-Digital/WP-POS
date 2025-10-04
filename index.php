@@ -20,7 +20,7 @@ require_once __DIR__ . '/../wp-load.php';
     <!-- WP POS Routing Module -->
     <script src="assets/js/modules/routing.js?v=1.5.11&t=<?php echo time(); ?>"></script>
     <!-- WP POS JavaScript -->
-    <script src="assets/js/main.js?v=1.8.29&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/main.js?v=1.8.33&t=<?php echo time(); ?>"></script>
     <style>
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
@@ -201,6 +201,14 @@ require_once __DIR__ . '/../wp-load.php';
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+        
+        /* Print Styles - Clean report printing */
+        @media print {
+            /* Reset page margins */
+            @page {
+                margin: 0.75in;
+            }
         }
     </style>
 </head>

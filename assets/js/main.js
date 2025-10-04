@@ -3868,7 +3868,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (printModalPrintBtn) {
                 printModalPrintBtn.addEventListener('click', () => {
-                    window.print();
+                    printReport();
                 });
             }
             
@@ -3878,6 +3878,339 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
         }
+    }
+    
+    /**
+     * Print report using the same approach as receipt printing
+     */
+    function printReport() {
+        const content = document.getElementById('print-report-content').innerHTML;
+        const printWindow = window.open('', '', 'height=600,width=800');
+        
+        printWindow.document.write('<html><head><title>Sales Report</title>');
+        printWindow.document.write(`
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    font-size: 12px;
+                    margin: 20px;
+                    color: #000;
+                    background: #fff;
+                    line-height: 1.4;
+                }
+                
+                .grid {
+                    display: grid;
+                }
+                
+                .grid-cols-2 {
+                    grid-template-columns: repeat(2, 1fr);
+                }
+                
+                .text-center {
+                    text-align: center;
+                }
+                
+                .text-right {
+                    text-align: right;
+                }
+                
+                .font-bold {
+                    font-weight: 700;
+                }
+                
+                .text-lg {
+                    font-size: 1.125rem;
+                }
+                
+                .text-xl {
+                    font-size: 1.25rem;
+                }
+                
+                .text-2xl {
+                    font-size: 1.5rem;
+                }
+                
+                .mb-4 {
+                    margin-bottom: 1rem;
+                }
+                
+                .mb-2 {
+                    margin-bottom: 0.5rem;
+                }
+                
+                .mb-1 {
+                    margin-bottom: 0.25rem;
+                }
+                
+                .mt-4 {
+                    margin-top: 1rem;
+                }
+                
+                .mt-2 {
+                    margin-top: 0.5rem;
+                }
+                
+                .p-4 {
+                    padding: 1rem;
+                }
+                
+                .p-3 {
+                    padding: 0.75rem;
+                }
+                
+                .p-2 {
+                    padding: 0.5rem;
+                }
+                
+                .px-4 {
+                    padding-left: 1rem;
+                    padding-right: 1rem;
+                }
+                
+                .py-2 {
+                    padding-top: 0.5rem;
+                    padding-bottom: 0.5rem;
+                }
+                
+                .py-1 {
+                    padding-top: 0.25rem;
+                    padding-bottom: 0.25rem;
+                }
+                
+                .border {
+                    border: 1px solid #e2e8f0;
+                }
+                
+                .border-t {
+                    border-top: 1px solid #e2e8f0;
+                }
+                
+                .border-b {
+                    border-bottom: 1px solid #e2e8f0;
+                }
+                
+                .border-l-4 {
+                    border-left: 4px solid;
+                }
+                
+                .border-blue-500 {
+                    border-color: #000000;
+                }
+                
+                .border-green-500 {
+                    border-color: #000000;
+                }
+                
+                .border-gray-500 {
+                    border-color: #6b7280;
+                }
+                
+                .rounded {
+                    border-radius: 0.25rem;
+                }
+                
+                .rounded-lg {
+                    border-radius: 0.5rem;
+                }
+                
+                .rounded-md {
+                    border-radius: 0.375rem;
+                }
+                
+                .bg-white {
+                    background-color: #fff;
+                }
+                
+                .bg-gray-50 {
+                    background-color: #f9fafb;
+                }
+                
+                .bg-gray-100 {
+                    background-color: #f3f4f6;
+                }
+                
+                .bg-blue-50 {
+                    background-color: #f9f9f9;
+                }
+                
+                .bg-green-50 {
+                    background-color: #f9f9f9;
+                }
+                
+                .text-black {
+                    color: #000;
+                }
+                
+                .text-gray-600 {
+                    color: #666666;
+                }
+                
+                .text-gray-700 {
+                    color: #333333;
+                }
+                
+                .text-gray-800 {
+                    color: #000000;
+                }
+                
+                .text-blue-600 {
+                    color: #000000;
+                }
+                
+                .text-green-600 {
+                    color: #000000;
+                }
+                
+                .text-red-600 {
+                    color: #000000;
+                }
+                
+                .text-yellow-600 {
+                    color: #000000;
+                }
+                
+                .text-purple-600 {
+                    color: #000000;
+                }
+                
+                .space-y-4 > * + * {
+                    margin-top: 1rem;
+                }
+                
+                .space-y-2 > * + * {
+                    margin-top: 0.5rem;
+                }
+                
+                .space-y-1 > * + * {
+                    margin-top: 0.25rem;
+                }
+                
+                .flex {
+                    display: flex;
+                }
+                
+                .justify-between {
+                    justify-content: space-between;
+                }
+                
+                .justify-center {
+                    justify-content: center;
+                }
+                
+                .items-center {
+                    align-items: center;
+                }
+                
+                .items-start {
+                    align-items: flex-start;
+                }
+                
+                .inline-block {
+                    display: inline-block;
+                }
+                
+                .block {
+                    display: block;
+                }
+                
+                .w-full {
+                    width: 100%;
+                }
+                
+                .h-full {
+                    height: 100%;
+                }
+                
+                .max-w-full {
+                    max-width: 100%;
+                }
+                
+                .overflow-hidden {
+                    overflow: hidden;
+                }
+                
+                .page-break-inside-avoid {
+                    page-break-inside: avoid;
+                }
+                
+                .page-break-after-avoid {
+                    page-break-after: avoid;
+                }
+                
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-bottom: 1rem;
+                }
+                
+                th, td {
+                    padding: 6px 8px;
+                    text-align: left;
+                    border-bottom: 1px solid #e2e8f0;
+                }
+                
+                th {
+                    background-color: #f5f5f5;
+                    font-weight: 600;
+                    color: #333333;
+                }
+                
+                tr:nth-child(even) {
+                    background-color: #f9fafb;
+                }
+                
+                tr:nth-child(odd) {
+                    background-color: #fff;
+                }
+                
+                h1, h2, h3 {
+                    margin: 0 0 0.5rem 0;
+                    page-break-after: avoid;
+                }
+                
+                h1 {
+                    font-size: 1.5rem;
+                    font-weight: bold;
+                }
+                
+                h2 {
+                    font-size: 1.25rem;
+                    font-weight: 600;
+                }
+                
+                h3 {
+                    font-size: 1rem;
+                    font-weight: 600;
+                }
+                
+                @media print {
+                    body {
+                        margin: 0;
+                        padding: 15mm;
+                    }
+                    
+                    .page-break-inside-avoid {
+                        page-break-inside: avoid;
+                    }
+                    
+                    .page-break-after-avoid {
+                        page-break-after: avoid;
+                    }
+                }
+            </style>
+        `);
+        printWindow.document.write('</head><body>');
+        printWindow.document.write(content);
+        printWindow.document.write('</body></html>');
+        printWindow.document.close();
+        printWindow.focus();
+        
+        // Wait for content to load, then print
+        setTimeout(() => {
+            printWindow.print();
+            printWindow.close();
+        }, 500);
     }
     
     /**
@@ -3908,89 +4241,109 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         let reportContent = `
-            <div class="text-center mb-6">
-                <h1 class="text-2xl font-bold mb-2">${storeName}</h1>
-                <h2 class="text-lg font-semibold mb-4">Sales Report</h2>
-                <div class="text-sm text-gray-600 mb-4">
-                    Period: ${periodDisplay}<br>
-                    Generated: ${currentDate}
+            <div style="text-align: center; margin-bottom: 16px; padding: 12px; background: white; border-radius: 8px; border: 2px solid #e2e8f0;">
+                <h1 style="font-size: 24px; font-weight: bold; margin-bottom: 4px; color: #000000;">${storeName}</h1>
+                <h2 style="font-size: 18px; font-weight: 600; margin-bottom: 8px; color: #333333;">Sales Report</h2>
+                <div style="font-size: 13px; color: #666666; background: #f8f8f8; padding: 6px 12px; border-radius: 6px; display: inline-block;">
+                    <span style="margin-right: 12px;"><strong>Period:</strong> ${periodDisplay}</span>
+                    <span><strong>Generated:</strong> ${currentDate}</span>
                 </div>
             </div>
             
-            <div class="grid grid-cols-2 gap-4 mb-6 text-sm">
-                <div>
-                    <strong>Total Orders:</strong> ${summary.total_orders}<br>
-                    <strong>Total Revenue:</strong> $${summary.total_revenue.toFixed(2)}<br>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;">
+                <div style="padding: 10px; background: white; border-radius: 8px; border-left: 4px solid #000000; border: 1px solid #e2e8f0;">
+                    <div style="font-size: 12px; color: #666666; margin-bottom: 4px;">Total Orders</div>
+                    <div style="font-size: 20px; font-weight: bold; color: #000000;">${summary.total_orders}</div>
+                    <div style="font-size: 12px; color: #666666; margin-top: 6px;">Total Revenue</div>
+                    <div style="font-size: 18px; font-weight: bold; color: #000000;">$${summary.total_revenue.toFixed(2)}</div>
                 </div>
-                <div>
-                    <strong>Average Order Value:</strong> $${summary.avg_order_value.toFixed(2)}<br>
-                    <strong>Min Order:</strong> $${summary.min_order_value.toFixed(2)}<br>
-                    <strong>Max Order:</strong> $${summary.max_order_value.toFixed(2)}
+                <div style="padding: 10px; background: white; border-radius: 8px; border-left: 4px solid #000000; border: 1px solid #e2e8f0;">
+                    <div style="font-size: 12px; color: #666666; margin-bottom: 4px;">Average Order</div>
+                    <div style="font-size: 20px; font-weight: bold; color: #000000;">$${summary.avg_order_value.toFixed(2)}</div>
+                    <div style="font-size: 12px; color: #666666; margin-top: 6px;">Range</div>
+                    <div style="font-size: 14px; font-weight: 600; color: #000000;">$${summary.min_order_value.toFixed(2)} - $${summary.max_order_value.toFixed(2)}</div>
                 </div>
             </div>
             
-            <h3 class="text-lg font-semibold mb-3">Order Details</h3>
+            <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #000000; padding: 8px; background: #f8f8f8; border-radius: 6px; border-left: 4px solid #000000;">Order Details</h3>
         `;
         
         orders.forEach(order => {
+            const statusColors = {
+                'completed': '#000000',
+                'processing': '#000000',
+                'on-hold': '#000000',
+                'cancelled': '#000000',
+                'refunded': '#000000',
+                'failed': '#000000'
+            };
+            const statusColor = statusColors[order.status] || '#000000';
+            
             reportContent += `
-                <div class="mb-4 border border-gray-300 rounded p-3">
-                    <div class="flex justify-between items-start mb-2">
-                        <div>
-                            <strong>Order #${order.number}</strong><br>
-                            <span class="text-sm text-gray-600">${order.date}</span><br>
-                            <span class="text-sm text-gray-600">${order.customer || 'Guest'}</span>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-sm text-gray-600">${order.payment_method}</span><br>
-                            <span class="text-sm text-gray-600 capitalize">${order.status}</span>
+                <div style="margin-bottom: 12px; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0; page-break-inside: avoid;">
+                    <!-- Header Section -->
+                    <div style="padding: 10px 12px; background: #f8f8f8;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div>
+                                <div style="font-size: 16px; font-weight: bold; margin-bottom: 2px; color: #000000;">Order #${order.number}</div>
+                                <div style="font-size: 12px; color: #666666;">${order.date} • ${order.customer || 'Guest'}</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="display: inline-block; padding: 3px 8px; background: #f0f0f0; border-radius: 4px; font-size: 11px; font-weight: 600; color: #333333; margin-bottom: 3px;">${order.payment_method}</div>
+                                <div style="display: inline-block; padding: 3px 8px; background: #f5f5f5; border: 1px solid #cccccc; border-radius: 4px; font-size: 11px; font-weight: 600; color: #333333; text-transform: capitalize;">${order.status}</div>
+                            </div>
                         </div>
                     </div>
                     
-                    <table class="w-full text-xs border-collapse mt-2">
-                        <thead>
-                            <tr class="border-b bg-gray-50">
-                                <th class="text-left p-1">Item</th>
-                                <th class="text-right p-1">Subtotals</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+                    <!-- Items Section -->
+                    <div style="padding: 10px; background: white; border-radius: 0 0 8px 8px;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                            <thead>
+                                <tr style="background: #f5f5f5;">
+                                    <th style="text-align: left; padding: 6px 8px; font-weight: 600; color: #333333;">Item</th>
+                                    <th style="text-align: right; padding: 6px 8px; font-weight: 600; color: #333333;">Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
             `;
             
             // Add order items
             if (order.items && typeof order.items === 'object') {
-                // Convert object to array of values
                 const itemsArray = Object.values(order.items);
-                itemsArray.forEach(item => {
+                itemsArray.forEach((item, index) => {
+                    const bgColor = index % 2 === 0 ? '#ffffff' : '#f9fafb';
                     reportContent += `
-                        <tr class="border-b">
-                            <td class="p-1">${item.quantity}x ${item.name}</td>
-                            <td class="p-1 text-right">$${item.total.toFixed(2)}</td>
+                        <tr style="background: ${bgColor};">
+                            <td style="padding: 6px 8px; color: #000000;">
+                                <span style="font-weight: 600; color: #000000;">${item.quantity}x</span> ${item.name}
+                            </td>
+                            <td style="padding: 6px 8px; text-align: right; font-weight: 500; color: #000000;">$${item.total.toFixed(2)}</td>
                         </tr>
                     `;
                 });
             } else {
-                // Fallback if items structure is different
                 reportContent += `
-                    <tr class="border-b">
-                        <td class="p-1" colspan="2">Items data not available</td>
+                    <tr style="background: #ffffff;">
+                        <td colspan="2" style="padding: 6px 8px; text-align: center; color: #666666; font-style: italic;">Items data not available</td>
                     </tr>
                 `;
             }
             
             reportContent += `
-                        </tbody>
-                    </table>
-                    
-                    <div class="flex justify-between items-center mt-2 pt-2 border-t">
-                        <span class="text-sm font-semibold">Total:</span>
-                        <span class="text-sm font-semibold">$${order.total.toFixed(2)}</span>
+                            </tbody>
+                        </table>
+                        
+                        <!-- Totals Section -->
+                        <div style="padding: 8px; background: #f8f8f8; border-radius: 6px; margin-top: 8px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-size: 14px; font-weight: 600; color: #333333;">Total:</span>
+                                <span style="font-size: 18px; font-weight: bold; color: #000000;">$${order.total.toFixed(2)}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             `;
         });
-        
-        reportContent += ``;
         
         document.getElementById('print-report-content').innerHTML = reportContent;
     }
