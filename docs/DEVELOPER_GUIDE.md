@@ -222,6 +222,70 @@ Retrieve product catalog with filtering options.
 - **GET** `/api/sessions.php` - Session management
 - **POST** `/api/drawer.php` - Cash drawer operations
 
+### Barcode Generation Endpoints
+
+#### POST /api/barcode.php
+
+Generates unique barcodes for products using JPOS format.
+
+**Action**: `generate_barcode`
+
+**Request Body:**
+```json
+{
+    "action": "generate_barcode",
+    "product_id": 123,
+    "nonce": "abc123xyz"
+}
+```
+
+**Response (Success):**
+```json
+{
+    "success": true,
+    "barcode": "20251004230845-A3F7",
+    "product_id": 123,
+    "message": "Barcode generated successfully"
+}
+```
+
+**Barcode Format:**
+- Pattern: `YYYYMMDDHHMMSS-RAND`
+- `YYYYMMDDHHMMSS`: Full timestamp (year-month-day-hour-minute-second)
+- `RAND`: 4-character random alphanumeric string (0-9, A-Z)
+- Example: `20251004230845-A3F7`
+
+**Features:**
+- Timestamp-based generation for chronological uniqueness
+- 4-character random alphanumeric suffix provides 1.6M+ combinations per second
+- Automatic uniqueness validation via wp_postmeta query
+- Retry logic (max 3 attempts) for race conditions
+- No counter needed (timestamp provides uniqueness)
+- CSRF nonce protection
+
+**Error Responses:**
+- 400: Invalid or missing product_id
+- 403: Authentication failure or invalid nonce
+- 404: Product not found
+- 500: Generation failure after retries
+
+**Example Usage:**
+```javascript
+const response = await fetch('/api/barcode.php', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+        action: 'generate_barcode',
+        product_id: 123,
+        nonce: appState.nonces.barcode
+    })
+});
+```
+
+**Related Functions:**
+- Backend: [`generate_unique_barcode()`](../api/barcode.php:118)
+- Frontend: [`handleBarcodeGeneration()`](../assets/js/main.js:2765)
+
 ### Product Editor Endpoints
 
 #### GET /api/product-edit-simple.php?action=get_product_details&id={product_id}

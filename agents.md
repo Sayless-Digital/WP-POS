@@ -1846,10 +1846,10 @@ WP POS is a modern, enterprise-grade point-of-sale system built on WordPress. Th
 ## Current System Status
 
 **Status**: ✅ PRODUCTION READY
-**Last Updated**: January 3, 2025
-**Version**: 1.8.33
+**Last Updated**: January 4, 2025
+**Version**: 1.8.36
 **All Phases Completed**: Security, Architecture, Performance, Quality & Monitoring
-**Latest Update**: WP POS v1.8.30 - Fixed print report functionality - replaced problematic window.print() with reliable window.open() approach matching receipt printing
+**Latest Update**: WP POS v1.8.36 - Enhanced barcode uniqueness in generate_unique_barcode() - removed JPOS prefix, changed from JPOS-YYMMDD-####-XX to YYYYMMDDHHMMSS-RAND format (e.g., 20251004230845-A3F7) using full timestamp with 4-char random alphanumeric suffix for maximum uniqueness
 
 ## Architecture
 
@@ -2384,6 +2384,9 @@ Use the built-in monitoring system to track system health, performance metrics, 
 
 ## Version History
 
+- v1.8.36: Enhanced barcode uniqueness in [`generate_unique_barcode()`](api/barcode.php:118) - removed JPOS prefix, changed from JPOS-YYMMDD-####-XX to YYYYMMDDHHMMSS-RAND format (e.g., 20251004230845-A3F7) using full timestamp with 4-char random alphanumeric suffix for maximum uniqueness
+- v1.8.35: Fixed barcode API 404 error in [`handleBarcodeGeneration()`](assets/js/main.js:2779) - corrected endpoint URL from `/jpos/api/barcode.php` to `api/barcode.php` to match relative path pattern used by other product editor API calls (like [`product-edit-simple.php`](api/product-edit-simple.php:1)), resolves "Failed to load resource: the server responded with a status of 404" error during barcode generation
+- v1.8.34: Implemented product barcode generation system - added "Generate" button in product editor at [`index.php:767-775`](index.php:767-775), new [`/api/barcode.php`](api/barcode.php:1) endpoint generates unique barcodes in JPOS-YYMMDD-####-XX format with CRC16 checksum validation and daily counter reset, frontend handler at [`handleBarcodeGeneration()`](assets/js/main.js:2765-2828) with loading states and error handling, includes CSRF nonce protection matching other API endpoints, uniqueness verified via wp_postmeta queries with retry logic for race conditions
 - v1.8.30: Fixed print report functionality in [`handlePrintReports()`](assets/js/main.js:3856) and [`printReport()`](assets/js/main.js:3886) - replaced problematic `window.print()` with reliable `window.open()` approach matching receipt printing, eliminated complex CSS visibility system causing blank pages, added comprehensive print-optimized CSS styles, ensures all report content displays without truncation and handles page breaks correctly
 - v1.8.28: Incremented version parameter in [`index.php`](index.php:23) from v1.8.27 to v1.8.28 - force browser cache invalidation to resolve issue where users loading cached v1.8.26 encountered "cart is not defined" ReferenceError during checkout, current code correctly uses `appState.cart.items` throughout but browsers were serving outdated cached versions
 - v1.8.27: Fixed checkout ReferenceError in [`getCartTotal()`](assets/js/main.js:3591) and [`openSplitPaymentModal()`](assets/js/main.js:3557) - updated undefined `cart` variable references to `appState.cart.items` to match centralized state management architecture, resolves "cart is not defined" error that prevented split payment modal from opening and cart totals from calculating correctly during checkout

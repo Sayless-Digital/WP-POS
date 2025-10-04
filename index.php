@@ -20,7 +20,7 @@ require_once __DIR__ . '/../wp-load.php';
     <!-- WP POS Routing Module -->
     <script src="assets/js/modules/routing.js?v=1.5.11&t=<?php echo time(); ?>"></script>
     <!-- WP POS JavaScript -->
-    <script src="assets/js/main.js?v=1.8.33&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/main.js?v=1.8.36&t=<?php echo time(); ?>"></script>
     <style>
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
@@ -229,11 +229,12 @@ require_once __DIR__ . '/../wp-load.php';
     <input type="hidden" id="jpos-refund-nonce" value="<?php echo wp_create_nonce('jpos_refund_nonce'); ?>">
     <input type="hidden" id="jpos-product-edit-nonce" value="<?php echo wp_create_nonce('jpos_product_edit_nonce'); ?>">
     <input type="hidden" id="jpos-reports-nonce" value="<?php echo wp_create_nonce('jpos_reports_nonce'); ?>">
+    <input type="hidden" id="jpos-barcode-nonce" value="<?php echo wp_create_nonce('jpos_barcode_nonce'); ?>">
 
     <!-- Login Screen -->
     <div id="login-screen" class="app-overlay hidden">
         <div class="w-full max-w-sm p-8 space-y-6 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl">
-            <h2 class="text-3xl font-bold text-center text-white">JPOS Login</h2>
+            <h2 class="text-3xl font-bold text-center text-white">WP POS Login</h2>
             <form id="login-form" class="space-y-4">
                 <div>
                     <label for="username" class="form-label">Username</label>
@@ -766,7 +767,13 @@ require_once __DIR__ . '/../wp-load.php';
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-slate-300 mb-2">Barcode</label>
-                                <input type="text" id="product-barcode" class="w-full px-3 py-2 bg-slate-600 text-slate-200 rounded-lg border border-slate-500 focus:border-blue-500 focus:outline-none">
+                                <div class="flex gap-2">
+                                    <input type="text" id="product-barcode" class="flex-1 px-3 py-2 bg-slate-600 text-slate-200 rounded-lg border border-slate-500 focus:border-blue-500 focus:outline-none">
+                                    <button type="button" id="generate-barcode-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 transition-colors flex items-center gap-2 whitespace-nowrap">
+                                        <i class="fas fa-plus"></i>
+                                        <span>Generate</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>

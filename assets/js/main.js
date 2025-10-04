@@ -295,6 +295,7 @@ document.addEventListener('DOMContentLoaded', () => {
             appState.nonces.refund = document.getElementById('jpos-refund-nonce')?.value || '';
             appState.nonces.productEdit = document.getElementById('jpos-product-edit-nonce')?.value || '';
             appState.nonces.reports = document.getElementById('jpos-reports-nonce')?.value || '';
+            appState.nonces.barcode = document.getElementById('jpos-barcode-nonce')?.value || '';
         } catch (error) {
             console.error('Error generating nonces:', error);
         }
@@ -631,6 +632,10 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const productEditorCancelBtn = document.getElementById('product-editor-cancel');
         if (productEditorCancelBtn) productEditorCancelBtn.addEventListener('click', () => document.getElementById('product-editor-modal').classList.add('hidden'));
+        
+        // Barcode Generation Button
+        const generateBarcodeBtn = document.getElementById('generate-barcode-btn');
+        if (generateBarcodeBtn) generateBarcodeBtn.addEventListener('click', handleBarcodeGeneration);
         
         // Product Editor Tab Event Listeners
         const formTabBtn = document.getElementById('form-tab');
@@ -2755,6 +2760,72 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Error saving product:', error);
             statusEl.textContent = `Error: ${error.message}`;
             statusEl.className = 'text-sm text-right h-5 mt-2 text-red-400';
+        }
+    }
+
+    async function handleBarcodeGeneration() {
+        if (!currentEditingProduct || !currentEditingProduct.id) {
+            showToast('No product loaded. Please save the product first.');
+            return;
+        }
+        
+        const btn = document.getElementById('generate-barcode-btn');
+        const barcodeInput = document.getElementById('product-barcode');
+        const btnIcon = btn.querySelector('i');
+        const btnText = btn.querySelector('span');
+        
+        // Save original state
+        const originalIcon = btnIcon.className;
+        const originalText = btnText.textContent;
+        
+        // Set loading state
+        btn.disabled = true;
+        btnIcon.className = 'fas fa-spinner fa-spin';
+        btnText.textContent = 'Generating...';
+        
+        try {
+            const response = await fetch('api/barcode.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'generate_barcode',
+                    product_id: currentEditingProduct.id,
+                    nonce: appState.nonces.barcode
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Server responded with ${response.status}`);
+            }
+            
+            const result = await response.json();
+            
+            if (result.success && result.barcode) {
+                barcodeInput.value = result.barcode;
+                showToast('Barcode generated successfully!');
+            } else {
+                throw new Error(result.message || 'Failed to generate barcode');
+            }
+        } catch (error) {
+            console.error('Barcode generation error:', error);
+            let errorMessage = 'Failed to generate barcode';
+            
+            if (error.message.includes('401') || error.message.includes('403')) {
+                errorMessage = 'Authentication failed. Please log in again.';
+            } else if (error.message.includes('404')) {
+                errorMessage = 'Product not found.';
+            } else if (error.message.includes('500')) {
+                errorMessage = 'Server error. Please try again later.';
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+            
+            showToast(errorMessage);
+        } finally {
+            // Restore button state
+            btn.disabled = false;
+            btnIcon.className = originalIcon;
+            btnText.textContent = originalText;
         }
     }
 

@@ -43,6 +43,27 @@ Each product displays:
 - Low stock items are highlighted
 - Stock updates automatically after sales
 
+### Generating Product Barcodes (New in v1.8.34)
+
+WP-POS can automatically generate unique barcodes for your products:
+
+1. **Open Product Editor**: Click any product row or the edit button
+2. **Locate Barcode Field**: Find the "Barcode" field in the Basic Information section
+3. **Click Generate Button**: Click the "Generate" button next to the barcode input field
+4. **Wait for Generation**: The button shows a spinner while generating
+5. **Barcode Populated**: The unique barcode automatically fills the input field
+6. **Save Product**: Click "Save Product" to save the barcode
+
+**Barcode Format:**
+- Format: `20251004230845-A3F7` (example)
+- Each barcode is guaranteed to be unique
+- Uses full timestamp with random suffix for maximum uniqueness
+
+**Manual Entry:**
+You can still manually type barcodes if you prefer. The generate button is optional.
+
+**Note**: Generated barcodes are permanent once saved. You can regenerate if needed, but the old barcode will be replaced.
+
 ### Product Editing
 WP POS includes a comprehensive product editor that allows you to edit all text-based fields for both simple and variable products:
 
