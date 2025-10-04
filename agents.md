@@ -1,6 +1,51 @@
 
 # Agent Operating Instructions
 
+## 🚨 CRITICAL INSTRUCTIONS - READ FIRST 🚨
+
+### MANDATORY DOCUMENTATION UPDATE PROTOCOL
+
+**EVERY TIME YOU MAKE A CODE CHANGE, YOU MUST UPDATE ALL THREE DOCUMENTATION FILES:**
+
+1. ✅ **agents.md** (this file) - System version at line 1792 and version history at line 2327
+2. ✅ **docs/DEVELOPER_GUIDE.md** - Technical documentation with API details and troubleshooting
+3. ✅ **docs/USER_MANUAL.md** - User-facing documentation (if change affects users)
+
+**NO EXCEPTIONS. This is not optional.**
+
+### MANDATORY VERSION NUMBER UPDATE PROTOCOL
+
+**EVERY TIME YOU MODIFY CLIENT-SIDE FILES (main.js, routing.js, etc.), YOU MUST:**
+
+1. ✅ Update version parameter in **index.php** (lines 21-23)
+2. ✅ Update system version in **agents.md** (line 1792)
+3. ✅ Update "Latest Update" in **agents.md** (line 1794)
+4. ✅ Add version history entry in **agents.md** (line 2327)
+
+**Failing to update versions causes browser caching issues where users get old code even after updates.**
+
+### CONSEQUENCES OF SKIPPING THESE STEPS
+
+- ❌ **Documentation gaps** - Future developers can't understand system changes
+- ❌ **Browser caching issues** - Users stuck with old, broken code
+- ❌ **Lost tracking** - No record of what was changed or why
+- ❌ **Production failures** - Features don't work because of cached old code
+
+### QUICK CHECKLIST
+
+Before marking ANY task complete, verify:
+
+- [ ] Updated agents.md with version entry and feature summary
+- [ ] Updated docs/DEVELOPER_GUIDE.md with technical details
+- [ ] Updated docs/USER_MANUAL.md if user-facing change
+- [ ] Updated version numbers in index.php if JavaScript/CSS changed
+- [ ] Incremented system version in agents.md
+- [ ] Added version history entry to agents.md
+
+**If you can't check ALL boxes above, the task is NOT complete.**
+
+---
+
 ## Table of Contents
 1. [Agent Core Purpose & Capabilities](#agent-core-purpose--capabilities)
 2. [Documentation Navigation & Utilization](#documentation-navigation--utilization)
@@ -116,10 +161,15 @@ The [`@docs/`](docs/) directory contains two primary documentation files that se
 
 ### Cross-Referencing Protocol
 
-#### When Documenting Code Changes
-1. **Update agents.md**: Add to version history, update feature summary
-2. **Update DEVELOPER_GUIDE.md**: Add technical details, API changes, troubleshooting
-3. **Update USER_MANUAL.md** (if user-facing): Add usage instructions, screenshots needs
+#### 🚨 CRITICAL: When Documenting Code Changes
+
+**YOU MUST UPDATE ALL THREE DOCUMENTATION FILES:**
+
+1. ✅ **Update agents.md**: Add to version history (line 2327), update feature summary, update system version (line 1792)
+2. ✅ **Update docs/DEVELOPER_GUIDE.md**: Add technical details, API changes, troubleshooting
+3. ✅ **Update docs/USER_MANUAL.md** (if user-facing): Add usage instructions, screenshots needs
+
+**This is MANDATORY, not optional. All three files must be kept in sync.**
 
 #### Example Cross-Reference Flow
 ```markdown
@@ -158,11 +208,15 @@ The [`@docs/`](docs/) directory contains two primary documentation files that se
 
 **YOU MUST DOCUMENT CHANGES AS YOU MAKE THEM, NOT AFTER THE FACT.**
 
+**UPDATE ALL THREE DOCUMENTATION FILES (agents.md, docs/DEVELOPER_GUIDE.md, docs/USER_MANUAL.md)**
+
 This means:
 - Document **between each discrete change** to the codebase
 - Update documentation **before marking a step complete**
 - Maintain documentation **during multi-step changes**, not at the end
 - Update relevant documentation **immediately after confirming successful tool execution**
+- **UPDATE VERSION NUMBERS** in index.php (lines 21-23) if JavaScript/CSS files changed
+- **UPDATE SYSTEM VERSION** in agents.md (line 1792) after every change
 
 ### What Constitutes a "Change" Requiring Documentation
 
@@ -195,16 +249,18 @@ Every single instance of these actions requires immediate documentation:
 ```
 1. Make first file change (e.g., create api/new-endpoint.php)
 2. ✅ Confirm tool execution succeeded
-3. 📝 DOCUMENT: Update agents.md version history
-4. 📝 DOCUMENT: Add to DEVELOPER_GUIDE.md API Reference
-5. 📝 DOCUMENT: Update USER_MANUAL.md if user-facing
+3. 📝 DOCUMENT: Update agents.md version history (line 2327)
+4. 📝 DOCUMENT: Update agents.md system version (line 1792)
+5. 📝 DOCUMENT: Add to docs/DEVELOPER_GUIDE.md API Reference
+6. 📝 DOCUMENT: Update docs/USER_MANUAL.md if user-facing
 
-6. Make second file change (e.g., update assets/js/main.js)
-7. ✅ Confirm tool execution succeeded
-8. 📝 DOCUMENT: Update agents.md feature summary
-9. 📝 DOCUMENT: Add troubleshooting notes if applicable
+7. Make second file change (e.g., update assets/js/main.js)
+8. ✅ Confirm tool execution succeeded
+9. 📝 UPDATE VERSION: Increment version in index.php (lines 21-23)
+10. 📝 DOCUMENT: Update agents.md feature summary
+11. 📝 DOCUMENT: Add troubleshooting notes to DEVELOPER_GUIDE.md if applicable
 
-10. Continue pattern for each change...
+12. Continue pattern for each change...
 ```
 
 #### Autonomous Work Sessions
@@ -222,21 +278,23 @@ Task: "Add product export functionality"
 
 Step 1: Create api/export-products.php
 - Wait for confirmation: "File created successfully"
-- Update agents.md: Line in File Structure, new API endpoint
-- Update DEVELOPER_GUIDE.md: Add to API Reference with examples
-- Update USER_MANUAL.md: Add to Product Management section
+- Update agents.md: Line in File Structure, new API endpoint, version history (line 2327)
+- Update agents.md: System version (line 1792)
+- Update docs/DEVELOPER_GUIDE.md: Add to API Reference with examples
+- Update docs/USER_MANUAL.md: Add to Product Management section
 
 Step 2: Add export button to products page
 - Wait for confirmation: "File modified successfully"
+- Update version in index.php (line 23) if JavaScript changed
 - Update agents.md: Add to Features section
-- Update DEVELOPER_GUIDE.md: Add UI interaction notes
-- Update USER_MANUAL.md: Add step-by-step export instructions
+- Update docs/DEVELOPER_GUIDE.md: Add UI interaction notes
+- Update docs/USER_MANUAL.md: Add step-by-step export instructions
 
 Step 3: Test export functionality
 - Execute test command
 - Wait for confirmation: "Test passed"
 - Update agents.md: Add to Testing section
-- Document any edge cases found in DEVELOPER_GUIDE.md
+- Document any edge cases found in docs/DEVELOPER_GUIDE.md
 ```
 
 ### Documentation Checkpoints
