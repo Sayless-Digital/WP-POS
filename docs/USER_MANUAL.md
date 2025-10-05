@@ -65,12 +65,51 @@ You can still manually type barcodes if you prefer. The generate button is optio
 **Note**: Generated barcodes are permanent once saved. You can regenerate if needed, but the old barcode will be replaced.
 
 ### Product Editing
-WP POS includes a comprehensive product editor that allows you to edit all text-based fields for both simple and variable products:
+WP POS includes a comprehensive product editor that allows you to edit all text-based fields for both simple and variable products. **Note:** Product creation functionality was removed in v1.8.41 - you can only edit existing products.
 
 #### Accessing the Product Editor
 1. Navigate to the Products page
-2. Click on any product row or the edit button
+2. Click on any existing product row or the edit button
 3. The comprehensive product editor will open in a modal
+
+#### Uploading Product Images
+
+You can upload product images when editing existing products.
+
+**For Existing Products:**
+1. Open the product editor by clicking on a product
+2. In the **Product Images** section:
+   - **Featured Image**: Click the dropzone or drag & drop an image file
+   - **Gallery Images**: Click "Add More Images" or drag & drop multiple files
+3. Images will upload directly to the product
+4. Wait for confirmation that images were saved successfully
+
+**Supported Image Formats:**
+- PNG (.png)
+- JPEG (.jpg, .jpeg)
+- WebP (.webp)
+- GIF (.gif)
+
+**Image Requirements:**
+- Maximum file size: **5MB per image**
+- Maximum gallery images: **10 images**
+- Images are validated before upload
+
+**Image Management:**
+- **Remove Images**: Hover over any image and click the "Remove" button
+- **Change Featured Image**: Hover over featured image and click "Replace"
+- **Reorder Gallery**: Drag gallery images to reorder (coming soon)
+
+**Important Notes:**
+- Images are uploaded directly to the product
+- After clicking "Save Changes," wait for the upload to complete
+- The dialog will confirm when images are successfully uploaded
+
+**Troubleshooting Image Uploads:**
+- **"File too large" error**: Reduce image size to under 5MB
+- **"Invalid file type" error**: Ensure file is PNG, JPG, JPEG, WebP, or GIF
+- **"Too many gallery images" error**: Maximum 10 gallery images allowed
+- **Images not uploading**: Check internet connection and try again
 
 #### Tabbed Interface
 The editor features two main views:
@@ -495,8 +534,10 @@ For technical support or questions:
 
 ## Version Information
 
-- Current Version: 1.8.17
-- Last Updated: January 2, 2025
-- Latest Update: WP POS v1.8.17 - Removed reporting functionality completely and corrected application branding from WP-POS to WP POS (WordPress Point of Sale)
-- Previous Updates: Advanced Attribute Management System v1.8.3 - Complete product editor with intelligent attribute management, duplicate prevention, filtered suggestions, automatic input clearing, and user-controlled dropdown behavior
+- Current Version: 1.8.41
+- Last Updated: January 5, 2025
+- Latest Update: WP POS v1.8.41 - Removed product creation functionality - only editing of existing products is now supported
+- Previous Updates:
+  - v1.8.17 - Removed reporting functionality completely and corrected application branding from WP-POS to WP POS (WordPress Point of Sale)
+  - v1.8.3 - Advanced Attribute Management System with intelligent attribute management, duplicate prevention, filtered suggestions, automatic input clearing, and user-controlled dropdown behavior
 - Next Update: Q1 2025

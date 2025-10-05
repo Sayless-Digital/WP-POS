@@ -139,6 +139,22 @@ try {
             }
         }
         
+        // Featured Image
+        $product_data['featured_image'] = [
+            'id' => $product->get_image_id(),
+            'url' => $product->get_image_id() ? wp_get_attachment_url($product->get_image_id()) : '',
+            'thumbnail_url' => $product->get_image_id() ? wp_get_attachment_image_url($product->get_image_id(), 'thumbnail') : ''
+        ];
+        
+        // Gallery Images
+        $product_data['gallery_images'] = array_map(function($id) {
+            return [
+                'id' => $id,
+                'url' => wp_get_attachment_url($id),
+                'thumbnail_url' => wp_get_attachment_image_url($id, 'thumbnail')
+            ];
+        }, $product->get_gallery_image_ids());
+        
         // Get tax classes
         $tax_classes = [];
         if (function_exists('WC_Tax')) {
@@ -256,6 +272,27 @@ try {
         echo json_encode([
             'success' => true,
             'message' => 'Product updated successfully'
+        ]);
+        exit;
+        
+    } elseif ($action === 'check_sku') {
+        // Check if SKU exists
+        $sku = sanitize_text_field($_GET['sku'] ?? '');
+        
+        if (empty($sku)) {
+            JPOS_Error_Handler::send_error('SKU parameter required', 400);
+        }
+        
+        // Check if SKU exists in the database
+        global $wpdb;
+        $product_id = $wpdb->get_var($wpdb->prepare(
+            "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_sku' AND meta_value = %s LIMIT 1",
+            $sku
+        ));
+        
+        echo json_encode([
+            'success' => true,
+            'exists' => !empty($product_id)
         ]);
         exit;
         

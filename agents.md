@@ -1846,10 +1846,10 @@ WP POS is a modern, enterprise-grade point-of-sale system built on WordPress. Th
 ## Current System Status
 
 **Status**: ✅ PRODUCTION READY
-**Last Updated**: January 4, 2025
-**Version**: 1.8.36
+**Last Updated**: January 5, 2025
+**Version**: 1.8.41
 **All Phases Completed**: Security, Architecture, Performance, Quality & Monitoring
-**Latest Update**: WP POS v1.8.36 - Enhanced barcode uniqueness in generate_unique_barcode() - removed JPOS prefix, changed from JPOS-YYMMDD-####-XX to YYYYMMDDHHMMSS-RAND format (e.g., 20251004230845-A3F7) using full timestamp with 4-char random alphanumeric suffix for maximum uniqueness
+**Latest Update**: WP POS v1.8.41 - Removed product creation functionality - removed "Create Product" button from UI, removed create_product action handler from API, updated product editor to require product ID for edit-only mode, removed temporary image upload system for pre-save uploads
 
 ## Architecture
 
@@ -2078,7 +2078,7 @@ WP-POS implements a comprehensive routing system that maintains view state acros
 
 ### Product Editor (`/api/product-edit-simple.php`)
 - **GET**: Retrieve comprehensive product details for editing
-- **POST**: Update product with all text-based fields
+- **POST**: Update existing products with all text-based fields (product creation removed in v1.8.41)
 - **GET**: Get tax classes, categories, and tags
 - Support for both simple and variable products
 - Database-driven attribute suggestions (no hardcoded lists)
@@ -2384,6 +2384,11 @@ Use the built-in monitoring system to track system health, performance metrics, 
 
 ## Version History
 
+- v1.8.41: Removed product creation functionality - removed "Create Product" button from products page header at [`index.php:629-635`](index.php:629-635), removed entire `create_product` action handler from [`product-edit-simple.php:299-446`](api/product-edit-simple.php:299-446) including product validation and WooCommerce product object creation logic, updated [`openProductEditor()`](assets/js/main.js:1758) to require productId parameter and return early if null, updated [`saveProductEditor()`](assets/js/main.js:3260) to only handle update operations, updated [`initializeImageUpload()`](assets/js/main.js:1819) to only support edit mode with existing product data, removed temporary image upload system including [`tempProductImages`](assets/js/main.js:1699) storage object and all related functions - product editor now operates in edit-only mode for existing products
+- v1.8.40: Fixed product gallery image upload for creation - corrected FormData construction in [`uploadGalleryImages()`](assets/js/main.js:2180) from `images[${index}]` to `images[]` to match PHP `$_FILES` array structure expected by [`product-images.php`](api/product-images.php:220), resolves issue where gallery images failed to upload when creating new products due to improper array notation that PHP couldn't recognize as proper array in `$_FILES['images']`
+- v1.8.39: Fixed JavaScript scope error in product editor image upload - moved [`setupFeaturedImageTempUpload()`](assets/js/main.js:2581) and [`setupGalleryImageTempUpload()`](assets/js/main.js:2677) functions outside of [`initializeImageUpload()`](assets/js/main.js:1774) scope to same level as [`setupTemporaryImageUpload()`](assets/js/main.js:2617), resolved "setupFeaturedImageTempUpload is not defined" ReferenceError that occurred when [`setupTemporaryImageUpload()`](assets/js/main.js:2617) tried to call nested functions during product creation mode
+- v1.8.38: Fixed upload button click handlers for pre-save image uploads - modified [`setupFeaturedImageTempUpload()`](assets/js/main.js:2280) and [`setupGalleryImageTempUpload()`](assets/js/main.js:2360) to replace addEventListener with direct event assignments (onclick, onchange, ondrop, ondragover, ondragleave), added element cloning to remove any conflicting event listeners, explicitly set pointerEvents='auto', opacity='1', and cursor='pointer' properties, added error logging for debugging, resolved issue where upload buttons didn't respond to clicks in product creation mode
+- v1.8.37: Implemented pre-save image uploads for product creation - added [`tempProductImages`](assets/js/main.js:1699) global storage object, modified [`initializeImageUpload()`](assets/js/main.js:1774) to enable uploads in create mode via [`setupTemporaryImageUpload()`](assets/js/main.js:2268), implemented temporary storage handlers [`setupFeaturedImageTempUpload()`](assets/js/main.js:2280) and [`setupGalleryImageTempUpload()`](assets/js/main.js:2360) with drag-and-drop support, added preview display functions [`displayTempFeaturedImage()`](assets/js/main.js:2447) and [`displayTempGalleryImage()`](assets/js/main.js:2480), implemented cleanup functions [`removeTempFeaturedImage()`](assets/js/main.js:2507), [`removeTempGalleryImage()`](assets/js/main.js:2529), and [`clearTemporaryImages()`](assets/js/main.js:2549) with proper URL.revokeObjectURL() memory management, added [`uploadTemporaryImages()`](assets/js/main.js:2569) to upload stored images after product creation, modified [`saveProductEditor()`](assets/js/main.js:3645) to handle temp image upload and cleanup in create mode, supports File objects in browser memory, 5MB file size limit, 10-image gallery limit, validates PNG/JPG/JPEG/WebP/GIF formats
 - v1.8.36: Enhanced barcode uniqueness in [`generate_unique_barcode()`](api/barcode.php:118) - removed JPOS prefix, changed from JPOS-YYMMDD-####-XX to YYYYMMDDHHMMSS-RAND format (e.g., 20251004230845-A3F7) using full timestamp with 4-char random alphanumeric suffix for maximum uniqueness
 - v1.8.35: Fixed barcode API 404 error in [`handleBarcodeGeneration()`](assets/js/main.js:2779) - corrected endpoint URL from `/jpos/api/barcode.php` to `api/barcode.php` to match relative path pattern used by other product editor API calls (like [`product-edit-simple.php`](api/product-edit-simple.php:1)), resolves "Failed to load resource: the server responded with a status of 404" error during barcode generation
 - v1.8.34: Implemented product barcode generation system - added "Generate" button in product editor at [`index.php:767-775`](index.php:767-775), new [`/api/barcode.php`](api/barcode.php:1) endpoint generates unique barcodes in JPOS-YYMMDD-####-XX format with CRC16 checksum validation and daily counter reset, frontend handler at [`handleBarcodeGeneration()`](assets/js/main.js:2765-2828) with loading states and error handling, includes CSRF nonce protection matching other API endpoints, uniqueness verified via wp_postmeta queries with retry logic for race conditions

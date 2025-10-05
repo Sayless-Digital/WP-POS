@@ -204,7 +204,7 @@ Retrieve product catalog with filtering options.
 ### Product Management
 - **GET** `/api/products.php` - Retrieve product catalog with filtering
 - **GET** `/api/product-edit-simple.php?action=get_product_details&id={id}` - Get product details for editing
-- **POST** `/api/product-edit-simple.php` - Update product data
+- **POST** `/api/product-edit-simple.php` - Update existing product data (product creation removed in v1.8.41)
 - **GET** `/api/product-edit-simple.php?action=get_tax_classes` - Get tax classes
 - **GET** `/api/stock.php` - Stock management operations
 
@@ -286,6 +286,55 @@ const response = await fetch('/api/barcode.php', {
 - Backend: [`generate_unique_barcode()`](../api/barcode.php:118)
 - Frontend: [`handleBarcodeGeneration()`](../assets/js/main.js:2765)
 
+### Product Image Upload System
+
+#### Image Uploads for Existing Products
+WP POS supports uploading product images for existing products during editing. Images are uploaded directly to products that already exist in the database.
+
+**Note:** Product creation functionality was removed in v1.8.41. Images can only be uploaded to existing products during the edit process.
+
+**Technical Implementation:**
+- **Direct Upload**: Images uploaded to existing product IDs
+- **File Validation**: 5MB max file size, supports PNG, JPG, JPEG, WebP, GIF formats
+- **Gallery Limit**: Maximum 10 images in gallery
+
+**Workflow:**
+1. User opens product editor for existing product
+2. [`initializeImageUpload()`](../assets/js/main.js:1819) initializes upload system with product data
+3. User uploads images via drag-and-drop or file picker
+4. Images uploaded directly to the product via API
+5. Product editor updates to show new images
+
+**Key Functions:**
+- [`initializeImageUpload()`](../assets/js/main.js:1819) - Initializes upload system for existing products
+- [`setupFeaturedImageUpload()`](../assets/js/main.js:2268) - Handles featured image upload
+- [`setupGalleryImageUpload()`](../assets/js/main.js:2360) - Handles gallery image uploads
+
+**File Validation:**
+```javascript
+function validateImageFile(file) {
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'];
+    
+    if (!allowedTypes.includes(file.type)) {
+        return { valid: false, error: 'Invalid file type' };
+    }
+    if (file.size > maxSize) {
+        return { valid: false, error: 'File size exceeds 5MB' };
+    }
+    return { valid: true };
+}
+```
+
+**Limitations:**
+- Product must exist in database before uploading images
+- Maximum 5MB per image file
+- Maximum 10 images in gallery
+- Requires modern browser with File API support
+
+**Related Endpoints:**
+- [`/api/product-images.php`](../api/product-images.php:1) - Image upload API for existing products
+
 ### Product Editor Endpoints
 
 #### GET /api/product-edit-simple.php?action=get_product_details&id={product_id}
@@ -347,7 +396,7 @@ Retrieve available tax classes.
 ```
 
 #### POST /api/product-edit-simple.php
-Update product with comprehensive data.
+Update existing product with comprehensive data. Product creation functionality removed in v1.8.41 - only updates to existing products are supported.
 
 **Request:**
 ```json
@@ -381,6 +430,8 @@ Update product with comprehensive data.
     ]
 }
 ```
+
+**Note:** The `product_id` field is required. The `create_product` action has been removed.
 
 **Response:**
 ```json
@@ -628,6 +679,47 @@ php tests/php/test-database-optimizer.php
 ## Troubleshooting
 
 ### Common Issues
+
+#### JavaScript Scope Error in Image Upload (v1.8.39)
+- **Problem**: ReferenceError "setupFeaturedImageTempUpload is not defined" when creating new products
+- **Symptoms**: Console error appears when opening product editor in create mode, image upload buttons don't initialize
+- **Root Cause**: Functions [`setupFeaturedImageTempUpload()`](../assets/js/main.js:2581) and [`setupGalleryImageTempUpload()`](../assets/js/main.js:2677) were nested inside [`initializeImageUpload()`](../assets/js/main.js:1774) function, making them inaccessible to [`setupTemporaryImageUpload()`](../assets/js/main.js:2617) which exists at a different scope level
+- **Solution**: Moved both functions outside of [`initializeImageUpload()`](../assets/js/main.js:1774) to the same scope level as other image utility functions
+  - [`setupFeaturedImageTempUpload()`](../assets/js/main.js:2581) now at line 2581
+  - [`setupGalleryImageTempUpload()`](../assets/js/main.js:2677) now at line 2677
+  - Both functions now accessible from [`setupTemporaryImageUpload()`](../assets/js/main.js:2617)
+- **Prevention**: When creating nested functions, ensure all functions that need to call each other are at the same scope level
+- **Testing**: Open product editor in create mode (click "Create Product" button), verify no console errors appear and image upload areas are interactive
+#### Product Gallery Image Upload Issue (v1.8.40)
+- **Problem**: Gallery images fail to upload when creating new products, only featured images upload successfully
+- **Symptoms**:
+  - Featured image uploads work correctly
+  - Gallery images appear in preview but don't upload to server
+  - No error messages displayed to user
+  - `$_FILES['images']` array empty or malformed in PHP backend
+- **Root Cause**: JavaScript FormData construction used indexed notation `images[${index}]` (e.g., `images[0]`, `images[1]`), but PHP's `$_FILES` superglobal expects bracket-only notation `images[]` to automatically build array structure for multiple file uploads
+  - Line 2180 in [`main.js`](../assets/js/main.js:2180): `formData.append('images[${index}]', file)` 
+  - PHP receives files as separate form fields instead of proper array
+  - Backend [`product-images.php`](../api/product-images.php:220) expects `$_FILES['images']['name']` as array
+- **Solution**: Changed FormData construction in [`uploadGalleryImages()`](../assets/js/main.js:2180) from `formData.append('images[${index}]', file)` to `formData.append('images[]', file)`
+- **Technical Details**:
+  - **Wrong Format**: `formData.append('images[0]', file1); formData.append('images[1]', file2);`
+  - **Correct Format**: `formData.append('images[]', file1); formData.append('images[]', file2);`
+  - PHP automatically groups files with same name (using `[]`) into array structure
+  - Browser sends proper `multipart/form-data` with array structure
+- **Prevention**: 
+  - Always use bracket-only notation (`fieldname[]`) for multiple file uploads in FormData
+  - Test file upload functionality with multiple files, not just single files
+  - Add server-side logging to verify `$_FILES` structure during development
+  - Reference: PHP documentation on handling file uploads with array syntax
+- **Testing**:
+  1. Open product editor in create mode
+  2. Upload featured image (should work)
+  3. Upload 2-3 gallery images
+  4. Save product
+  5. Verify all images appear on product (featured + gallery)
+  6. Check browser console for successful upload responses
+
 
 #### Database Connection Errors
 - Check WordPress database configuration

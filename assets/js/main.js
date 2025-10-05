@@ -790,6 +790,7 @@ document.addEventListener('DOMContentLoaded', () => {
         addHoldCartButton();
         const holdCartBtn = document.getElementById('hold-cart-btn');
         if (holdCartBtn) holdCartBtn.addEventListener('click', holdCurrentCart);
+        
         // Add this after other event listeners
         const orderIdSearch = document.getElementById('order-id-search');
         if (orderIdSearch) {
@@ -1691,19 +1692,93 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentEditingProduct = null;
     let productEditorNonce = '';
 
+    /**
+     * Clear all product images (for form reset)
+     */
+    function clearProductImages() {
+        // Clear featured image
+        const featuredPreview = document.getElementById('featured-image-preview');
+        const featuredDropzone = document.getElementById('featured-image-dropzone');
+        
+        if (featuredPreview) featuredPreview.classList.add('hidden');
+        if (featuredDropzone) {
+            featuredDropzone.classList.remove('hidden');
+            featuredDropzone.style.pointerEvents = '';
+            featuredDropzone.style.opacity = '';
+            featuredDropzone.innerHTML = `
+                <i class="fa fa-cloud-upload-alt text-4xl text-slate-400 mb-2"></i>
+                <p class="text-slate-300 mb-1">Click to upload or drag and drop</p>
+                <p class="text-sm text-slate-500">PNG, JPG, JPEG, WEBP, GIF (max 5MB)</p>
+            `;
+        }
+        
+        // Clear gallery images
+        const galleryGrid = document.getElementById('gallery-images-grid');
+        if (galleryGrid) galleryGrid.innerHTML = '';
+        
+        // Reset gallery dropzone
+        const galleryDropzone = document.getElementById('gallery-add-dropzone');
+        if (galleryDropzone) {
+            galleryDropzone.style.pointerEvents = '';
+            galleryDropzone.style.opacity = '';
+            galleryDropzone.innerHTML = `
+                <i class="fa fa-plus text-2xl text-slate-400 mb-1"></i>
+                <p class="text-sm text-slate-300">Add More Images</p>
+            `;
+        }
+    }
+
+    function clearProductEditorForm() {
+        document.getElementById('product-name').value = '';
+        document.getElementById('product-sku').value = '';
+        document.getElementById('product-barcode').value = '';
+        document.getElementById('product-regular-price').value = '';
+        document.getElementById('product-sale-price').value = '';
+        document.getElementById('product-status').value = 'publish';
+        document.getElementById('product-featured').checked = false;
+        document.getElementById('product-tax-class').value = '';
+        document.querySelector('input[name="tax-status"][value="taxable"]').checked = true;
+        document.getElementById('product-stock-quantity').value = '';
+        document.getElementById('product-manage-stock').checked = false;
+        
+        // Clear meta data
+        document.getElementById('product-meta-data').innerHTML = '';
+        
+        // Clear attributes
+        document.getElementById('product-attributes').innerHTML = '';
+        
+        // Clear variations and hide variations section
+        document.getElementById('product-variations').innerHTML = '';
+        document.getElementById('variations-section').classList.add('hidden');
+        
+        // Clear product images
+        clearProductImages();
+    }
+
     async function openProductEditor(productId) {
+        // Require product ID - creation removed
+        if (!productId) {
+            showToast('Product ID is required');
+            return;
+        }
+        
         currentEditingProduct = null;
         const modal = document.getElementById('product-editor-modal');
         modal.classList.remove('hidden');
         
         const titleEl = document.getElementById('product-editor-title');
-        titleEl.textContent = 'Loading Product...';
+        const saveBtn = document.getElementById('product-editor-save');
         
         // Clear form
         clearProductEditorForm();
         
         // Start with form view by default
         switchToFormView();
+        
+        // EDIT MODE (only mode available now)
+        titleEl.textContent = 'Loading Product...';
+        saveBtn.textContent = 'Save Changes';
+        saveBtn.setAttribute('data-mode', 'edit');
         
         try {
             // Get product details
@@ -1721,6 +1796,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // Load tax classes
             await loadTaxClasses();
             
+            // Initialize image upload functionality
+            await initializeImageUpload(result.data);
+            
             // JSON preview now only updates in JSON tab
             
         } catch (error) {
@@ -1729,7 +1807,484 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('product-editor-status').textContent = `Error: ${error.message}`;
             document.getElementById('product-editor-status').className = 'text-sm text-right h-5 mt-2 text-red-400';
         }
+
     }
+    
+    // ===== IMAGE UPLOAD FUNCTIONALITY =====
+    
+    /**
+     * Initialize image upload functionality for product editor
+     * @param {Object} productData - Product data object
+     */
+    async function initializeImageUpload(productData) {
+        // Product must exist - creation mode removed
+        if (!productData || !productData.id) {
+            console.error('Product data required for image upload');
+            return;
+        }
+        
+        // EDIT MODE - Enable image uploads
+        setupFeaturedImageUpload(productData.id);
+        setupGalleryImageUpload(productData.id);
+        
+        // Load existing images
+        if (productData.featured_image && productData.featured_image.url) {
+            displayFeaturedImage(productData.featured_image);
+        }
+        
+        if (productData.gallery_images && productData.gallery_images.length > 0) {
+            productData.gallery_images.forEach(img => displayGalleryImage(img));
+        }
+    }
+    
+    /**
+     * Validate image file before upload
+     * @param {File} file - File object to validate
+     * @return {Object} - {valid: boolean, error: string}
+     */
+    function validateImageFile(file) {
+        // Check file size (5MB max)
+        const maxSize = 5 * 1024 * 1024; // 5MB
+        if (file.size > maxSize) {
+            return { valid: false, error: 'File size exceeds 5MB limit' };
+        }
+        
+        // Check file type
+        const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'];
+        if (!allowedTypes.includes(file.type)) {
+            return { valid: false, error: 'Invalid file type. Only PNG, JPG, JPEG, WebP, and GIF are allowed' };
+        }
+        
+        return { valid: true };
+    }
+    
+    /**
+     * Setup featured image upload functionality
+     * @param {number} productId - Product ID
+     */
+    function setupFeaturedImageUpload(productId) {
+        const dropzone = document.getElementById('featured-image-dropzone');
+        const fileInput = document.getElementById('featured-image-input');
+        
+        if (!dropzone || !fileInput) return;
+        
+        // Click to upload
+        dropzone.addEventListener('click', () => fileInput.click());
+        
+        // File selection
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                uploadFeaturedImage(file, productId);
+            }
+            // Reset input
+            e.target.value = '';
+        });
+        
+        // Drag and drop
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('border-blue-500', 'bg-slate-700/50');
+        });
+        
+        dropzone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('border-blue-500', 'bg-slate-700/50');
+        });
+        
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('border-blue-500', 'bg-slate-700/50');
+            
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                uploadFeaturedImage(file, productId);
+            }
+        });
+    }
+    
+    /**
+     * Upload featured image to API
+     * @param {File} file - File to upload
+     * @param {number} productId - Product ID
+     */
+    async function uploadFeaturedImage(file, productId) {
+        // Validate file
+        const validation = validateImageFile(file);
+        if (!validation.valid) {
+            showToast(validation.error);
+            return;
+        }
+        
+        // Show loading state
+        const dropzone = document.getElementById('featured-image-dropzone');
+        const loading = document.getElementById('featured-image-loading');
+        const progressBar = document.getElementById('featured-upload-progress');
+        
+        dropzone.classList.add('hidden');
+        loading.classList.remove('hidden');
+        
+        // Create FormData
+        const formData = new FormData();
+        formData.append('action', 'upload_featured');
+        formData.append('product_id', productId);
+        formData.append('image', file);
+        formData.append('nonce', appState.nonces.productEdit);
+        
+        try {
+            // Use XMLHttpRequest for progress tracking
+            const xhr = new XMLHttpRequest();
+            
+            // Track upload progress
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable) {
+                    const percent = (e.loaded / e.total) * 100;
+                    progressBar.style.width = percent + '%';
+                }
+            });
+            
+            // Handle completion
+            xhr.addEventListener('load', () => {
+                if (xhr.status === 200) {
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        if (response.success) {
+                            displayFeaturedImage(response.data);
+                            showToast('Featured image uploaded successfully');
+                            
+                            // Update currentEditingProduct
+                            if (currentEditingProduct) {
+                                currentEditingProduct.featured_image = response.data;
+                            }
+                        } else {
+                            throw new Error(response.message || 'Upload failed');
+                        }
+                    } catch (e) {
+                        showToast('Upload failed: ' + e.message);
+                    }
+                } else {
+                    showToast('Upload failed: Server error');
+                }
+                
+                // Hide loading
+                loading.classList.add('hidden');
+                progressBar.style.width = '0%';
+            });
+            
+            // Handle errors
+            xhr.addEventListener('error', () => {
+                showToast('Upload failed: Network error');
+                loading.classList.add('hidden');
+                dropzone.classList.remove('hidden');
+                progressBar.style.width = '0%';
+            });
+            
+            // Send request
+            xhr.open('POST', 'api/product-images.php');
+            xhr.send(formData);
+            
+        } catch (error) {
+            console.error('Featured image upload error:', error);
+            showToast('Upload failed: ' + error.message);
+            loading.classList.add('hidden');
+            dropzone.classList.remove('hidden');
+            progressBar.style.width = '0%';
+        }
+    }
+    
+    /**
+     * Display featured image preview with controls
+     * @param {Object} imageData - Image data from API
+     */
+    function displayFeaturedImage(imageData) {
+        const preview = document.getElementById('featured-image-preview');
+        const dropzone = document.getElementById('featured-image-dropzone');
+        const img = preview.querySelector('img');
+        
+        if (!preview || !img) return;
+        
+        // Set image source
+        img.src = imageData.url || imageData.thumbnail_url;
+        
+        // Show preview, hide dropzone
+        preview.classList.remove('hidden');
+        dropzone.classList.add('hidden');
+        
+        // Setup remove button
+        const removeBtn = document.getElementById('remove-featured-image');
+        if (removeBtn) {
+            removeBtn.onclick = () => removeFeaturedImage();
+        }
+        
+        // Setup replace button
+        const changeBtn = document.getElementById('change-featured-image');
+        if (changeBtn) {
+            changeBtn.onclick = () => {
+                const fileInput = document.getElementById('featured-image-input');
+                if (fileInput) fileInput.click();
+            };
+        }
+    }
+    
+    /**
+     * Remove featured image
+     */
+    async function removeFeaturedImage() {
+        if (!currentEditingProduct || !currentEditingProduct.id) return;
+        
+        if (!confirm('Remove featured image?')) return;
+        
+        try {
+            const response = await fetch('api/product-images.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'remove_featured',
+                    product_id: currentEditingProduct.id,
+                    nonce: appState.nonces.productEdit
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // Hide preview, show dropzone
+                const preview = document.getElementById('featured-image-preview');
+                const dropzone = document.getElementById('featured-image-dropzone');
+                
+                preview.classList.add('hidden');
+                dropzone.classList.remove('hidden');
+                
+                // Update currentEditingProduct
+                if (currentEditingProduct) {
+                    currentEditingProduct.featured_image = null;
+                }
+                
+                showToast('Featured image removed');
+            } else {
+                throw new Error(result.message || 'Remove failed');
+            }
+        } catch (error) {
+            console.error('Remove featured image error:', error);
+            showToast('Failed to remove image: ' + error.message);
+        }
+    }
+    
+    /**
+     * Setup gallery image upload functionality
+     * @param {number} productId - Product ID
+     */
+    function setupGalleryImageUpload(productId) {
+        const dropzone = document.getElementById('gallery-add-dropzone');
+        const fileInput = document.getElementById('gallery-images-input');
+        
+        if (!dropzone || !fileInput) return;
+        
+        // Click to upload
+        dropzone.addEventListener('click', () => fileInput.click());
+        
+        // File selection (multiple files)
+        fileInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            if (files.length > 0) {
+                uploadGalleryImages(files, productId);
+            }
+            // Reset input
+            e.target.value = '';
+        });
+        
+        // Drag and drop
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('border-blue-500', 'bg-slate-700/50');
+        });
+        
+        dropzone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('border-blue-500', 'bg-slate-700/50');
+        });
+        
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('border-blue-500', 'bg-slate-700/50');
+            
+            const files = Array.from(e.dataTransfer.files);
+            if (files.length > 0) {
+                uploadGalleryImages(files, productId);
+            }
+        });
+    }
+    
+    /**
+     * Upload multiple gallery images
+     * @param {Array} files - Array of File objects
+     * @param {number} productId - Product ID
+     */
+    async function uploadGalleryImages(files, productId) {
+        // Check gallery limit (max 10 images)
+        const currentGallery = document.getElementById('gallery-images-grid');
+        const currentCount = currentGallery ? currentGallery.children.length : 0;
+        const totalAfterUpload = currentCount + files.length;
+        
+        if (totalAfterUpload > 10) {
+            showToast('Gallery limit exceeded. Maximum 10 images allowed');
+            return;
+        }
+        
+        // Validate all files first
+        for (const file of files) {
+            const validation = validateImageFile(file);
+            if (!validation.valid) {
+                showToast(`${file.name}: ${validation.error}`);
+                return;
+            }
+        }
+        
+        // Show upload queue
+        const uploadQueue = document.getElementById('gallery-upload-queue');
+        uploadQueue.classList.remove('hidden');
+        uploadQueue.innerHTML = '<div class="text-sm text-slate-300 mb-2">Uploading gallery images...</div>';
+        
+        // Create FormData
+        const formData = new FormData();
+        formData.append('action', 'upload_gallery');
+        formData.append('product_id', productId);
+        
+        // DEBUG: Log files being uploaded
+        console.log('[DEBUG] Uploading gallery images:', files.length, 'files');
+        console.log('[DEBUG] Product ID:', productId);
+        console.log('[DEBUG] Nonce:', appState.nonces.productEdit);
+        
+        files.forEach((file, index) => {
+            console.log(`[DEBUG] Appending file ${index}:`, file.name, file.type, file.size);
+            // FIX: Use 'images[]' instead of 'images[0]', 'images[1]' to create proper PHP array
+            formData.append('images[]', file);
+        });
+        formData.append('nonce', appState.nonces.productEdit);
+        
+        // DEBUG: Log FormData contents
+        console.log('[DEBUG] FormData entries:');
+        for (let pair of formData.entries()) {
+            console.log(`[DEBUG] ${pair[0]}:`, pair[1]);
+        }
+        
+        try {
+            const response = await fetch('api/product-images.php', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // Display uploaded images
+                if (result.data.uploaded && result.data.uploaded.length > 0) {
+                    result.data.uploaded.forEach(img => displayGalleryImage(img));
+                    showToast(`${result.data.uploaded.length} image(s) uploaded successfully`);
+                }
+                
+                // Show errors if any
+                if (result.data.errors && result.data.errors.length > 0) {
+                    result.data.errors.forEach(err => {
+                        console.error(`Upload error for ${err.filename}:`, err.error);
+                    });
+                    showToast(`${result.data.errors.length} file(s) failed to upload`);
+                }
+                
+                // Update currentEditingProduct
+                if (currentEditingProduct && result.data.uploaded) {
+                    if (!currentEditingProduct.gallery_images) {
+                        currentEditingProduct.gallery_images = [];
+                    }
+                    currentEditingProduct.gallery_images.push(...result.data.uploaded);
+                }
+            } else {
+                throw new Error(result.message || 'Upload failed');
+            }
+        } catch (error) {
+            console.error('Gallery upload error:', error);
+            showToast('Upload failed: ' + error.message);
+        } finally {
+            // Hide upload queue
+            uploadQueue.classList.add('hidden');
+            uploadQueue.innerHTML = '';
+        }
+    }
+    
+    /**
+     * Display gallery image in grid
+     * @param {Object} imageData - Image data from API
+     */
+    function displayGalleryImage(imageData) {
+        const grid = document.getElementById('gallery-images-grid');
+        if (!grid) return;
+        
+        // Create gallery item
+        const item = document.createElement('div');
+        item.className = 'relative group';
+        item.dataset.attachmentId = imageData.attachment_id || imageData.id;
+        
+        item.innerHTML = `
+            <img src="${imageData.thumbnail_url || imageData.url}" alt="Gallery Image" class="w-full aspect-square object-cover rounded-lg border border-slate-500">
+            <button class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-red-600 text-white w-8 h-8 rounded-full hover:bg-red-500 flex items-center justify-center" title="Remove">
+                <i class="fa fa-trash text-sm"></i>
+            </button>
+        `;
+        
+        // Setup remove button
+        const removeBtn = item.querySelector('button');
+        removeBtn.onclick = () => removeGalleryImage(imageData.attachment_id || imageData.id, item);
+        
+        // Add to grid
+        grid.appendChild(item);
+    }
+    
+    /**
+     * Remove gallery image
+     * @param {number} attachmentId - Attachment ID
+     * @param {HTMLElement} itemElement - DOM element to remove
+     */
+    async function removeGalleryImage(attachmentId, itemElement) {
+        if (!currentEditingProduct || !currentEditingProduct.id) return;
+        
+        if (!confirm('Remove this gallery image?')) return;
+        
+        try {
+            const response = await fetch('api/product-images.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'remove_gallery',
+                    product_id: currentEditingProduct.id,
+                    attachment_id: attachmentId,
+                    nonce: appState.nonces.productEdit
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // Remove from DOM
+                itemElement.remove();
+                
+                // Update currentEditingProduct
+                if (currentEditingProduct && currentEditingProduct.gallery_images) {
+                    currentEditingProduct.gallery_images = currentEditingProduct.gallery_images.filter(
+                        img => (img.attachment_id || img.id) != attachmentId
+                    );
+                }
+                
+                showToast('Gallery image removed');
+            } else {
+                throw new Error(result.message || 'Remove failed');
+            }
+        } catch (error) {
+            console.error('Remove gallery image error:', error);
+            showToast('Failed to remove image: ' + error.message);
+        }
+    }
+    
+    
 
     // Tab Switching Functions
     function switchToFormView() {
@@ -1759,30 +2314,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const jsonString = JSON.stringify(currentEditingProduct, null, 2);
         const highlightedJSON = highlightJSON(jsonString);
         document.getElementById('json-full-preview').innerHTML = highlightedJSON;
-    }
-
-    function clearProductEditorForm() {
-        document.getElementById('product-name').value = '';
-        document.getElementById('product-sku').value = '';
-        document.getElementById('product-barcode').value = '';
-        document.getElementById('product-regular-price').value = '';
-        document.getElementById('product-sale-price').value = '';
-        document.getElementById('product-status').value = 'publish';
-        document.getElementById('product-featured').checked = false;
-        document.getElementById('product-tax-class').value = '';
-        document.querySelector('input[name="tax-status"][value="taxable"]').checked = true;
-        document.getElementById('product-stock-quantity').value = '';
-        document.getElementById('product-manage-stock').checked = false;
-        
-        // Clear meta data
-        document.getElementById('product-meta-data').innerHTML = '';
-        
-        // Clear attributes
-        document.getElementById('product-attributes').innerHTML = '';
-        
-        // Clear variations and hide variations section
-        document.getElementById('product-variations').innerHTML = '';
-        document.getElementById('variations-section').classList.add('hidden');
     }
 
     function populateProductEditorForm(product) {
@@ -2709,7 +3240,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         return {
-            product_id: currentEditingProduct?.id,
+            id: currentEditingProduct?.id,
             name: document.getElementById('product-name').value,
             sku: document.getElementById('product-sku').value,
             barcode: document.getElementById('product-barcode').value,
@@ -2727,9 +3258,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function saveProductEditor() {
-        if (!currentEditingProduct) return;
-        
         const statusEl = document.getElementById('product-editor-status');
+        const saveBtn = document.getElementById('product-editor-save');
+        
         statusEl.textContent = 'Saving...';
         statusEl.className = 'text-sm text-right h-5 mt-2 text-slate-400';
         
@@ -2737,19 +3268,27 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.nonce = appState.nonces.productEdit;
         
         try {
+            // EDIT MODE ONLY - product creation has been removed
+            if (!currentEditingProduct) {
+                throw new Error('No product loaded for editing');
+            }
+            
+            const payload = {
+                action: 'update_product',
+                ...formData
+            };
+            
             const response = await fetch('api/product-edit-simple.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'update_product',
-                    ...formData
-                })
+                body: JSON.stringify(payload)
             });
             
             if (!response.ok) throw new Error(`Server responded with ${response.status}`);
             const result = await response.json();
             if (!result.success) throw new Error(result.data.message);
             
+            // EDIT MODE SUCCESS
             statusEl.textContent = 'Product updated successfully!';
             statusEl.className = 'text-sm text-right h-5 mt-2 text-green-400';
             

@@ -1,0 +1,6 @@
+{
+  "editWithoutApproval": [
+    "**/*.md"
+  ],
+  "description": "Kilo Code configuration for the wp-pos project. This file controls which files can be edited without user approval."
+}

@@ -20,7 +20,7 @@ require_once __DIR__ . '/../wp-load.php';
     <!-- WP POS Routing Module -->
     <script src="assets/js/modules/routing.js?v=1.5.11&t=<?php echo time(); ?>"></script>
     <!-- WP POS JavaScript -->
-    <script src="assets/js/main.js?v=1.8.36&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/main.js?v=1.8.44&t=<?php echo time(); ?>"></script>
     <style>
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
@@ -775,6 +775,80 @@ require_once __DIR__ . '/../wp-load.php';
                                     </button>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Images Section -->
+                <div class="bg-slate-700/50 p-4 rounded-lg">
+                    <h3 class="text-lg font-semibold mb-4 text-slate-200">Product Images</h3>
+                    
+                    <!-- Featured Image Section -->
+                    <div class="mb-6" id="featured-image-container">
+                        <label class="block text-sm font-medium text-slate-300 mb-2">Featured Image</label>
+                        
+                        <!-- Featured Image Preview (initially hidden) -->
+                        <div id="featured-image-preview" class="relative hidden group">
+                            <img src="" alt="Featured Image" class="w-full h-48 object-cover rounded-lg border border-slate-500">
+                            <!-- Hover overlay with buttons -->
+                            <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
+                                <button id="remove-featured-image" type="button" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-500 transition-colors">
+                                    <i class="fa fa-trash mr-2"></i>Remove
+                                </button>
+                                <button id="change-featured-image" type="button" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors">
+                                    <i class="fa fa-sync mr-2"></i>Replace
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Featured Image Dropzone (initially visible) -->
+                        <div id="featured-image-dropzone" class="border-2 border-dashed border-slate-500 hover:border-blue-500 rounded-lg p-8 text-center transition-colors cursor-pointer">
+                            <i class="fa fa-cloud-upload-alt text-4xl text-slate-400 mb-2"></i>
+                            <p class="text-slate-300 mb-1">Click to upload or drag and drop</p>
+                            <p class="text-sm text-slate-500">PNG, JPG, JPEG, WEBP, GIF (max 5MB)</p>
+                            <input type="file" id="featured-image-input" accept="image/png,image/jpeg,image/jpg,image/webp,image/gif" class="hidden">
+                        </div>
+                        
+                        <!-- Loading State -->
+                        <div id="featured-image-loading" class="hidden relative bg-slate-800/90 rounded-lg p-8 flex flex-col items-center justify-center">
+                            <div class="w-8 h-8 border-4 border-slate-600 border-t-blue-500 rounded-full animate-spin mb-2"></div>
+                            <p class="text-sm text-slate-300 mb-2">Uploading...</p>
+                            <div class="w-full max-w-xs bg-slate-700 rounded-full h-2">
+                                <div id="featured-upload-progress" class="bg-blue-500 h-2 rounded-full transition-all" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Gallery Images Section -->
+                    <div id="gallery-images-container">
+                        <label class="block text-sm font-medium text-slate-300 mb-2">Gallery Images</label>
+                        
+                        <!-- Gallery Images Grid -->
+                        <div id="gallery-images-grid" class="grid grid-cols-3 gap-4 mb-4">
+                            <!-- Gallery items will be dynamically added here -->
+                            <!-- Each gallery item structure:
+                            <div class="relative group">
+                                <img src="" alt="Gallery Image" class="w-full aspect-square object-cover rounded-lg border border-slate-500">
+                                <button class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-red-600 text-white w-8 h-8 rounded-full hover:bg-red-500">
+                                    <i class="fa fa-trash"></i>
+                                </button>
+                                <div class="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity text-slate-300 cursor-move">
+                                    <i class="fa fa-grip-vertical"></i>
+                                </div>
+                            </div>
+                            -->
+                        </div>
+                        
+                        <!-- Add More Dropzone -->
+                        <div id="gallery-add-dropzone" class="border-2 border-dashed border-slate-500 hover:border-blue-500 rounded-lg p-6 text-center transition-colors cursor-pointer">
+                            <i class="fa fa-plus text-2xl text-slate-400 mb-1"></i>
+                            <p class="text-sm text-slate-300">Add More Images</p>
+                            <input type="file" id="gallery-images-input" accept="image/png,image/jpeg,image/jpg,image/webp,image/gif" multiple class="hidden">
+                        </div>
+                        
+                        <!-- Upload Queue (for batch uploads) -->
+                        <div id="gallery-upload-queue" class="hidden mt-4 space-y-2">
+                            <!-- Upload queue items will be dynamically added here -->
                         </div>
                     </div>
                 </div>
