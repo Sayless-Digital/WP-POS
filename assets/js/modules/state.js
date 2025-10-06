@@ -31,6 +31,7 @@ class StateManager {
             // Shopping Cart & Checkout
             cart: {
                 items: [],
+                customer: null, // { id, name, email }
                 paymentMethod: 'Cash',
                 fee: { amount: '', label: '', amountType: 'flat' },
                 discount: { amount: '', label: '', amountType: 'flat' },
@@ -164,6 +165,7 @@ class StateManager {
         this.state.auth = { user: null, isLoggedIn: false };
         this.state.drawer = { isOpen: false, data: null, openingAmount: 0, closingAmount: 0 };
         this.state.cart.items = [];
+        this.state.cart.customer = null;
         this.state.cart.paymentMethod = 'Cash';
         this.state.cart.fee = { amount: '', label: '', amountType: 'flat' };
         this.state.cart.discount = { amount: '', label: '', amountType: 'flat' };

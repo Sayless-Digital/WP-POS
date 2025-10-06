@@ -17,10 +17,12 @@ require_once __DIR__ . '/../wp-load.php';
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- Custom JSON syntax highlighting -->
     
+    <!-- WP POS Keyboard Module -->
+    <script src="assets/js/modules/keyboard.js?v=1.0.0&t=<?php echo time(); ?>"></script>
     <!-- WP POS Routing Module -->
     <script src="assets/js/modules/routing.js?v=1.5.11&t=<?php echo time(); ?>"></script>
     <!-- WP POS JavaScript -->
-    <script src="assets/js/main.js?v=1.8.44&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/main.js?v=1.8.56&t=<?php echo time(); ?>"></script>
     <style>
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
@@ -230,6 +232,7 @@ require_once __DIR__ . '/../wp-load.php';
     <input type="hidden" id="jpos-product-edit-nonce" value="<?php echo wp_create_nonce('jpos_product_edit_nonce'); ?>">
     <input type="hidden" id="jpos-reports-nonce" value="<?php echo wp_create_nonce('jpos_reports_nonce'); ?>">
     <input type="hidden" id="jpos-barcode-nonce" value="<?php echo wp_create_nonce('jpos_barcode_nonce'); ?>">
+    <input type="hidden" id="jpos-customer-search-nonce" value="<?php echo wp_create_nonce('jpos_customer_search_nonce'); ?>">
 
     <!-- Login Screen -->
     <div id="login-screen" class="app-overlay hidden">
@@ -373,7 +376,11 @@ require_once __DIR__ . '/../wp-load.php';
                     <div class="flex-grow flex gap-3 overflow-hidden">
                         <main id="product-list" class="flex-grow p-1 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 overflow-y-auto"></main>
                         <aside class="w-80 flex-shrink-0 bg-slate-800/50 p-2 flex flex-col border-l border-slate-700 rounded-xl shadow-lg">
+                            <!-- Customer Display -->
+                            <div id="cart-customer-display" class="hidden"></div>
+                            
                             <div id="cart-items" class="flex-grow overflow-y-auto space-y-1 pr-1"></div>
+                            <button id="clear-cart-btn" class="w-full text-slate-400 p-1 text-xs hover:bg-slate-700 rounded-md transition-colors mt-1 mb-2">Clear Cart</button>
                             <div class="flex flex-col gap-0 pb-1 mb-1 border-b border-slate-700">
                                 <div class="flex items-center justify-between">
                                     <span class="text-sm font-medium text-slate-300">Total</span>
@@ -383,20 +390,23 @@ require_once __DIR__ . '/../wp-load.php';
                                 <div id="cart-discount-row"></div>
                                 <div id="cart-fee-row"></div>
                             </div>
-                            <div class="flex gap-1 mb-2">
-                                <button id="add-discount-btn" class="flex-1 flex items-center justify-center gap-1 bg-slate-700 text-white px-2 py-1 rounded-md text-xs hover:bg-slate-600 transition-colors" title="Add Discount">
+                            <div class="flex gap-2 mb-2">
+                                <button id="add-discount-btn" class="flex-1 flex items-center justify-center gap-1 bg-slate-700 text-white px-2 py-2 rounded-md text-xs hover:bg-slate-600 transition-colors" title="Add Discount">
                                     <i class="fa-solid fa-percent"></i> Discount
                                 </button>
-                                <button id="add-fee-btn" class="flex-1 flex items-center justify-center gap-1 bg-slate-700 text-white px-2 py-1 rounded-md text-xs hover:bg-slate-600 transition-colors" title="Add Fee">
+                                <button id="add-fee-btn" class="flex-1 flex items-center justify-center gap-1 bg-slate-700 text-white px-2 py-2 rounded-md text-xs hover:bg-slate-600 transition-colors" title="Add Fee">
                                     <i class="fa-solid fa-plus"></i> Fee
                                 </button>
                             </div>
-                            <div class="border-t border-slate-700 pt-2 mt-2 flex-shrink-0">
-                                <div class="flex items-center gap-1 mt-auto">
+                            <div class="mt-2 flex-shrink-0">
+                                <button id="attach-customer-btn" class="w-full mb-2 px-2 py-2 bg-blue-600 hover:bg-blue-500 text-xs font-semibold rounded transition-colors flex items-center justify-center gap-2">
+                                    <i class="fas fa-user-plus"></i>
+                                    <span>Attach Customer</span>
+                                </button>
+                                <div class="flex items-center gap-2 mt-auto">
                                     <button id="hold-cart-btn" class="flex-1 px-2 py-2 bg-amber-500 hover:bg-amber-400 text-xs font-semibold rounded transition-colors">Hold Cart</button>
                                     <button id="checkout-btn" class="flex-1 px-2 py-2 bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold rounded transition-colors">Checkout</button>
                                 </div>
-                                <button id="clear-cart-btn" class="w-full text-slate-400 p-1 text-xs hover:bg-slate-700 rounded-md transition-colors">Clear Cart</button>
                             </div>
                         </aside>
                     </div>
@@ -779,77 +789,13 @@ require_once __DIR__ . '/../wp-load.php';
                     </div>
                 </div>
 
-                <!-- Images Section -->
+                <!-- Images Section - Removed (Image upload disabled) -->
                 <div class="bg-slate-700/50 p-4 rounded-lg">
                     <h3 class="text-lg font-semibold mb-4 text-slate-200">Product Images</h3>
-                    
-                    <!-- Featured Image Section -->
-                    <div class="mb-6" id="featured-image-container">
-                        <label class="block text-sm font-medium text-slate-300 mb-2">Featured Image</label>
-                        
-                        <!-- Featured Image Preview (initially hidden) -->
-                        <div id="featured-image-preview" class="relative hidden group">
-                            <img src="" alt="Featured Image" class="w-full h-48 object-cover rounded-lg border border-slate-500">
-                            <!-- Hover overlay with buttons -->
-                            <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
-                                <button id="remove-featured-image" type="button" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-500 transition-colors">
-                                    <i class="fa fa-trash mr-2"></i>Remove
-                                </button>
-                                <button id="change-featured-image" type="button" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors">
-                                    <i class="fa fa-sync mr-2"></i>Replace
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <!-- Featured Image Dropzone (initially visible) -->
-                        <div id="featured-image-dropzone" class="border-2 border-dashed border-slate-500 hover:border-blue-500 rounded-lg p-8 text-center transition-colors cursor-pointer">
-                            <i class="fa fa-cloud-upload-alt text-4xl text-slate-400 mb-2"></i>
-                            <p class="text-slate-300 mb-1">Click to upload or drag and drop</p>
-                            <p class="text-sm text-slate-500">PNG, JPG, JPEG, WEBP, GIF (max 5MB)</p>
-                            <input type="file" id="featured-image-input" accept="image/png,image/jpeg,image/jpg,image/webp,image/gif" class="hidden">
-                        </div>
-                        
-                        <!-- Loading State -->
-                        <div id="featured-image-loading" class="hidden relative bg-slate-800/90 rounded-lg p-8 flex flex-col items-center justify-center">
-                            <div class="w-8 h-8 border-4 border-slate-600 border-t-blue-500 rounded-full animate-spin mb-2"></div>
-                            <p class="text-sm text-slate-300 mb-2">Uploading...</p>
-                            <div class="w-full max-w-xs bg-slate-700 rounded-full h-2">
-                                <div id="featured-upload-progress" class="bg-blue-500 h-2 rounded-full transition-all" style="width: 0%"></div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Gallery Images Section -->
-                    <div id="gallery-images-container">
-                        <label class="block text-sm font-medium text-slate-300 mb-2">Gallery Images</label>
-                        
-                        <!-- Gallery Images Grid -->
-                        <div id="gallery-images-grid" class="grid grid-cols-3 gap-4 mb-4">
-                            <!-- Gallery items will be dynamically added here -->
-                            <!-- Each gallery item structure:
-                            <div class="relative group">
-                                <img src="" alt="Gallery Image" class="w-full aspect-square object-cover rounded-lg border border-slate-500">
-                                <button class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-red-600 text-white w-8 h-8 rounded-full hover:bg-red-500">
-                                    <i class="fa fa-trash"></i>
-                                </button>
-                                <div class="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity text-slate-300 cursor-move">
-                                    <i class="fa fa-grip-vertical"></i>
-                                </div>
-                            </div>
-                            -->
-                        </div>
-                        
-                        <!-- Add More Dropzone -->
-                        <div id="gallery-add-dropzone" class="border-2 border-dashed border-slate-500 hover:border-blue-500 rounded-lg p-6 text-center transition-colors cursor-pointer">
-                            <i class="fa fa-plus text-2xl text-slate-400 mb-1"></i>
-                            <p class="text-sm text-slate-300">Add More Images</p>
-                            <input type="file" id="gallery-images-input" accept="image/png,image/jpeg,image/jpg,image/webp,image/gif" multiple class="hidden">
-                        </div>
-                        
-                        <!-- Upload Queue (for batch uploads) -->
-                        <div id="gallery-upload-queue" class="hidden mt-4 space-y-2">
-                            <!-- Upload queue items will be dynamically added here -->
-                        </div>
+                    <div class="text-center p-4 bg-slate-700 rounded-lg border border-slate-600">
+                        <i class="fa fa-info-circle text-slate-400 text-2xl mb-2"></i>
+                        <p class="text-slate-300 text-sm">Image upload functionality has been disabled</p>
+                        <p class="text-slate-500 text-xs mt-1">Please use WooCommerce to manage product images</p>
                     </div>
                 </div>
 
@@ -1086,6 +1032,37 @@ require_once __DIR__ . '/../wp-load.php';
             </div>
             <div id="print-report-content" class="font-mono text-sm space-y-4">
                 <!-- Report content will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Customer Search Modal -->
+    <div id="customer-search-modal" class="app-overlay hidden">
+        <div class="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow-2xl w-full max-w-md transform transition-all">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold">Search Customer</h2>
+                <button onclick="cartManager.hideCustomerSearch()" class="text-slate-400 hover:text-white">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="mb-4">
+                <div class="relative">
+                    <input type="text"
+                           id="customer-search-input"
+                           placeholder="Search by name or email..."
+                           class="w-full px-3 py-2 bg-slate-700 text-slate-200 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none pr-10">
+                    <button onclick="cartManager.toggleKeyboard()"
+                            class="absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white p-1"
+                            title="Toggle on-screen keyboard">
+                        <i class="fas fa-keyboard"></i>
+                    </button>
+                </div>
+                <p class="text-xs text-slate-400 mt-1">Enter at least 2 characters to search</p>
+            </div>
+            
+            <div id="customer-search-results" class="space-y-2 max-h-96 overflow-y-auto">
+                <div class="text-center text-slate-400 py-4">Enter at least 2 characters to search</div>
             </div>
         </div>
     </div>

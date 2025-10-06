@@ -64,52 +64,70 @@ You can still manually type barcodes if you prefer. The generate button is optio
 
 **Note**: Generated barcodes are permanent once saved. You can regenerate if needed, but the old barcode will be replaced.
 
+### Creating Products (Removed in v1.8.52)
+
+**IMPORTANT: Product creation has been removed from the WP POS interface.**
+
+To create new products, you must use the WooCommerce admin interface:
+
+1. **Access WooCommerce Admin**
+   - Log in to your WordPress admin dashboard
+   - Navigate to **Products → Add New**
+
+2. **Fill in Product Details**
+   - Enter all product information (name, price, SKU, etc.)
+   - Upload product images (featured and gallery)
+   - Set inventory, tax, and other settings
+   - Click **Publish** to create the product
+
+3. **Product Appears in POS**
+   - The product will automatically appear in the WP POS system
+   - You can immediately use it for sales transactions
+
+**Why This Change?**
+- Product creation is now managed through WooCommerce for consistency
+- Ensures proper integration with WordPress/WooCommerce architecture
+- Simplifies the POS interface for its primary purpose: sales
+- All product management features available in WooCommerce admin
+
 ### Product Editing
-WP POS includes a comprehensive product editor that allows you to edit all text-based fields for both simple and variable products. **Note:** Product creation functionality was removed in v1.8.41 - you can only edit existing products.
+WP POS includes a comprehensive product editor that allows you to edit all text-based fields for both simple and variable products.
 
 #### Accessing the Product Editor
 1. Navigate to the Products page
 2. Click on any existing product row or the edit button
 3. The comprehensive product editor will open in a modal
 
-#### Uploading Product Images
+#### Managing Product Images (Use WooCommerce Admin)
 
-You can upload product images when editing existing products.
+**IMPORTANT: Image upload functionality has been removed from the WP POS interface in v1.8.52.**
 
-**For Existing Products:**
-1. Open the product editor by clicking on a product
-2. In the **Product Images** section:
-   - **Featured Image**: Click the dropzone or drag & drop an image file
-   - **Gallery Images**: Click "Add More Images" or drag & drop multiple files
-3. Images will upload directly to the product
-4. Wait for confirmation that images were saved successfully
+To manage product images, use the WooCommerce admin interface:
 
-**Supported Image Formats:**
-- PNG (.png)
-- JPEG (.jpg, .jpeg)
-- WebP (.webp)
-- GIF (.gif)
+1. **Access WordPress Admin**
+   - Log in to your WordPress admin dashboard
+   - Navigate to **Products → All Products**
 
-**Image Requirements:**
-- Maximum file size: **5MB per image**
-- Maximum gallery images: **10 images**
-- Images are validated before upload
+2. **Edit Product**
+   - Click on the product you want to edit
+   - Scroll to the **Product Image** section (featured image)
+   - Scroll to the **Product Gallery** section (gallery images)
 
-**Image Management:**
-- **Remove Images**: Hover over any image and click the "Remove" button
-- **Change Featured Image**: Hover over featured image and click "Replace"
-- **Reorder Gallery**: Drag gallery images to reorder (coming soon)
+3. **Upload Images**
+   - Click **Set product image** for featured image
+   - Click **Add product gallery images** for gallery
+   - Upload your images using the WordPress media library
+   - Click **Update** to save changes
 
-**Important Notes:**
-- Images are uploaded directly to the product
-- After clicking "Save Changes," wait for the upload to complete
-- The dialog will confirm when images are successfully uploaded
+4. **Images Appear in POS**
+   - Images will automatically display in the POS system
+   - No additional steps needed
 
-**Troubleshooting Image Uploads:**
-- **"File too large" error**: Reduce image size to under 5MB
-- **"Invalid file type" error**: Ensure file is PNG, JPG, JPEG, WebP, or GIF
-- **"Too many gallery images" error**: Maximum 10 gallery images allowed
-- **Images not uploading**: Check internet connection and try again
+**Why This Change?**
+- Ensures consistency with WordPress/WooCommerce standards
+- Prevents upload complications and errors
+- Simplifies POS interface for sales operations
+- All image management features available in WooCommerce admin
 
 #### Tabbed Interface
 The editor features two main views:
@@ -162,6 +180,50 @@ The JSON view includes:
 
 ## Sales Process
 
+### Attaching Customers to Orders (New in v1.8.54)
+
+You can now attach customer information to orders for better tracking and customer service.
+
+#### How to Attach a Customer
+
+1. **Click "Attach Customer" Button**
+   - Located above the Hold Cart and Checkout buttons in the cart sidebar
+   - Blue button with user icon
+
+2. **Search for Customer**
+   - Customer search modal appears
+   - Enter at least 2 characters of customer name or email address
+   
+3. **Use On-Screen Keyboard** (Optional)
+   - Click the keyboard icon in the search box
+   - Touch-friendly keyboard appears at bottom of screen
+   - Type customer name or email using on-screen keys
+   - Compatible with both touch and mouse input
+   - Press Space, Backspace, or Clear as needed
+
+4. **Select Customer from Results**
+   - Search results appear as you type (with 300ms delay)
+   - Each result shows customer name and email
+   - Click on the desired customer to attach to cart
+
+5. **Customer Attached**
+   - Customer information appears at top of cart
+   - Shows customer name and email in a blue highlighted box
+   - Customer persists through all cart operations
+
+#### Managing Attached Customers
+
+**To Remove a Customer:**
+- Click the X button next to the customer name in the cart
+- Customer is detached from the order
+- Can attach a different customer if needed
+
+**Customer Persistence:**
+- Customer information is saved when you hold a cart
+- When you restore a held cart, the customer is automatically reattached
+- Customer data is included in the order when you complete checkout
+- Customer is cleared when you clear the cart or complete a sale
+
 ### Adding Items to Cart
 1. Search or browse for products
 2. Click on the desired product
@@ -170,19 +232,22 @@ The JSON view includes:
 
 ### Cart Management
 - View all items in current transaction
+- **Attach customer** to order (optional - see above)
 - Modify quantities or remove items
 - See running total with tax calculations
+- Clear Cart button is located directly below the cart items for easy access (v1.8.53)
 
 ### Payment Processing
 1. Review cart contents and total
-2. Select payment method (Cash, Card, etc.)
-3. Enter payment amount
-4. Confirm transaction
+2. **Verify attached customer** (if applicable)
+3. Select payment method (Cash, Card, etc.)
+4. Enter payment amount
+5. Confirm transaction
 
 ### Receipt Generation
 - Automatic receipt generation
 - Print or email receipts
-- Receipt includes transaction details
+- Receipt includes transaction details and customer information
 
 ## Order Management
 
@@ -351,6 +416,52 @@ Customize the interface:
 - System access records
 
 ## Troubleshooting
+### Customer Search Issues (New in v1.8.54)
+
+#### No Results Found
+- **Problem**: Search returns no results
+- **Solutions**:
+  1. Check that you've entered at least 2 characters
+  2. Try searching by email instead of name
+  3. Verify the customer exists in WordPress users
+  4. Try a different spelling or partial name
+
+#### Search Not Working
+- **Problem**: Search field doesn't respond
+- **Solutions**:
+  1. Refresh the page (F5)
+  2. Close and reopen the customer search modal
+  3. Check internet connection
+  4. Contact support if issue persists
+
+#### On-Screen Keyboard Not Appearing
+- **Problem**: Keyboard button does nothing
+- **Solutions**:
+  1. Click the keyboard icon again to toggle
+  2. Check if keyboard is already visible at bottom of screen
+  3. Refresh the page to reset keyboard
+  4. Use regular keyboard if touch keyboard doesn't work
+
+#### Customer Not Attaching
+- **Problem**: Clicking customer doesn't attach them
+- **Solutions**:
+  1. Ensure you clicked directly on the customer result
+  2. Check that cart has items (recommended but not required)
+  3. Try searching again and selecting customer
+  4. Refresh page and try again
+
+#### Customer Display After Holding Cart (Fixed in v1.8.56)
+- **Status**: This issue has been resolved in version 1.8.56
+- **What was fixed**: Customer display now properly clears when holding a cart and restores correctly when retrieving the held cart
+- **Expected behavior**:
+  1. When you hold a cart with a customer attached, the customer display disappears from the current cart
+  2. The held cart shows the customer name in the Held Carts list
+  3. When you restore the held cart, the customer is automatically reattached and displays correctly
+- **If you still experience issues**:
+  1. Refresh the page (F5 or Ctrl+F5) to ensure you have the latest version
+  2. Check that version 1.8.56 or higher is loaded
+  3. Contact support if problem persists
+
 
 ### Common Issues
 
@@ -467,6 +578,22 @@ Customize the interface:
 
 ## Troubleshooting
 
+### Product Creation (Removed in v1.8.52)
+
+**Product creation has been removed from the WP POS interface.**
+
+To create new products:
+1. Use the WooCommerce admin interface (WordPress Admin → Products → Add New)
+2. Fill in all product details
+3. Upload images through WooCommerce
+4. Publish the product
+5. It will automatically appear in POS
+
+**Need Help?**
+- Refer to WooCommerce documentation for product creation
+- Contact your site administrator
+- Use WordPress support resources
+
 ### Product Editor Issues
 
 #### Attribute Options Not Showing
@@ -502,7 +629,20 @@ Customize the interface:
 #### JSON View Not Highlighting
 - **Problem**: JSON preview shows plain text without colors
 - **Solution**: Refresh the page to reload the custom syntax highlighting
-- **Check**: Ensure JavaScript is enabled in your browser
+### Image Upload (Removed in v1.8.52)
+
+**Image upload functionality has been removed from the WP POS interface.**
+
+To upload or manage product images:
+1. Use the WooCommerce admin interface (WordPress Admin → Products)
+2. Edit the product you want to update
+3. Use the WordPress media library to upload images
+4. Images will automatically display in POS
+
+**Why This Change?**
+- Simplifies POS interface for sales operations
+- Ensures consistency with WordPress/WooCommerce
+- Prevents upload errors and complications
 
 ### General Issues
 
@@ -534,10 +674,15 @@ For technical support or questions:
 
 ## Version Information
 
-- Current Version: 1.8.41
-- Last Updated: January 5, 2025
-- Latest Update: WP POS v1.8.41 - Removed product creation functionality - only editing of existing products is now supported
+- Current Version: 1.8.56
+- Last Updated: October 6, 2025
+- Latest Update: WP POS v1.8.56 - Fixed customer display not clearing from cart after holding - customer display box now properly disappears when cart is held and customer data is correctly restored when retrieving held cart
 - Previous Updates:
-  - v1.8.17 - Removed reporting functionality completely and corrected application branding from WP-POS to WP POS (WordPress Point of Sale)
-  - v1.8.3 - Advanced Attribute Management System with intelligent attribute management, duplicate prevention, filtered suggestions, automatic input clearing, and user-controlled dropdown behavior
-- Next Update: Q1 2025
+  - v1.8.55 - Fixed held cart customer functionality - customer data now properly saved, displayed in held carts table, and restored when retrieving cart
+  - v1.8.54 - Implemented customer attachment functionality for POS orders with search, on-screen keyboard, and held cart persistence
+  - v1.8.53 - Improved POS cart UI layout by moving Clear Cart button to directly below cart items for better visual hierarchy and easier access
+  - v1.8.52 - Removed product creation and image upload functionality - these features must now be managed through WooCommerce admin interface
+  - v1.8.51 - Fixed product image upload file picker (functionality now removed in v1.8.52)
+  - v1.8.17 - Removed reporting functionality completely and corrected application branding
+  - v1.8.3 - Advanced Attribute Management System
+- Next Update: Q1 2026

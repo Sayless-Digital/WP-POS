@@ -123,6 +123,7 @@ class CartManager {
         this.stateManager.updateState('cart.items', []);
         
         if (fullReset) {
+            this.stateManager.updateState('cart.customer', null);
             this.stateManager.updateState('cart.paymentMethod', 'Cash');
             this.stateManager.updateState('cart.fee', { amount: '', label: '', amountType: 'flat' });
             this.stateManager.updateState('cart.discount', { amount: '', label: '', amountType: 'flat' });
@@ -131,6 +132,7 @@ class CartManager {
         }
         
         this.renderCart();
+        this.renderCustomerDisplay();
     }
 
     /**
@@ -262,6 +264,7 @@ class CartManager {
     saveCartState() {
         const cartData = {
             items: this.stateManager.getState('cart.items'),
+            customer: this.stateManager.getState('cart.customer'),
             paymentMethod: this.stateManager.getState('cart.paymentMethod'),
             feeDiscount: this.stateManager.getState('cart.feeDiscount')
         };
@@ -277,9 +280,11 @@ class CartManager {
             if (saved) {
                 const cartData = JSON.parse(saved);
                 this.stateManager.updateState('cart.items', cartData.items || []);
+                this.stateManager.updateState('cart.customer', cartData.customer || null);
                 this.stateManager.updateState('cart.paymentMethod', cartData.paymentMethod || 'Cash');
                 this.stateManager.updateState('cart.feeDiscount', cartData.feeDiscount || { type: null, amount: '', label: '', amountType: 'flat' });
                 this.renderCart();
+                this.renderCustomerDisplay();
             }
         } catch (error) {
             console.error('Failed to load cart state:', error);
@@ -298,13 +303,14 @@ class CartManager {
             id: Date.now(),
             timestamp: new Date().toISOString(),
             items: cartItems,
+            customer: this.stateManager.getState('cart.customer'),
             total: this.getCartTotal()
         };
 
         heldCarts.push(cartData);
         localStorage.setItem('jpos_held_carts', JSON.stringify(heldCarts));
         
-        this.clearCart();
+        this.clearCart(true);
         
         if (window.toastManager) {
             window.toastManager.show('Cart held successfully');
@@ -331,6 +337,166 @@ class CartManager {
         }
 
         return Math.max(0, total);
+    }
+
+    /**
+     * Render customer display at top of cart
+     */
+    renderCustomerDisplay() {
+        const customer = this.stateManager.getState('cart.customer');
+        const container = document.getElementById('cart-customer-display');
+        
+        if (!container) return;
+        
+        if (customer) {
+            container.innerHTML = `
+                <div class="bg-indigo-600/20 border border-indigo-500/50 rounded-lg p-2 mb-2">
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1 min-w-0">
+                            <div class="text-sm font-semibold text-indigo-200 truncate">${customer.name}</div>
+                            <div class="text-xs text-indigo-300/70 truncate">${customer.email}</div>
+                        </div>
+                        <button onclick="cartManager.detachCustomer()"
+                                class="ml-2 p-1 text-indigo-300 hover:text-white rounded transition-colors"
+                                title="Remove customer">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            container.classList.remove('hidden');
+        } else {
+            container.innerHTML = '';
+            container.classList.add('hidden');
+        }
+    }
+
+    /**
+     * Show customer search modal
+     */
+    showCustomerSearch() {
+        const modal = document.getElementById('customer-search-modal');
+        if (!modal) return;
+        
+        // Clear previous search
+        const searchInput = document.getElementById('customer-search-input');
+        if (searchInput) searchInput.value = '';
+        
+        const results = document.getElementById('customer-search-results');
+        if (results) results.innerHTML = '<div class="text-center text-slate-400 py-4">Enter at least 2 characters to search</div>';
+        
+        modal.classList.remove('hidden');
+    }
+
+    /**
+     * Hide customer search modal
+     */
+    hideCustomerSearch() {
+        const modal = document.getElementById('customer-search-modal');
+        if (modal) modal.classList.add('hidden');
+        
+        // Hide keyboard if visible
+        if (window.onScreenKeyboard && window.onScreenKeyboard.isKeyboardVisible()) {
+            window.onScreenKeyboard.hide();
+        }
+    }
+
+    /**
+     * Search for customers
+     * @param {string} query - Search query
+     */
+    async searchCustomers(query) {
+        if (!query || query.length < 2) {
+            const results = document.getElementById('customer-search-results');
+            if (results) {
+                results.innerHTML = '<div class="text-center text-slate-400 py-4">Enter at least 2 characters to search</div>';
+            }
+            return;
+        }
+
+        try {
+            const nonce = document.getElementById('jpos-customer-search-nonce')?.value;
+            const response = await fetch(`api/customers.php?query=${encodeURIComponent(query)}&nonce=${nonce}`);
+            
+            if (!response.ok) {
+                throw new Error('Search failed');
+            }
+
+            const data = await response.json();
+            
+            if (data.success) {
+                this.renderCustomerResults(data.data.customers);
+            } else {
+                throw new Error(data.message || 'Search failed');
+            }
+        } catch (error) {
+            console.error('Customer search error:', error);
+            const results = document.getElementById('customer-search-results');
+            if (results) {
+                results.innerHTML = '<div class="text-center text-red-400 py-4">Search failed. Please try again.</div>';
+            }
+        }
+    }
+
+    /**
+     * Render customer search results
+     * @param {Array} customers - Array of customer objects
+     */
+    renderCustomerResults(customers) {
+        const results = document.getElementById('customer-search-results');
+        if (!results) return;
+
+        if (customers.length === 0) {
+            results.innerHTML = '<div class="text-center text-slate-400 py-4">No customers found</div>';
+            return;
+        }
+
+        results.innerHTML = customers.map(customer => `
+            <button onclick="cartManager.attachCustomer(${customer.id}, '${customer.name.replace(/'/g, "\\'")}', '${customer.email}')"
+                    class="w-full text-left p-3 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors">
+                <div class="font-semibold text-slate-200">${customer.name}</div>
+                <div class="text-sm text-slate-400">${customer.email}</div>
+            </button>
+        `).join('');
+    }
+
+    /**
+     * Attach customer to cart
+     * @param {number} id - Customer ID
+     * @param {string} name - Customer name
+     * @param {string} email - Customer email
+     */
+    attachCustomer(id, name, email) {
+        const customer = { id, name, email };
+        this.stateManager.updateState('cart.customer', customer);
+        this.renderCustomerDisplay();
+        this.hideCustomerSearch();
+        
+        if (window.toastManager) {
+            window.toastManager.show(`Customer ${name} attached to cart`);
+        }
+    }
+
+    /**
+     * Detach customer from cart
+     */
+    detachCustomer() {
+        this.stateManager.updateState('cart.customer', null);
+        this.renderCustomerDisplay();
+        
+        if (window.toastManager) {
+            window.toastManager.show('Customer removed from cart');
+        }
+    }
+
+    /**
+     * Toggle on-screen keyboard for customer search
+     */
+    toggleKeyboard() {
+        const searchInput = document.getElementById('customer-search-input');
+        if (searchInput && window.onScreenKeyboard) {
+            window.onScreenKeyboard.toggle(searchInput);
+        }
     }
 }
 

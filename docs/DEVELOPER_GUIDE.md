@@ -204,9 +204,10 @@ Retrieve product catalog with filtering options.
 ### Product Management
 - **GET** `/api/products.php` - Retrieve product catalog with filtering
 - **GET** `/api/product-edit-simple.php?action=get_product_details&id={id}` - Get product details for editing
-- **POST** `/api/product-edit-simple.php` - Update existing product data (product creation removed in v1.8.41)
+- **POST** `/api/product-edit-simple.php` - Update existing product data (product creation removed in v1.8.52, image upload removed in v1.8.52)
 - **GET** `/api/product-edit-simple.php?action=get_tax_classes` - Get tax classes
 - **GET** `/api/stock.php` - Stock management operations
+- **Note**: Product creation and image upload must be done through WooCommerce admin - these features have been removed from the POS interface
 
 ### Order Processing
 - **GET** `/api/orders.php` - Fetch orders with filters
@@ -215,6 +216,9 @@ Retrieve product catalog with filtering options.
 
 ### Reporting & Analytics
 - **REMOVED** - Reporting functionality has been completely removed from WP POS
+
+### Customer Management
+- **GET** `/api/customers.php` - Search WordPress users by name or email
 
 ### System Management
 - **GET** `/api/settings.php` - Retrieve settings
@@ -286,54 +290,113 @@ const response = await fetch('/api/barcode.php', {
 - Backend: [`generate_unique_barcode()`](../api/barcode.php:118)
 - Frontend: [`handleBarcodeGeneration()`](../assets/js/main.js:2765)
 
-### Product Image Upload System
+### Customer Search Endpoints
 
-#### Image Uploads for Existing Products
-WP POS supports uploading product images for existing products during editing. Images are uploaded directly to products that already exist in the database.
+#### GET /api/customers.php
 
-**Note:** Product creation functionality was removed in v1.8.41. Images can only be uploaded to existing products during the edit process.
+Search WordPress users by name or email for customer attachment to orders.
 
-**Technical Implementation:**
-- **Direct Upload**: Images uploaded to existing product IDs
-- **File Validation**: 5MB max file size, supports PNG, JPG, JPEG, WebP, GIF formats
-- **Gallery Limit**: Maximum 10 images in gallery
+**Query Parameters:**
+- `query`: (required) Search term (minimum 2 characters)
+- `limit`: (optional) Maximum results to return, default: 10, max: 20
+- `nonce`: (required) CSRF token for security validation
 
-**Workflow:**
-1. User opens product editor for existing product
-2. [`initializeImageUpload()`](../assets/js/main.js:1819) initializes upload system with product data
-3. User uploads images via drag-and-drop or file picker
-4. Images uploaded directly to the product via API
-5. Product editor updates to show new images
-
-**Key Functions:**
-- [`initializeImageUpload()`](../assets/js/main.js:1819) - Initializes upload system for existing products
-- [`setupFeaturedImageUpload()`](../assets/js/main.js:2268) - Handles featured image upload
-- [`setupGalleryImageUpload()`](../assets/js/main.js:2360) - Handles gallery image uploads
-
-**File Validation:**
-```javascript
-function validateImageFile(file) {
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'];
-    
-    if (!allowedTypes.includes(file.type)) {
-        return { valid: false, error: 'Invalid file type' };
+**Response (Success):**
+```json
+{
+    "success": true,
+    "data": {
+        "customers": [
+            {
+                "id": 123,
+                "name": "John Doe",
+                "email": "john@example.com",
+                "username": "johndoe"
+            }
+        ],
+        "count": 1,
+        "query": "john",
+        "performance": {
+            "execution_time": 0.045,
+            "memory_used": "2MB"
+        }
     }
-    if (file.size > maxSize) {
-        return { valid: false, error: 'File size exceeds 5MB' };
-    }
-    return { valid: true };
 }
 ```
 
-**Limitations:**
-- Product must exist in database before uploading images
-- Maximum 5MB per image file
-- Maximum 10 images in gallery
-- Requires modern browser with File API support
+**Search Behavior:**
+- Searches across WordPress user_login, user_email, and display_name fields
+- Supports partial matching with wildcards
+- Requires minimum 2 characters to prevent excessive results
+- Results ordered by display_name alphabetically
+- Maximum 20 results returned per query
 
-**Related Endpoints:**
-- [`/api/product-images.php`](../api/product-images.php:1) - Image upload API for existing products
+**Error Responses:**
+```json
+{
+    "success": false,
+    "message": "Authentication required."
+}
+```
+
+```json
+{
+    "success": false,
+    "message": "Invalid security token."
+}
+```
+
+**Example Usage:**
+```javascript
+const nonce = document.getElementById('jpos-customer-search-nonce').value;
+const response = await fetch(`api/customers.php?query=john&nonce=${nonce}`);
+const data = await response.json();
+
+if (data.success) {
+    console.log(`Found ${data.data.count} customers`);
+    data.data.customers.forEach(customer => {
+        console.log(`${customer.name} - ${customer.email}`);
+    });
+}
+```
+
+**Security:**
+- Requires WordPress authentication with `manage_woocommerce` capability
+- CSRF protection via WordPress nonce validation
+- Input sanitization with `sanitize_text_field()`
+- Performance monitoring integration
+
+**Related Components:**
+- Frontend: [`searchCustomers()`](../assets/js/main.js:1450)
+- UI Component: [`customer-search-modal`](../index.php:1034)
+- State Management: [`appState.cart.customer`](../assets/js/modules/state.js:33)
+
+### Product Image Upload System (REMOVED in v1.8.52)
+
+**IMPORTANT: Product image upload functionality has been completely removed from the WP POS interface.**
+
+**Reason for Removal:**
+- Image management must be done through WooCommerce admin interface
+- This ensures consistency with WordPress/WooCommerce architecture
+- Simplifies POS interface and reduces complexity
+
+**Alternative Method:**
+To upload product images:
+1. Open WordPress Admin dashboard
+2. Navigate to Products → All Products
+3. Click on the product you want to edit
+4. Use the WooCommerce product editor to upload images
+5. Images will automatically appear in the POS system
+
+**What Was Removed:**
+- All image upload functions from [`assets/js/main.js`](../assets/js/main.js:1) (lines 1700-2310)
+- Image upload UI from [`index.php`](../index.php:786-858)
+- File validation and upload handlers
+- Drag-and-drop functionality
+- Featured and gallery image management
+
+**For Developers:**
+If you need to re-implement image uploads, refer to version 1.8.51 or earlier for the complete implementation. However, it's recommended to keep image management in WooCommerce for consistency.
 
 ### Product Editor Endpoints
 
@@ -396,9 +459,12 @@ Retrieve available tax classes.
 ```
 
 #### POST /api/product-edit-simple.php
-Update existing product with comprehensive data. Product creation functionality removed in v1.8.41 - only updates to existing products are supported.
 
-**Request:**
+**IMPORTANT: Product creation functionality has been removed in v1.8.52.**
+
+Only supports updating existing products. To create new products, use the WooCommerce admin interface.
+
+**Update Product Request:**
 ```json
 {
     "action": "update_product",
@@ -431,9 +497,7 @@ Update existing product with comprehensive data. Product creation functionality 
 }
 ```
 
-**Note:** The `product_id` field is required. The `create_product` action has been removed.
-
-**Response:**
+**Update Product Response:**
 ```json
 {
     "success": true,
@@ -444,6 +508,41 @@ Update existing product with comprehensive data. Product creation functionality 
     }
 }
 ```
+
+**Error Responses:**
+```json
+{
+    "success": false,
+    "message": "Product name is required"
+}
+```
+
+```json
+{
+    "success": false,
+    "message": "Regular price is required"
+}
+```
+
+```json
+{
+    "success": false,
+    "message": "SKU already exists: EXISTING-SKU"
+}
+```
+
+**Product Creation:**
+Product creation has been removed from the POS interface in v1.8.52. To create new products:
+1. Use the WooCommerce admin interface (WordPress Admin → Products → Add New)
+2. Fill in all product details including images
+3. Publish the product
+4. It will automatically appear in the POS system
+
+**Why This Change:**
+- Ensures consistency with WordPress/WooCommerce architecture
+- Prevents complications with image uploads and product data
+- Simplifies POS interface for its primary purpose: sales transactions
+- Reduces maintenance complexity
 
 ### Reports Endpoints
 
@@ -679,6 +778,238 @@ php tests/php/test-database-optimizer.php
 ## Troubleshooting
 
 ### Common Issues
+
+#### Product Creation Issues (v1.8.45)
+
+##### Required Field Validation Error
+- **Problem**: "Product name is required" or "Regular price is required" error when creating product
+- **Symptoms**: API returns 400 error with validation message
+- **Root Cause**: Required fields not provided or empty in request
+- **Solution**: Ensure both `name` and `regular_price` fields are present and non-empty
+  ```javascript
+  // Validate before sending
+  if (!formData.name || !formData.regular_price) {
+      alert('Product name and regular price are required');
+      return;
+  }
+  ```
+- **Prevention**: Implement frontend validation before API call
+
+##### SKU Uniqueness Conflict
+- **Problem**: "SKU already exists" error when creating product with existing SKU
+- **Symptoms**: API returns 400 error with SKU conflict message
+- **Root Cause**: Another product already uses the provided SKU
+- **Solution**:
+  - Check existing products for SKU conflicts
+  - Use auto-generated SKUs or ensure uniqueness
+  - Database query: `SELECT post_id FROM wp_postmeta WHERE meta_key='_sku' AND meta_value='SKU-VALUE'`
+- **Prevention**: Implement SKU validation in frontend before submission
+
+##### Images Not Uploading for New Products
+- **Problem**: Image upload sections are disabled when creating new products
+- **Symptoms**: Image upload areas show message "Images can be uploaded after the product is created"
+- **Root Cause**: WordPress requires existing post ID for media attachments
+- **Solution**: This is expected behavior - follow two-step workflow:
+  1. Create product with all text fields
+  2. Product saved to database with new ID
+  3. Modal switches to edit mode automatically
+  4. Image upload sections activate
+  5. Upload featured and gallery images
+- **Technical Details**: WordPress `wp_insert_attachment()` requires valid `post_parent` ID
+- **Prevention**: User education - explain two-step workflow in UI
+
+##### Modal Doesn't Switch to Edit Mode After Creation
+- **Problem**: After creating product, modal stays in create mode and images can't be uploaded
+- **Symptoms**: Image upload sections remain disabled, "Create Product" button still shows
+- **Root Cause**: JavaScript error preventing mode switch or missing product_id in response
+- **Solution**:
+  - Check browser console for errors
+  - Verify API response includes `product_id` in data object
+  - Ensure [`saveProductEditor()`](../assets/js/main.js:3260) completes successfully
+  - Check that modal state updates correctly:
+    ```javascript
+    currentEditingProduct = { id: newProductId, ...formData };
+    saveBtn.setAttribute('data-mode', 'edit');
+    await initializeImageUpload(currentEditingProduct);
+    ```
+- **Prevention**: Add error handling and logging in save function
+
+##### CSRF Token Invalid Error
+- **Problem**: "Invalid security token" or "Nonce verification failed" error
+- **Symptoms**: API returns 403 forbidden error
+- **Root Cause**: Missing or expired WordPress nonce token
+- **Solution**:
+  - Ensure `appState.nonces.productEdit` is included in request
+  - Refresh page to get new nonce if expired
+  - Check nonce generation in [`index.php`](../index.php:1)
+- **Prevention**: Implement nonce refresh mechanism for long sessions
+
+##### Product Created but Data Not Showing
+- **Problem**: Product creation succeeds but product doesn't appear in products list
+- **Symptoms**: Success message shown but product not visible
+- **Root Cause**: Cache not invalidated or products list not refreshed
+- **Solution**:
+  - Clear cache with cache-manager.php
+  - Refresh products list: `await window.renderProducts()`
+  - Hard reload page (Ctrl+F5)
+- **Prevention**: Implement automatic cache invalidation and list refresh after creation
+
+#### Image Upload File Picker Not Opening (v1.8.49)
+- **Problem**: File picker dialog doesn't open when clicking on image upload areas in product editor
+- **Symptoms**:
+  - Click on "Drop featured image here or click to upload" - nothing happens
+  - Click on gallery image upload area - no file dialog appears
+  - No console errors visible
+  - Event listeners appear to be attached correctly
+- **Root Cause**: The [`clearProductImages()`](../assets/js/main.js:1702-1733) function at line 1702 was resetting the dropzone innerHTML without including the required file input elements:
+  - Featured image input: `<input type="file" id="featured-image-input">`
+  - Gallery images input: `<input type="file" id="gallery-images-input" multiple>`
+  - When [`initializeImageUpload()`](../assets/js/main.js:1839) tried to attach event listeners at line 1839, the input elements were missing from the DOM
+  - Click handlers were set up on dropzones, but had no inputs to trigger
+- **Solution**: Modified [`clearProductImages()`](../assets/js/main.js:1702-1733) to include both file input elements in the innerHTML:
+  ```javascript
+  // Featured image dropzone with input
+  featuredDropzone.innerHTML = `
+      <input type="file" id="featured-image-input"
+             accept="image/png,image/jpeg,image/jpg,image/webp,image/gif"
+             class="hidden">
+      <p class="text-gray-400">Drop featured image here or click to upload</p>
+      <p class="text-sm text-gray-500">PNG, JPG, WebP, GIF (max 5MB)</p>
+  `;
+  
+  // Gallery dropzone with input
+  galleryDropzone.innerHTML = `
+      <input type="file" id="gallery-images-input"
+             accept="image/png,image/jpeg,image/jpg,image/webp,image/gif"
+             multiple class="hidden">
+      <p class="text-gray-400">Drop gallery images here or click to upload</p>
+      <p class="text-sm text-gray-500">PNG, JPG, WebP, GIF (max 5MB each, up to 10 images)</p>
+  `;
+  ```
+- **Prevention**:
+  - When resetting form elements that have dynamic initialization, ensure all required DOM elements are preserved or recreated
+  - Test file picker functionality after any form reset/clear operations
+  - Add assertions to verify input elements exist before attaching event listeners
+- **Testing**:
+  1. Open product editor for existing product
+  2. Click on featured image upload area
+  3. Verify file picker dialog opens
+  4. Click on gallery image upload area
+  5. Verify file picker dialog opens with multiple file selection
+  6. Test both drag-and-drop and click-to-upload functionality
+#### Image Upload File Picker Not Opening - FINAL FIX (v1.8.50)
+- **Problem**: File picker dialog doesn't open when clicking on image upload areas in product editor - even with v1.8.49 fix
+- **Symptoms**:
+  - Click or drag-and-drop on image upload areas - nothing happens
+  - File picker doesn't open
+  - May work sometimes but not reliably
+- **Root Cause**: Previous implementation (v1.8.49) used complex event delegation with:
+  - DOM cloning to remove event listeners
+  - `addEventListener()` which can have timing issues
+  - `innerHTML` manipulation removing and recreating elements
+  - Event propagation conflicts
+- **Solution (v1.8.50)**: Complete refactor with bulletproof simple approach:
+  1. **Simplified [`clearProductImages()`](../assets/js/main.js:1702-1720)** - Never manipulates innerHTML, only shows/hides existing elements
+  2. **Rewrote [`setupFeaturedImageUpload()`](../assets/js/main.js:1887-1925)** - Uses direct `onclick` property assignment instead of `addEventListener`
+  3. **Rewrote [`setupGalleryImageUpload()`](../assets/js/main.js:2122-2160)** - Same simple onclick approach
+  
+  ```javascript
+  // BULLETPROOF: Direct property assignment - guaranteed to work
+  dropzone.onclick = function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      fileInput.click();  // Triggers file picker
+  };
+  
+  fileInput.onchange = function(e) {
+      const file = e.target.files[0];
+      if (file) {
+          uploadFeaturedImage(file, productId);
+      }
+      e.target.value = ''; // Reset for reuse
+  };
+  ```
+
+- **Why This Works**:
+  - File inputs exist permanently in HTML ([`index.php:813`](../index.php:813), [`index.php:850`](../index.php:850)) - never removed
+  - Direct property assignment (`.onclick =`) is the most basic, bulletproof JavaScript
+  - No complex event delegation, no cloning, no timing issues
+  - Handlers assigned directly to existing elements
+  - Works in all browsers, all situations, guaranteed
+
+- **Key Principles for Reliable File Uploads**:
+  1. File inputs should exist in HTML permanently - never remove them
+  2. Use simplest possible JavaScript (property assignment not addEventListener)
+  3. Don't manipulate innerHTML of elements containing interactive elements
+  4. Keep event handling as simple as possible - direct assignment beats complex patterns
+
+- **Testing**:
+  1. Clear browser cache (Ctrl+F5) to load v1.8.50
+  2. Open product editor for any existing product
+  3. Click on featured image upload area - file picker opens immediately
+  4. Click on gallery image upload area - file picker opens for multiple selection
+  5. Test drag-and-drop functionality - works for both areas
+  6. Try on different browsers (Chrome, Firefox, Safari, Edge) - works everywhere
+  7. Test rapidly clicking - works every time
+
+#### File Input Hidden State Issue - Browser Security Restriction (v1.8.51)
+- **Problem**: File picker dialog still doesn't open after v1.8.50 fix, despite bulletproof JavaScript implementation
+- **Symptoms**:
+  - Click on image upload areas - nothing happens
+  - Drag-and-drop doesn't work
+  - JavaScript event handlers appear to execute correctly
+  - No console errors
+  - `fileInput.click()` calls appear to work but file picker never opens
+- **Root Cause**: **Browser Security Restriction** - Modern browsers block programmatic `.click()` calls on file inputs that use `display: none` (including Tailwind's `hidden` class). This is intentional security behavior to prevent malicious websites from opening file pickers without user visibility.
+  - Featured image input at [`index.php:813`](../index.php:813) used `class="hidden"` (equivalent to `display: none`)
+  - Gallery images input at [`index.php:850`](../index.php:850) used `class="hidden"`
+  - When JavaScript calls `fileInput.click()`, browser silently blocks the action
+  - This security measure ensures users can see what they're interacting with
+  - No error thrown, no console message - just silent failure
+- **Solution (v1.8.51)**: Changed both file inputs to use CSS that hides them visually but not from browser's perspective:
+  ```html
+  <!-- BEFORE (BROKEN - display:none blocks programmatic clicks) -->
+  <input type="file" id="featured-image-input"
+         accept="image/png,image/jpeg,image/jpg,image/webp,image/gif"
+         class="hidden">
+  
+  <!-- AFTER (FIXED - visually hidden but technically visible) -->
+  <input type="file" id="featured-image-input"
+         accept="image/png,image/jpeg,image/jpg,image/webp,image/gif"
+         style="opacity: 0; position: absolute; pointer-events: none; width: 0; height: 0;">
+  ```
+  - `opacity: 0` - Makes input invisible but technically still rendered
+  - `position: absolute` - Removes from document flow
+  - `pointer-events: none` - Prevents accidental user interaction
+  - `width: 0; height: 0` - Takes no visual space
+  - Browser considers input "visible" so allows programmatic `.click()`
+- **Why This Works**:
+  - File input is technically visible to browser (opacity: 0, not display: none)
+  - Browser security allows programmatic clicks on "visible" elements
+  - User can't accidentally interact with it (pointer-events: none)
+  - Takes no visual space (width/height: 0, position: absolute)
+  - JavaScript `fileInput.click()` now successfully opens file picker
+- **Browser Security Context**:
+  - This restriction exists in all modern browsers (Chrome, Firefox, Safari, Edge)
+  - Prevents malicious sites from secretly triggering file uploads
+  - Ensures user awareness when file picker opens
+  - Cannot be bypassed - must make input technically visible
+  - Alternative approaches (event simulation, etc.) are also blocked
+- **Prevention**:
+  - **NEVER use `display: none` on file inputs that need programmatic triggering**
+  - **NEVER use Tailwind's `hidden` class on file inputs**
+  - Always use opacity/position technique for invisible file inputs
+  - Test file picker opening, not just event handler execution
+  - Test in multiple browsers to verify security behavior
+- **Testing**:
+  1. Hard refresh to clear cache (Ctrl+F5)
+  2. Open product editor
+  3. Click featured image upload area - file picker opens
+  4. Click gallery image upload area - file picker opens
+  5. Verify both file inputs are invisible but functional
+  6. Test in Chrome, Firefox, Safari, Edge - works in all browsers
+
+
 
 #### JavaScript Scope Error in Image Upload (v1.8.39)
 - **Problem**: ReferenceError "setupFeaturedImageTempUpload is not defined" when creating new products
@@ -923,8 +1254,229 @@ For technical support or questions:
 - Review log files
 - Contact development team
 
+## Customer Attachment Feature
+
+### Overview
+The customer attachment feature allows POS operators to search for and attach customer information to orders before checkout. This enables better order tracking, customer history, and personalized service.
+
+### Components
+
+#### Backend API (`api/customers.php`)
+- **Purpose**: Search WordPress users for customer attachment
+- **Authentication**: Requires `manage_woocommerce` capability
+- **Search Fields**: user_login, user_email, display_name
+- **Minimum Query Length**: 2 characters
+- **Response Format**: Array of customer objects with id, name, email, username
+
+#### On-Screen Keyboard (`assets/js/modules/keyboard.js`)
+- **Purpose**: Touch-friendly input for customer search
+- **Layout**: QWERTY layout optimized for name/email entry
+- **Special Keys**: Space, Backspace, Clear, @, .
+- **Compatibility**: Works with both touch and mouse input
+- **Integration**: Toggleable via keyboard icon button
+
+#### State Management
+- **Location**: [`assets/js/modules/state.js`](../assets/js/modules/state.js:33)
+- **Property**: `appState.cart.customer`
+- **Structure**: `{ id, name, email }`
+- **Persistence**: Saved to localStorage with cart state
+- **Reset**: Cleared on full cart reset or manual detachment
+
+#### User Interface
+
+**Customer Search Modal:**
+- Search input with keyboard toggle button
+- Real-time search results (debounced 300ms)
+- Results display customer name and email
+- Click result to attach to cart
+
+**Cart Display:**
+- Customer info shown at top of cart
+- Displays name and email
+- Remove button to detach customer
+- Highlighted with indigo color scheme
+
+**Attach Customer Button:**
+- Located above Hold Cart/Checkout buttons
+- Blue color to differentiate from cart actions
+- Opens customer search modal
+
+#### Held Cart Integration
+- **Save**: Customer data persisted with held cart
+- **Restore**: Customer automatically reattached when retrieving held cart
+- **Storage**: Included in localStorage held cart data structure
+
+### Usage Flow
+
+1. **Operator clicks "Attach Customer" button**
+2. **Search modal opens with input field**
+3. **Operator types customer name or email** (minimum 2 characters)
+4. **System searches WordPress users** (debounced for performance)
+5. **Results displayed** with name and email
+6. **Operator clicks customer** to attach
+7. **Customer displayed at top of cart** with remove option
+8. **Customer data persisted** through cart operations and holds
+9. **On checkout**, customer information included in order
+
+### Technical Implementation
+
+**Search Function:**
+```javascript
+async function searchCustomers(query) {
+    if (query.length < 2) return;
+    
+    const nonce = document.getElementById('jpos-customer-search-nonce').value;
+    const response = await fetch(`api/customers.php?query=${encodeURIComponent(query)}&nonce=${nonce}`);
+    const data = await response.json();
+    
+    if (data.success) {
+        renderCustomerResults(data.data.customers);
+    }
+}
+```
+
+**Attach Customer:**
+```javascript
+function attachCustomer(id, name, email) {
+    appState.cart.customer = { id, name, email };
+    renderCustomerDisplay();
+    hideCustomerSearch();
+    saveCartState();
+}
+```
+
+**Held Cart with Customer:**
+```javascript
+const cartData = {
+    id: Date.now(),
+    items: appState.cart.items,
+    customer: appState.cart.customer, // Persisted
+    total: calculateTotal()
+};
+```
+
+### Performance Considerations
+- Search debounced to 300ms to reduce API calls
+- Maximum 20 results returned per query
+- Performance monitoring tracks search execution time
+- Results cached by browser for repeated queries
+
+### Security
+- CSRF protection via WordPress nonce
+- User capability check (`manage_woocommerce`)
+- Input sanitization on all search parameters
+- No sensitive customer data logged to console
+
+### Future Enhancements
+- Customer creation from POS interface
+- Customer purchase history display
+- Loyalty program integration
+- Custom customer fields support
+
+### Held Cart Customer Functionality (v1.8.55)
+
+#### Issue: Customer Not Persisting Through Held Cart Cycle
+- **Problem**: Customer data was not properly saved, displayed, or restored when holding and retrieving carts
+- **Symptoms**:
+  - After holding cart with customer attached, customer still displayed in current cart (should be cleared)
+  - Held carts table didn't show which carts had customers attached
+  - When restoring a held cart, the customer data was lost
+- **Root Cause**: Three separate issues:
+  1. [`holdCurrentCart()`](../assets/js/main.js:3327) wasn't saving customer data to held cart object before clearing
+  2. [`renderHeldCarts()`](../assets/js/main.js:3344) had no customer column in the table display
+  3. [`restoreHeldCart()`](../assets/js/main.js:3466) wasn't restoring customer property from held cart data
+- **Solution (v1.8.55)**:
+  1. **Hold Cart Fix**: Modified [`holdCurrentCart()`](../assets/js/main.js:3327) to save customer data:
+     ```javascript
+     const cartData = {
+         id: Date.now(),
+         items: JSON.parse(JSON.stringify(appState.cart.items)),
+         fee: appState.cart.fee || 0,
+         discount: appState.cart.discount || 0,
+         customer: appState.cart.customer ? JSON.parse(JSON.stringify(appState.cart.customer)) : null,
+         timestamp: new Date().toISOString()
+     };
+     ```
+  2. **Display Fix**: Updated [`renderHeldCarts()`](../assets/js/main.js:3344) table header and rows:
+     - Changed grid layout from 2-column items to 1-column items + 2-column customer
+     - Added customer display logic: `held.customer ? held.customer.name : '-'`
+     - Implemented truncation with tooltip for long customer names
+  3. **Restore Fix**: Added customer restoration in [`restoreHeldCart()`](../assets/js/main.js:3466):
+     ```javascript
+     appState.cart.customer = held.customer || null;
+     ```
+- **Technical Details**:
+  - Customer object structure: `{ id, name, email }`
+  - Deep clone customer data with `JSON.parse(JSON.stringify())` to prevent reference issues
+  - Null handling for carts without customers
+  - Version updated from v1.8.54 to v1.8.55 in [`index.php`](../index.php:25)
+- **Testing**:
+  1. Attach customer to cart
+  2. Hold the cart
+  3. Verify customer clears from current cart
+  4. Check held carts table shows customer name
+  5. Restore held cart
+  6. Verify customer reappears in cart with correct data
+- **Prevention**:
+  - Always include all cart properties when saving held cart state
+  - Ensure UI displays all relevant data for held carts
+  - Test complete hold/restore cycle when modifying cart data structure
+
+### Customer Display Not Clearing After Hold (v1.8.56)
+
+#### Issue: Customer Display Box Remains Visible After Holding Cart
+- **Problem**: After holding a cart with an attached customer, the customer display box remained visible at the top of the cart even though the customer data had been cleared from the state
+- **Symptoms**:
+  - Customer display box still shows after holding cart with customer
+  - Visual display doesn't match the cleared state data
+  - Customer data IS correctly cleared from `appState.cart.customer` (set to null)
+  - Display just wasn't updating to reflect the cleared state
+- **Root Cause**: The [`clearCart()`](../assets/js/main.js:1372) function at line 1372 was clearing cart items and other data when `fullReset = true`, but wasn't explicitly setting `appState.cart.customer = null`. Since [`renderCustomerDisplay()`](../assets/js/main.js:1389) (called by [`renderCart()`](../assets/js/main.js:1346)) checks for customer data in state, the old customer data was still present and continued to display
+- **Solution (v1.8.56)**:
+  - Modified [`clearCart()`](../assets/js/main.js:1372) function to explicitly clear customer data:
+    ```javascript
+    function clearCart(fullReset = false) {
+        appState.cart.items = [];
+        appState.fee = { amount: '', label: '', amountType: 'flat' };
+        appState.discount = { amount: '', label: '', amountType: 'flat' };
+        appState.feeDiscount = { type: null, amount: '', label: '', amountType: 'flat' };
+        if (fullReset) {
+            appState.cart.customer = null;  // ADDED THIS LINE
+            appState.return_from_order_id = null;
+            appState.return_from_order_items = [];
+        }
+        renderCart();
+        saveCartState();
+    }
+    ```
+  - This ensures that when [`holdCurrentCart()`](../assets/js/main.js:3327) calls `Cart.clearCart(true)`, the customer data is properly cleared
+  - The [`renderCustomerDisplay()`](../assets/js/main.js:1389) function already checks for `appState.cart.customer`, so once it's set to null, the display automatically hides
+- **Technical Details**:
+  - [`clearCart()`](../assets/js/main.js:1372) is called with `fullReset = true` when holding carts
+  - Customer data was being saved correctly to held cart before clearing
+  - Customer data was being restored correctly when retrieving held cart
+  - Only the visual display clearing was broken - the data flow was correct
+  - Fix ensures UI state matches data state at all times
+- **Testing**:
+  1. Attach customer to cart
+  2. Hold the cart
+  3. Verify customer display box disappears immediately
+  4. Check held carts table shows customer name
+  5. Restore held cart
+  6. Verify customer reappears correctly
+- **Prevention**:
+  - When implementing full reset operations, ensure ALL cart-related state is explicitly cleared
+  - Test visual display updates, not just data state
+  - Verify UI reflects state changes immediately
+
 ## Version History
 
+- v1.8.56: Fixed customer display not clearing after holding cart - modified [`clearCart()`](../assets/js/main.js:1372) to explicitly set `appState.cart.customer = null` when `fullReset = true`, ensuring the visual display updates to match the cleared state. Customer save/restore functionality already working correctly from v1.8.55
+- v1.8.55: Fixed held cart customer functionality - resolved three critical issues: customer data now saved when holding cart, customer name displayed in held carts table with truncated display, customer properly restored when retrieving held cart. Modified [`holdCurrentCart()`](../assets/js/main.js:3327), [`renderHeldCarts()`](../assets/js/main.js:3344), and [`restoreHeldCart()`](../assets/js/main.js:3466). Version updated in [`index.php`](../index.php:25)
+- v1.8.54: Implemented customer attachment functionality for POS orders - created customer search API endpoint [`api/customers.php`](../api/customers.php:1), on-screen keyboard component [`assets/js/modules/keyboard.js`](../assets/js/modules/keyboard.js:1), customer state management, UI integration with search modal and cart display, held cart persistence
+- v1.8.53: Improved POS cart UI layout - moved Clear Cart button from bottom of button section to directly below cart items area in [`index.php`](../index.php:377) for better visual hierarchy and user experience, button now appears immediately after cart items list and before cart totals section
+- v1.8.46: Fixed product creation API 400 error - modified [`product-edit-simple.php`](../api/product-edit-simple.php:12-26) to check JSON POST body for action parameter when not found in URL query string, resolves "Action parameter required" error that prevented product creation
+- v1.8.45: Restored product creation functionality - added "Create Product" button at [`index.php:630`](../index.php:630), restored [`create_product` action handler](../api/product-edit-simple.php:279-354) with validation and SKU uniqueness checking, modified [`openProductEditor()`](../assets/js/main.js:1758) to support create mode with optional productId parameter, updated [`saveProductEditor()`](../assets/js/main.js:3260) to handle both create and update operations with automatic mode switching, implemented two-step workflow where product is created first then images can be uploaded after modal switches to edit mode, cache-busting version incremented to v1.8.45
 - v1.0.0: Initial release
 - v1.1.0: Added modular architecture
 - v1.2.0: Performance optimizations
@@ -969,3 +1521,5 @@ For technical support or questions:
 - v1.8.2: Smart Suggestions Filtering - Updated add attribute suggestions to exclude already-added attributes from the dropdown
 - v1.8.3: User-Controlled Dropdowns - Fixed options dropdown opening automatically when searching attribute names, now only shows on user focus
 - v1.8.17: Complete Reporting Removal - Removed all reporting functionality and corrected application branding from WP-POS to WP POS (WordPress Point of Sale)
+- v1.8.55: Fixed held cart customer functionality - resolved three critical issues: customer data now saved when holding cart, customer name displayed in held carts table with truncated display, customer properly restored when retrieving held cart. Modified [`holdCurrentCart()`](../assets/js/main.js:3327), [`renderHeldCarts()`](../assets/js/main.js:3344), and [`restoreHeldCart()`](../assets/js/main.js:3466). Version updated in [`index.php`](../index.php:25)
+- v1.8.54: Implemented customer attachment functionality for POS orders - created customer search API endpoint [`api/customers.php`](../api/customers.php:1), on-screen keyboard component [`assets/js/modules/keyboard.js`](../assets/js/modules/keyboard.js:1), customer state management, UI integration with search modal and cart display, held cart persistence

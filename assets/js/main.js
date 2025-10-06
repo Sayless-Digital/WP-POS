@@ -1,6 +1,6 @@
-// WP POS v1.8.17 - Reports HTML Elements Removed
+// WP POS v1.8.55 - Held Cart Customer Functionality Fixed
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('WP POS v1.8.17 loaded - Reports HTML Elements Removed');
+    console.log('WP POS v1.8.55 loaded - Held Cart Customer Functionality Fixed');
     // Initialize Routing Manager
     const routingManager = new RoutingManager();
 
@@ -585,6 +585,24 @@ document.addEventListener('DOMContentLoaded', () => {
         if (checkoutBtn) checkoutBtn.addEventListener('click', processTransaction);
         const clearCartBtn = document.getElementById('clear-cart-btn');
         if (clearCartBtn) clearCartBtn.addEventListener('click', () => clearCart(true));
+        
+        // Customer attachment event handlers
+        const attachCustomerBtn = document.getElementById('attach-customer-btn');
+        if (attachCustomerBtn) {
+            attachCustomerBtn.addEventListener('click', showCustomerSearch);
+        }
+        
+        // Customer search input handler with debounce
+        const customerSearchInput = document.getElementById('customer-search-input');
+        if (customerSearchInput) {
+            let searchTimeout;
+            customerSearchInput.addEventListener('input', (e) => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    searchCustomers(e.target.value);
+                }, 300);
+            });
+        }
         const modalCancelBtn = document.getElementById('modal-cancel-btn');
         if (modalCancelBtn) modalCancelBtn.addEventListener('click', () => document.getElementById('variation-modal').classList.add('hidden'));
         const printReceiptBtn = document.getElementById('print-receipt-btn');
@@ -632,6 +650,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const productEditorCancelBtn = document.getElementById('product-editor-cancel');
         if (productEditorCancelBtn) productEditorCancelBtn.addEventListener('click', () => document.getElementById('product-editor-modal').classList.add('hidden'));
+        
         
         // Barcode Generation Button
         const generateBarcodeBtn = document.getElementById('generate-barcode-btn');
@@ -1229,6 +1248,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function renderCart() {
+        // Render customer display
+        renderCustomerDisplay();
+        
         const cartContainer = document.getElementById('cart-items');
         const totalEl = document.getElementById('cart-total');
         const totalBottomEl = document.getElementById('cart-total-bottom');
@@ -1347,17 +1369,146 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCart();
     }
 
-    function clearCart(fullReset = false) { 
-        appState.cart.items = []; 
+    function clearCart(fullReset = false) {
+        appState.cart.items = [];
         appState.fee = { amount: '', label: '', amountType: 'flat' };
         appState.discount = { amount: '', label: '', amountType: 'flat' };
         appState.feeDiscount = { type: null, amount: '', label: '', amountType: 'flat' };
         if (fullReset) {
+            appState.cart.customer = null;
             appState.return_from_order_id = null;
             appState.return_from_order_items = [];
         }
-        renderCart(); 
+        renderCart();
         saveCartState();
+    }
+
+    // Customer attachment functions
+    function renderCustomerDisplay() {
+        const customer = appState.cart.customer;
+        const container = document.getElementById('cart-customer-display');
+        
+        if (!container) return;
+        
+        if (customer) {
+            container.innerHTML = `
+                <div class="bg-indigo-600/20 border border-indigo-500/50 rounded-lg p-2 mb-2">
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1 min-w-0">
+                            <div class="text-sm font-semibold text-indigo-200 truncate">${customer.name}</div>
+                            <div class="text-xs text-indigo-300/70 truncate">${customer.email}</div>
+                        </div>
+                        <button onclick="detachCustomer()"
+                                class="ml-2 p-1 text-indigo-300 hover:text-white rounded transition-colors"
+                                title="Remove customer">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            container.classList.remove('hidden');
+        } else {
+            container.innerHTML = '';
+            container.classList.add('hidden');
+        }
+    }
+
+    function showCustomerSearch() {
+        const modal = document.getElementById('customer-search-modal');
+        if (!modal) return;
+        
+        // Clear previous search
+        const searchInput = document.getElementById('customer-search-input');
+        if (searchInput) searchInput.value = '';
+        
+        const results = document.getElementById('customer-search-results');
+        if (results) results.innerHTML = '<div class="text-center text-slate-400 py-4">Enter at least 2 characters to search</div>';
+        
+        modal.classList.remove('hidden');
+    }
+
+    function hideCustomerSearch() {
+        const modal = document.getElementById('customer-search-modal');
+        if (modal) modal.classList.add('hidden');
+        
+        // Hide keyboard if visible
+        if (window.onScreenKeyboard && window.onScreenKeyboard.isKeyboardVisible()) {
+            window.onScreenKeyboard.hide();
+        }
+    }
+
+    async function searchCustomers(query) {
+        if (!query || query.length < 2) {
+            const results = document.getElementById('customer-search-results');
+            if (results) {
+                results.innerHTML = '<div class="text-center text-slate-400 py-4">Enter at least 2 characters to search</div>';
+            }
+            return;
+        }
+
+        try {
+            const nonce = document.getElementById('jpos-customer-search-nonce')?.value;
+            const response = await fetch(`api/customers.php?query=${encodeURIComponent(query)}&nonce=${nonce}`);
+            
+            if (!response.ok) {
+                throw new Error('Search failed');
+            }
+
+            const data = await response.json();
+            
+            if (data.success) {
+                renderCustomerResults(data.data.customers);
+            } else {
+                throw new Error(data.message || 'Search failed');
+            }
+        } catch (error) {
+            console.error('Customer search error:', error);
+            const results = document.getElementById('customer-search-results');
+            if (results) {
+                results.innerHTML = '<div class="text-center text-red-400 py-4">Search failed. Please try again.</div>';
+            }
+        }
+    }
+
+    function renderCustomerResults(customers) {
+        const results = document.getElementById('customer-search-results');
+        if (!results) return;
+
+        if (customers.length === 0) {
+            results.innerHTML = '<div class="text-center text-slate-400 py-4">No customers found</div>';
+            return;
+        }
+
+        results.innerHTML = customers.map(customer => `
+            <button onclick="attachCustomer(${customer.id}, '${customer.name.replace(/'/g, "\\'")}', '${customer.email}')"
+                    class="w-full text-left p-3 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors">
+                <div class="font-semibold text-slate-200">${customer.name}</div>
+                <div class="text-sm text-slate-400">${customer.email}</div>
+            </button>
+        `).join('');
+    }
+
+    function attachCustomer(id, name, email) {
+        const customer = { id, name, email };
+        appState.cart.customer = customer;
+        renderCustomerDisplay();
+        hideCustomerSearch();
+        showToast(`Customer ${name} attached to cart`);
+        saveCartState();
+    }
+
+    function detachCustomer() {
+        appState.cart.customer = null;
+        renderCustomerDisplay();
+        showToast('Customer removed from cart');
+        saveCartState();
+    }
+
+    function toggleCustomerKeyboard() {
+        const searchInput = document.getElementById('customer-search-input');
+        if (searchInput && window.onScreenKeyboard) {
+            window.onScreenKeyboard.toggle(searchInput);
+        }
     }
 
     async function processTransaction() {
@@ -1692,42 +1843,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentEditingProduct = null;
     let productEditorNonce = '';
 
-    /**
-     * Clear all product images (for form reset)
-     */
-    function clearProductImages() {
-        // Clear featured image
-        const featuredPreview = document.getElementById('featured-image-preview');
-        const featuredDropzone = document.getElementById('featured-image-dropzone');
-        
-        if (featuredPreview) featuredPreview.classList.add('hidden');
-        if (featuredDropzone) {
-            featuredDropzone.classList.remove('hidden');
-            featuredDropzone.style.pointerEvents = '';
-            featuredDropzone.style.opacity = '';
-            featuredDropzone.innerHTML = `
-                <i class="fa fa-cloud-upload-alt text-4xl text-slate-400 mb-2"></i>
-                <p class="text-slate-300 mb-1">Click to upload or drag and drop</p>
-                <p class="text-sm text-slate-500">PNG, JPG, JPEG, WEBP, GIF (max 5MB)</p>
-            `;
-        }
-        
-        // Clear gallery images
-        const galleryGrid = document.getElementById('gallery-images-grid');
-        if (galleryGrid) galleryGrid.innerHTML = '';
-        
-        // Reset gallery dropzone
-        const galleryDropzone = document.getElementById('gallery-add-dropzone');
-        if (galleryDropzone) {
-            galleryDropzone.style.pointerEvents = '';
-            galleryDropzone.style.opacity = '';
-            galleryDropzone.innerHTML = `
-                <i class="fa fa-plus text-2xl text-slate-400 mb-1"></i>
-                <p class="text-sm text-slate-300">Add More Images</p>
-            `;
-        }
-    }
-
     function clearProductEditorForm() {
         document.getElementById('product-name').value = '';
         document.getElementById('product-sku').value = '';
@@ -1750,15 +1865,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // Clear variations and hide variations section
         document.getElementById('product-variations').innerHTML = '';
         document.getElementById('variations-section').classList.add('hidden');
-        
-        // Clear product images
-        clearProductImages();
     }
 
-    async function openProductEditor(productId) {
-        // Require product ID - creation removed
+    async function openProductEditor(productId = null) {
+        // Only allow editing existing products
         if (!productId) {
-            showToast('Product ID is required');
+            alert('Product ID is required. Product creation is disabled.');
             return;
         }
         
@@ -1775,7 +1887,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Start with form view by default
         switchToFormView();
         
-        // EDIT MODE (only mode available now)
+        // EDIT MODE ONLY
         titleEl.textContent = 'Loading Product...';
         saveBtn.textContent = 'Save Changes';
         saveBtn.setAttribute('data-mode', 'edit');
@@ -1796,496 +1908,14 @@ document.addEventListener('DOMContentLoaded', () => {
             // Load tax classes
             await loadTaxClasses();
             
-            // Initialize image upload functionality
-            await initializeImageUpload(result.data);
-            
-            // JSON preview now only updates in JSON tab
-            
         } catch (error) {
             console.error("Error loading product details:", error);
             titleEl.textContent = 'Error Loading Product';
             document.getElementById('product-editor-status').textContent = `Error: ${error.message}`;
             document.getElementById('product-editor-status').className = 'text-sm text-right h-5 mt-2 text-red-400';
         }
-
     }
     
-    // ===== IMAGE UPLOAD FUNCTIONALITY =====
-    
-    /**
-     * Initialize image upload functionality for product editor
-     * @param {Object} productData - Product data object
-     */
-    async function initializeImageUpload(productData) {
-        // Product must exist - creation mode removed
-        if (!productData || !productData.id) {
-            console.error('Product data required for image upload');
-            return;
-        }
-        
-        // EDIT MODE - Enable image uploads
-        setupFeaturedImageUpload(productData.id);
-        setupGalleryImageUpload(productData.id);
-        
-        // Load existing images
-        if (productData.featured_image && productData.featured_image.url) {
-            displayFeaturedImage(productData.featured_image);
-        }
-        
-        if (productData.gallery_images && productData.gallery_images.length > 0) {
-            productData.gallery_images.forEach(img => displayGalleryImage(img));
-        }
-    }
-    
-    /**
-     * Validate image file before upload
-     * @param {File} file - File object to validate
-     * @return {Object} - {valid: boolean, error: string}
-     */
-    function validateImageFile(file) {
-        // Check file size (5MB max)
-        const maxSize = 5 * 1024 * 1024; // 5MB
-        if (file.size > maxSize) {
-            return { valid: false, error: 'File size exceeds 5MB limit' };
-        }
-        
-        // Check file type
-        const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'];
-        if (!allowedTypes.includes(file.type)) {
-            return { valid: false, error: 'Invalid file type. Only PNG, JPG, JPEG, WebP, and GIF are allowed' };
-        }
-        
-        return { valid: true };
-    }
-    
-    /**
-     * Setup featured image upload functionality
-     * @param {number} productId - Product ID
-     */
-    function setupFeaturedImageUpload(productId) {
-        const dropzone = document.getElementById('featured-image-dropzone');
-        const fileInput = document.getElementById('featured-image-input');
-        
-        if (!dropzone || !fileInput) return;
-        
-        // Click to upload
-        dropzone.addEventListener('click', () => fileInput.click());
-        
-        // File selection
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                uploadFeaturedImage(file, productId);
-            }
-            // Reset input
-            e.target.value = '';
-        });
-        
-        // Drag and drop
-        dropzone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropzone.classList.add('border-blue-500', 'bg-slate-700/50');
-        });
-        
-        dropzone.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            dropzone.classList.remove('border-blue-500', 'bg-slate-700/50');
-        });
-        
-        dropzone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropzone.classList.remove('border-blue-500', 'bg-slate-700/50');
-            
-            const file = e.dataTransfer.files[0];
-            if (file) {
-                uploadFeaturedImage(file, productId);
-            }
-        });
-    }
-    
-    /**
-     * Upload featured image to API
-     * @param {File} file - File to upload
-     * @param {number} productId - Product ID
-     */
-    async function uploadFeaturedImage(file, productId) {
-        // Validate file
-        const validation = validateImageFile(file);
-        if (!validation.valid) {
-            showToast(validation.error);
-            return;
-        }
-        
-        // Show loading state
-        const dropzone = document.getElementById('featured-image-dropzone');
-        const loading = document.getElementById('featured-image-loading');
-        const progressBar = document.getElementById('featured-upload-progress');
-        
-        dropzone.classList.add('hidden');
-        loading.classList.remove('hidden');
-        
-        // Create FormData
-        const formData = new FormData();
-        formData.append('action', 'upload_featured');
-        formData.append('product_id', productId);
-        formData.append('image', file);
-        formData.append('nonce', appState.nonces.productEdit);
-        
-        try {
-            // Use XMLHttpRequest for progress tracking
-            const xhr = new XMLHttpRequest();
-            
-            // Track upload progress
-            xhr.upload.addEventListener('progress', (e) => {
-                if (e.lengthComputable) {
-                    const percent = (e.loaded / e.total) * 100;
-                    progressBar.style.width = percent + '%';
-                }
-            });
-            
-            // Handle completion
-            xhr.addEventListener('load', () => {
-                if (xhr.status === 200) {
-                    try {
-                        const response = JSON.parse(xhr.responseText);
-                        if (response.success) {
-                            displayFeaturedImage(response.data);
-                            showToast('Featured image uploaded successfully');
-                            
-                            // Update currentEditingProduct
-                            if (currentEditingProduct) {
-                                currentEditingProduct.featured_image = response.data;
-                            }
-                        } else {
-                            throw new Error(response.message || 'Upload failed');
-                        }
-                    } catch (e) {
-                        showToast('Upload failed: ' + e.message);
-                    }
-                } else {
-                    showToast('Upload failed: Server error');
-                }
-                
-                // Hide loading
-                loading.classList.add('hidden');
-                progressBar.style.width = '0%';
-            });
-            
-            // Handle errors
-            xhr.addEventListener('error', () => {
-                showToast('Upload failed: Network error');
-                loading.classList.add('hidden');
-                dropzone.classList.remove('hidden');
-                progressBar.style.width = '0%';
-            });
-            
-            // Send request
-            xhr.open('POST', 'api/product-images.php');
-            xhr.send(formData);
-            
-        } catch (error) {
-            console.error('Featured image upload error:', error);
-            showToast('Upload failed: ' + error.message);
-            loading.classList.add('hidden');
-            dropzone.classList.remove('hidden');
-            progressBar.style.width = '0%';
-        }
-    }
-    
-    /**
-     * Display featured image preview with controls
-     * @param {Object} imageData - Image data from API
-     */
-    function displayFeaturedImage(imageData) {
-        const preview = document.getElementById('featured-image-preview');
-        const dropzone = document.getElementById('featured-image-dropzone');
-        const img = preview.querySelector('img');
-        
-        if (!preview || !img) return;
-        
-        // Set image source
-        img.src = imageData.url || imageData.thumbnail_url;
-        
-        // Show preview, hide dropzone
-        preview.classList.remove('hidden');
-        dropzone.classList.add('hidden');
-        
-        // Setup remove button
-        const removeBtn = document.getElementById('remove-featured-image');
-        if (removeBtn) {
-            removeBtn.onclick = () => removeFeaturedImage();
-        }
-        
-        // Setup replace button
-        const changeBtn = document.getElementById('change-featured-image');
-        if (changeBtn) {
-            changeBtn.onclick = () => {
-                const fileInput = document.getElementById('featured-image-input');
-                if (fileInput) fileInput.click();
-            };
-        }
-    }
-    
-    /**
-     * Remove featured image
-     */
-    async function removeFeaturedImage() {
-        if (!currentEditingProduct || !currentEditingProduct.id) return;
-        
-        if (!confirm('Remove featured image?')) return;
-        
-        try {
-            const response = await fetch('api/product-images.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'remove_featured',
-                    product_id: currentEditingProduct.id,
-                    nonce: appState.nonces.productEdit
-                })
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                // Hide preview, show dropzone
-                const preview = document.getElementById('featured-image-preview');
-                const dropzone = document.getElementById('featured-image-dropzone');
-                
-                preview.classList.add('hidden');
-                dropzone.classList.remove('hidden');
-                
-                // Update currentEditingProduct
-                if (currentEditingProduct) {
-                    currentEditingProduct.featured_image = null;
-                }
-                
-                showToast('Featured image removed');
-            } else {
-                throw new Error(result.message || 'Remove failed');
-            }
-        } catch (error) {
-            console.error('Remove featured image error:', error);
-            showToast('Failed to remove image: ' + error.message);
-        }
-    }
-    
-    /**
-     * Setup gallery image upload functionality
-     * @param {number} productId - Product ID
-     */
-    function setupGalleryImageUpload(productId) {
-        const dropzone = document.getElementById('gallery-add-dropzone');
-        const fileInput = document.getElementById('gallery-images-input');
-        
-        if (!dropzone || !fileInput) return;
-        
-        // Click to upload
-        dropzone.addEventListener('click', () => fileInput.click());
-        
-        // File selection (multiple files)
-        fileInput.addEventListener('change', (e) => {
-            const files = Array.from(e.target.files);
-            if (files.length > 0) {
-                uploadGalleryImages(files, productId);
-            }
-            // Reset input
-            e.target.value = '';
-        });
-        
-        // Drag and drop
-        dropzone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropzone.classList.add('border-blue-500', 'bg-slate-700/50');
-        });
-        
-        dropzone.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            dropzone.classList.remove('border-blue-500', 'bg-slate-700/50');
-        });
-        
-        dropzone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropzone.classList.remove('border-blue-500', 'bg-slate-700/50');
-            
-            const files = Array.from(e.dataTransfer.files);
-            if (files.length > 0) {
-                uploadGalleryImages(files, productId);
-            }
-        });
-    }
-    
-    /**
-     * Upload multiple gallery images
-     * @param {Array} files - Array of File objects
-     * @param {number} productId - Product ID
-     */
-    async function uploadGalleryImages(files, productId) {
-        // Check gallery limit (max 10 images)
-        const currentGallery = document.getElementById('gallery-images-grid');
-        const currentCount = currentGallery ? currentGallery.children.length : 0;
-        const totalAfterUpload = currentCount + files.length;
-        
-        if (totalAfterUpload > 10) {
-            showToast('Gallery limit exceeded. Maximum 10 images allowed');
-            return;
-        }
-        
-        // Validate all files first
-        for (const file of files) {
-            const validation = validateImageFile(file);
-            if (!validation.valid) {
-                showToast(`${file.name}: ${validation.error}`);
-                return;
-            }
-        }
-        
-        // Show upload queue
-        const uploadQueue = document.getElementById('gallery-upload-queue');
-        uploadQueue.classList.remove('hidden');
-        uploadQueue.innerHTML = '<div class="text-sm text-slate-300 mb-2">Uploading gallery images...</div>';
-        
-        // Create FormData
-        const formData = new FormData();
-        formData.append('action', 'upload_gallery');
-        formData.append('product_id', productId);
-        
-        // DEBUG: Log files being uploaded
-        console.log('[DEBUG] Uploading gallery images:', files.length, 'files');
-        console.log('[DEBUG] Product ID:', productId);
-        console.log('[DEBUG] Nonce:', appState.nonces.productEdit);
-        
-        files.forEach((file, index) => {
-            console.log(`[DEBUG] Appending file ${index}:`, file.name, file.type, file.size);
-            // FIX: Use 'images[]' instead of 'images[0]', 'images[1]' to create proper PHP array
-            formData.append('images[]', file);
-        });
-        formData.append('nonce', appState.nonces.productEdit);
-        
-        // DEBUG: Log FormData contents
-        console.log('[DEBUG] FormData entries:');
-        for (let pair of formData.entries()) {
-            console.log(`[DEBUG] ${pair[0]}:`, pair[1]);
-        }
-        
-        try {
-            const response = await fetch('api/product-images.php', {
-                method: 'POST',
-                body: formData
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                // Display uploaded images
-                if (result.data.uploaded && result.data.uploaded.length > 0) {
-                    result.data.uploaded.forEach(img => displayGalleryImage(img));
-                    showToast(`${result.data.uploaded.length} image(s) uploaded successfully`);
-                }
-                
-                // Show errors if any
-                if (result.data.errors && result.data.errors.length > 0) {
-                    result.data.errors.forEach(err => {
-                        console.error(`Upload error for ${err.filename}:`, err.error);
-                    });
-                    showToast(`${result.data.errors.length} file(s) failed to upload`);
-                }
-                
-                // Update currentEditingProduct
-                if (currentEditingProduct && result.data.uploaded) {
-                    if (!currentEditingProduct.gallery_images) {
-                        currentEditingProduct.gallery_images = [];
-                    }
-                    currentEditingProduct.gallery_images.push(...result.data.uploaded);
-                }
-            } else {
-                throw new Error(result.message || 'Upload failed');
-            }
-        } catch (error) {
-            console.error('Gallery upload error:', error);
-            showToast('Upload failed: ' + error.message);
-        } finally {
-            // Hide upload queue
-            uploadQueue.classList.add('hidden');
-            uploadQueue.innerHTML = '';
-        }
-    }
-    
-    /**
-     * Display gallery image in grid
-     * @param {Object} imageData - Image data from API
-     */
-    function displayGalleryImage(imageData) {
-        const grid = document.getElementById('gallery-images-grid');
-        if (!grid) return;
-        
-        // Create gallery item
-        const item = document.createElement('div');
-        item.className = 'relative group';
-        item.dataset.attachmentId = imageData.attachment_id || imageData.id;
-        
-        item.innerHTML = `
-            <img src="${imageData.thumbnail_url || imageData.url}" alt="Gallery Image" class="w-full aspect-square object-cover rounded-lg border border-slate-500">
-            <button class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-red-600 text-white w-8 h-8 rounded-full hover:bg-red-500 flex items-center justify-center" title="Remove">
-                <i class="fa fa-trash text-sm"></i>
-            </button>
-        `;
-        
-        // Setup remove button
-        const removeBtn = item.querySelector('button');
-        removeBtn.onclick = () => removeGalleryImage(imageData.attachment_id || imageData.id, item);
-        
-        // Add to grid
-        grid.appendChild(item);
-    }
-    
-    /**
-     * Remove gallery image
-     * @param {number} attachmentId - Attachment ID
-     * @param {HTMLElement} itemElement - DOM element to remove
-     */
-    async function removeGalleryImage(attachmentId, itemElement) {
-        if (!currentEditingProduct || !currentEditingProduct.id) return;
-        
-        if (!confirm('Remove this gallery image?')) return;
-        
-        try {
-            const response = await fetch('api/product-images.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'remove_gallery',
-                    product_id: currentEditingProduct.id,
-                    attachment_id: attachmentId,
-                    nonce: appState.nonces.productEdit
-                })
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                // Remove from DOM
-                itemElement.remove();
-                
-                // Update currentEditingProduct
-                if (currentEditingProduct && currentEditingProduct.gallery_images) {
-                    currentEditingProduct.gallery_images = currentEditingProduct.gallery_images.filter(
-                        img => (img.attachment_id || img.id) != attachmentId
-                    );
-                }
-                
-                showToast('Gallery image removed');
-            } else {
-                throw new Error(result.message || 'Remove failed');
-            }
-        } catch (error) {
-            console.error('Remove gallery image error:', error);
-            showToast('Failed to remove image: ' + error.message);
-        }
-    }
-    
-    
-
     // Tab Switching Functions
     function switchToFormView() {
         document.getElementById('form-view').classList.remove('hidden');
@@ -3260,6 +2890,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function saveProductEditor() {
         const statusEl = document.getElementById('product-editor-status');
         const saveBtn = document.getElementById('product-editor-save');
+        const titleEl = document.getElementById('product-editor-title');
         
         statusEl.textContent = 'Saving...';
         statusEl.className = 'text-sm text-right h-5 mt-2 text-slate-400';
@@ -3268,32 +2899,79 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.nonce = appState.nonces.productEdit;
         
         try {
-            // EDIT MODE ONLY - product creation has been removed
-            if (!currentEditingProduct) {
-                throw new Error('No product loaded for editing');
+            // Detect mode from save button attribute
+            const mode = saveBtn.getAttribute('data-mode');
+            
+            if (mode === 'create') {
+                // CREATE MODE - create new product
+                const payload = {
+                    action: 'create_product',
+                    ...formData
+                };
+                
+                // Remove id field for creation
+                delete payload.id;
+                
+                const response = await fetch('api/product-edit-simple.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) throw new Error(`Server responded with ${response.status}`);
+                const result = await response.json();
+                if (!result.success) throw new Error(result.data?.message || result.message);
+                
+                // SUCCESS - Product created
+                const newProductId = result.data?.product_id || result.product_id;
+                
+                statusEl.textContent = 'Product created successfully! You can now upload images.';
+                statusEl.className = 'text-sm text-right h-5 mt-2 text-green-400';
+                
+                // Update to edit mode with new product
+                currentEditingProduct = {
+                    id: newProductId,
+                    ...formData
+                };
+                
+                titleEl.textContent = `Edit: ${formData.name}`;
+                saveBtn.textContent = 'Save Changes';
+                saveBtn.setAttribute('data-mode', 'edit');
+                
+                // Enable image uploads now that product exists
+                await initializeImageUpload(currentEditingProduct);
+                
+                // Refresh product list
+                await refreshAllData();
+                
+            } else {
+                // EDIT MODE - update existing product
+                if (!currentEditingProduct) {
+                    throw new Error('No product loaded for editing');
+                }
+                
+                const payload = {
+                    action: 'update_product',
+                    ...formData
+                };
+                
+                const response = await fetch('api/product-edit-simple.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) throw new Error(`Server responded with ${response.status}`);
+                const result = await response.json();
+                if (!result.success) throw new Error(result.data?.message || result.message);
+                
+                // EDIT MODE SUCCESS
+                statusEl.textContent = 'Product updated successfully!';
+                statusEl.className = 'text-sm text-right h-5 mt-2 text-green-400';
+                
+                // Refresh data but keep modal open for additional edits
+                await refreshAllData();
             }
-            
-            const payload = {
-                action: 'update_product',
-                ...formData
-            };
-            
-            const response = await fetch('api/product-edit-simple.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            
-            if (!response.ok) throw new Error(`Server responded with ${response.status}`);
-            const result = await response.json();
-            if (!result.success) throw new Error(result.data.message);
-            
-            // EDIT MODE SUCCESS
-            statusEl.textContent = 'Product updated successfully!';
-            statusEl.className = 'text-sm text-right h-5 mt-2 text-green-400';
-            
-            // Refresh data but keep modal open for additional edits
-            await refreshAllData();
             
         } catch (error) {
             console.error('Error saving product:', error);
@@ -3656,6 +3334,7 @@ document.addEventListener('DOMContentLoaded', () => {
             cart: JSON.parse(JSON.stringify(appState.cart.items)),
             fee: JSON.parse(JSON.stringify(appState.fee)),
             discount: JSON.parse(JSON.stringify(appState.discount)),
+            customer: appState.cart.customer ? JSON.parse(JSON.stringify(appState.cart.customer)) : null,
             time: timestamp
         });
         localStorage.setItem('jpos_held_carts', JSON.stringify(heldCarts));
@@ -3679,10 +3358,11 @@ document.addEventListener('DOMContentLoaded', () => {
         table.innerHTML = `
             <div class="grid grid-cols-12 gap-2 font-bold text-xs text-slate-400 border-b border-slate-700 py-2 mb-2">
                 <div class="col-span-3">Date Held</div>
-                <div class="col-span-2">Items</div>
+                <div class="col-span-2">Customer</div>
+                <div class="col-span-1">Items</div>
                 <div class="col-span-2">Fee</div>
                 <div class="col-span-2">Discount</div>
-                <div class="col-span-2">Total</div>
+                <div class="col-span-1">Total</div>
                 <div class="col-span-1 text-right">Actions</div>
             </div>
         `;
@@ -3716,12 +3396,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const row = document.createElement('div');
             row.className = 'grid grid-cols-12 gap-2 items-center bg-slate-800 border border-slate-700 rounded-lg mb-2 py-2 px-2 cursor-pointer hover:bg-slate-700/70';
             row.setAttribute('data-id', held.id);
+            const customerDisplay = held.customer ? `<div class="truncate" title="${held.customer.name}">${held.customer.name}</div>` : '<div class="text-slate-500">-</div>';
             row.innerHTML = `
                 <div class="col-span-3 text-slate-300">${formatDateTime(held.time)}</div>
-                <div class="col-span-2 text-slate-300">${held.cart.length}</div>
+                <div class="col-span-2 text-slate-300">${customerDisplay}</div>
+                <div class="col-span-1 text-slate-300">${held.cart.length}</div>
                 <div class="col-span-2 text-green-400">${held.fee.amount ? (held.fee.amountType === 'percentage' ? held.fee.amount + '%' : '$' + parseFloat(held.fee.amount).toFixed(2)) : '-'}</div>
                 <div class="col-span-2 text-amber-400">${held.discount.amount ? (held.discount.amountType === 'percentage' ? held.discount.amount + '%' : '$' + parseFloat(held.discount.amount).toFixed(2)) : '-'}</div>
-                <div class="col-span-2 text-slate-100 font-mono">$${total.toFixed(2)}</div>
+                <div class="col-span-1 text-slate-100 font-mono">$${total.toFixed(2)}</div>
                 <div class="col-span-1 flex gap-2 justify-end">
                     <button class="restore-held-btn bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-1 rounded" data-id="${held.id}">Restore</button>
                     <button class="delete-held-btn bg-red-600 hover:bg-red-500 text-white px-4 py-1 rounded" data-id="${held.id}">Delete</button>
@@ -3793,6 +3475,7 @@ document.addEventListener('DOMContentLoaded', () => {
         appState.cart.items = held.cart;
         appState.fee = held.fee;
         appState.discount = held.discount;
+        appState.cart.customer = held.customer || null;
         saveCartState();
         heldCarts = heldCarts.filter(h => h.id !== id);
         localStorage.setItem('jpos_held_carts', JSON.stringify(heldCarts));
@@ -4976,4 +4659,13 @@ document.addEventListener('DOMContentLoaded', () => {
     window.renderStockList = renderStockList;
     window.populateSettingsForm = populateSettingsForm;
     window.renderHeldCarts = renderHeldCarts;
+    
+    // Make customer functions globally available
+    window.showCustomerSearch = showCustomerSearch;
+    window.hideCustomerSearch = hideCustomerSearch;
+    window.searchCustomers = searchCustomers;
+    window.attachCustomer = attachCustomer;
+    window.detachCustomer = detachCustomer;
+    window.toggleCustomerKeyboard = toggleCustomerKeyboard;
 });
+// WP POS v1.8.55 - Held Cart Customer Functionality Fixed - CACHE BUST

@@ -13,6 +13,15 @@ try {
     $action = $_GET['action'] ?? null;
     $product_id = absint($_GET['id'] ?? 0);
     
+    // For POST requests, also check JSON body for action
+    if (!$action && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $input = file_get_contents('php://input');
+        $data = json_decode($input, true);
+        if ($data && isset($data['action'])) {
+            $action = $data['action'];
+        }
+    }
+    
     if (!$action) {
         JPOS_Error_Handler::send_error('Action parameter required', 400);
     }
