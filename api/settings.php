@@ -18,6 +18,8 @@ function get_jpos_default_settings() {
         'address'          => '54 Henry Street, Port of Spain-00000',
         'footer_message_1' => 'Thank You For Your Purchase!',
         'footer_message_2' => 'No Exchanges After 7 Days Or Without Original Packaging.',
+        'virtual_keyboard_enabled' => true,
+        'virtual_keyboard_auto_show' => false,
     ];
 }
 
@@ -49,6 +51,7 @@ if ($request_method === 'GET') {
     ]);
 
     $current_settings = get_option(JPOS_SETTINGS_OPTION_KEY, get_jpos_default_settings());
+    $old_settings = $current_settings; // Save original for comparison
 
     // Update settings with validated data
     if (isset($validated_data['logo_url'])) $current_settings['logo_url'] = $validated_data['logo_url'];
@@ -59,9 +62,20 @@ if ($request_method === 'GET') {
     if (isset($validated_data['footer_message_1'])) $current_settings['footer_message_1'] = $validated_data['footer_message_1'];
     if (isset($validated_data['footer_message_2'])) $current_settings['footer_message_2'] = $validated_data['footer_message_2'];
     
-    $result = update_option(JPOS_SETTINGS_OPTION_KEY, $current_settings);
-
-    if ($result) {
+    // Handle virtual keyboard settings (boolean values don't need validation)
+    if (isset($data['virtual_keyboard_enabled'])) {
+        $current_settings['virtual_keyboard_enabled'] = (bool)$data['virtual_keyboard_enabled'];
+    }
+    if (isset($data['virtual_keyboard_auto_show'])) {
+        $current_settings['virtual_keyboard_auto_show'] = (bool)$data['virtual_keyboard_auto_show'];
+    }
+    
+    // Check if anything actually changed by comparing old and new settings
+    $settings_changed = ($old_settings !== $current_settings);
+    
+    if ($settings_changed) {
+        // Force update since we detected changes
+        update_option(JPOS_SETTINGS_OPTION_KEY, $current_settings, false);
         JPOS_Error_Handler::send_success([], 'Settings saved successfully.');
     } else {
         JPOS_Error_Handler::send_success([], 'Settings are unchanged.');

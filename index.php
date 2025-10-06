@@ -22,13 +22,22 @@ require_once __DIR__ . '/../wp-load.php';
     <!-- WP POS Routing Module -->
     <script src="assets/js/modules/routing.js?v=1.5.11&t=<?php echo time(); ?>"></script>
     <!-- WP POS JavaScript -->
-    <script src="assets/js/main.js?v=1.8.56&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/main.js?v=1.8.71&t=<?php echo time(); ?>"></script>
     <style>
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #1e293b; } /* bg-slate-800 */
         ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; } /* bg-slate-600 */
         ::-webkit-scrollbar-thumb:hover { background: #64748b; } /* bg-slate-500 */
+
+        /* Hide scrollbar for receipt content */
+        #receipt-content {
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE and Edge */
+        }
+        #receipt-content::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, Opera */
+        }
 
         /* Active state for segmented controls */
         .segmented-control button[data-state='active'] {
@@ -454,7 +463,7 @@ require_once __DIR__ . '/../wp-load.php';
 
             <!-- Orders Page -->
             <section id="orders-page" class="page-content w-full hidden flex flex-col p-3 gap-3">
-                 <header class="flex items-center gap-4 p-2 bg-slate-800/80 backdrop-blur-sm border border-slate-700 rounded-xl shadow-lg flex-shrink-0">
+                 <header class="flex items-center gap-4 p-2 bg-slate-800/80 backdrop-blur-sm border border-slate-700 rounded-xl shadow-lg flex-shrink-0 z-20">
                     <button class="menu-toggle p-2 rounded-lg hover:bg-slate-700 transition-colors">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                     </button>
@@ -477,6 +486,22 @@ require_once __DIR__ . '/../wp-load.php';
                             <option value="pos">POS Orders</option>
                             <option value="online">Online Orders</option>
                         </select>
+                        <div class="relative">
+                            <input type="text"
+                                   id="order-customer-filter"
+                                   placeholder="Search customer..."
+                                   class="p-2 pr-8 rounded-lg bg-slate-700 border border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-64"
+                                   autocomplete="off">
+                            <button id="clear-customer-filter-btn"
+                                    class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white hidden">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                            <div id="order-customer-filter-results"
+                                 class="absolute z-[10000] w-full mt-1 bg-slate-700 border border-slate-600 rounded-lg shadow-lg hidden max-h-64 overflow-y-auto">
+                            </div>
+                        </div>
                         <select id="order-status-filter" class="p-2 rounded-lg bg-slate-700 border border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                             <option value="all">All Statuses</option>
                             <option value="processing">Processing</option>
@@ -492,7 +517,7 @@ require_once __DIR__ . '/../wp-load.php';
                     </div>
                  </header>
                  <main class="flex-grow flex flex-col overflow-y-auto">
-                    <div class="grid grid-cols-12 gap-4 sticky top-0 bg-slate-900 py-2 px-4 text-xs font-bold text-slate-400 uppercase border-b border-slate-700">
+                    <div class="grid grid-cols-12 gap-4 sticky top-0 z-10 bg-slate-900 py-2 px-4 text-xs font-bold text-slate-400 uppercase border-b border-slate-700">
                         <div class="col-span-2">Order #</div><div class="col-span-2">Date</div><div class="col-span-1">Source</div><div class="col-span-2">Status</div><div class="col-span-1 text-center">Items</div><div class="col-span-2 text-right">Total</div><div class="col-span-2 text-right">Actions</div>
                     </div>
                     <div id="order-list" class="flex-grow p-2 space-y-2"></div>
@@ -658,21 +683,97 @@ require_once __DIR__ . '/../wp-load.php';
             <section id="settings-page" class="page-content w-full hidden flex flex-col p-3 gap-3">
                  <header class="flex items-center gap-4 p-2 bg-slate-800/80 backdrop-blur-sm border border-slate-700 rounded-xl shadow-lg flex-shrink-0">
                     <button class="menu-toggle p-2 rounded-lg hover:bg-slate-700 transition-colors"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg></button>
-                    <h1 class="text-xl font-bold mr-auto">Receipt Settings</h1>
+                    <h1 class="text-xl font-bold mr-auto">Settings</h1>
                     <button id="refresh-settings-btn" class="ml-2 p-2 rounded-lg bg-slate-700 border border-slate-600 hover:bg-slate-600 transition-colors flex-shrink-0 flex items-center" title="Refresh Settings Data">
                         <i class="fa fa-refresh"></i>
                     </button>
                  </header>
                  <main class="flex-grow overflow-y-auto p-4 bg-slate-800/90 rounded-xl border border-slate-700">
-                    <form id="settings-form" class="max-w-2xl mx-auto space-y-6">
-                        <div><label for="setting-name" class="form-label">Store Name</label><input type="text" id="setting-name" class="form-input"></div>
-                        <div><label for="setting-logo-url" class="form-label">Logo URL</label><input type="url" id="setting-logo-url" class="form-input" placeholder="https://example.com/logo.png"></div>
-                        <div><label for="setting-email" class="form-label">Contact Email</label><input type="email" id="setting-email" class="form-input"></div>
-                        <div><label for="setting-phone" class="form-label">Contact Phone</label><input type="text" id="setting-phone" class="form-input"></div>
-                        <div><label for="setting-address" class="form-label">Store Address</label><input type="text" id="setting-address" class="form-input"></div>
-                        <div><label for="setting-footer1" class="form-label">Footer Message Line 1</label><input id="setting-footer1" class="form-input" rows="2"></input></div>
-                        <div><label for="setting-footer2" class="form-label">Footer Message Line 2</label><input id="setting-footer2" class="form-input" rows="2"></input></div>
-                        <div class="flex items-center pt-4"><button type="submit" class="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-indigo-500 transition-colors disabled:bg-slate-500">Save Settings</button><span id="settings-status" class="ml-4 text-sm"></span></div>
+                    <!-- Tab Navigation -->
+                    <div class="flex border-b border-slate-600 mb-6">
+                        <button id="settings-tab-receipt" class="settings-tab px-6 py-3 text-sm font-medium border-b-2 border-indigo-500 text-indigo-400 bg-slate-700/50 rounded-t-lg transition-colors">
+                            <i class="fas fa-receipt mr-2"></i>Receipt
+                        </button>
+                        <button id="settings-tab-keyboard" class="settings-tab px-6 py-3 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-300 hover:border-slate-500 transition-colors">
+                            <i class="fas fa-keyboard mr-2"></i>Keyboard
+                        </button>
+                        <button id="settings-tab-general" class="settings-tab px-6 py-3 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-300 hover:border-slate-500 transition-colors">
+                            <i class="fas fa-cog mr-2"></i>General
+                        </button>
+                    </div>
+
+                    <form id="settings-form" class="max-w-3xl mx-auto">
+                        <!-- Receipt Settings Tab -->
+                        <div id="settings-panel-receipt" class="settings-panel space-y-6">
+                            <div class="bg-slate-700/30 p-4 rounded-lg border border-slate-600">
+                                <h3 class="text-lg font-semibold mb-4 text-slate-200">Store Information</h3>
+                                <div class="space-y-4">
+                                    <div><label for="setting-name" class="form-label">Store Name</label><input type="text" id="setting-name" class="form-input"></div>
+                                    <div><label for="setting-logo-url" class="form-label">Logo URL</label><input type="url" id="setting-logo-url" class="form-input" placeholder="https://example.com/logo.png"></div>
+                                    <div><label for="setting-email" class="form-label">Contact Email</label><input type="email" id="setting-email" class="form-input"></div>
+                                    <div><label for="setting-phone" class="form-label">Contact Phone</label><input type="text" id="setting-phone" class="form-input"></div>
+                                    <div><label for="setting-address" class="form-label">Store Address</label><input type="text" id="setting-address" class="form-input"></div>
+                                </div>
+                            </div>
+
+                            <div class="bg-slate-700/30 p-4 rounded-lg border border-slate-600">
+                                <h3 class="text-lg font-semibold mb-4 text-slate-200">Receipt Footer</h3>
+                                <div class="space-y-4">
+                                    <div><label for="setting-footer1" class="form-label">Footer Message Line 1</label><input id="setting-footer1" class="form-input"></input></div>
+                                    <div><label for="setting-footer2" class="form-label">Footer Message Line 2</label><input id="setting-footer2" class="form-input"></input></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Keyboard Settings Tab -->
+                        <div id="settings-panel-keyboard" class="settings-panel hidden space-y-6">
+                            <div class="bg-slate-700/30 p-4 rounded-lg border border-slate-600">
+                                <h3 class="text-lg font-semibold mb-4 text-slate-200">Virtual Keyboard</h3>
+                                <div class="space-y-4">
+                                    <div class="flex items-center space-x-3">
+                                        <input type="checkbox" id="setting-keyboard-enabled" class="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500">
+                                        <label for="setting-keyboard-enabled" class="text-sm font-medium text-slate-300">Enable Virtual Keyboard</label>
+                                    </div>
+                                    <p class="text-xs text-slate-400 ml-7">When enabled, the virtual keyboard button will be available in the customer search modal.</p>
+                                    
+                                    <div class="flex items-center space-x-3 ml-7">
+                                        <input type="checkbox" id="setting-keyboard-auto-show" class="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500">
+                                        <label for="setting-keyboard-auto-show" class="text-sm font-medium text-slate-300">Auto-show on Input Focus</label>
+                                    </div>
+                                    <p class="text-xs text-slate-400 ml-14">Automatically display keyboard when clicking any input field (requires Virtual Keyboard to be enabled).</p>
+                                </div>
+                            </div>
+
+                            <div class="bg-indigo-900/20 border border-indigo-800 p-4 rounded-lg">
+                                <div class="flex items-start gap-3">
+                                    <i class="fas fa-info-circle text-indigo-400 mt-1"></i>
+                                    <div>
+                                        <h4 class="font-semibold text-indigo-300 mb-1">Keyboard Features</h4>
+                                        <ul class="text-sm text-slate-300 space-y-1">
+                                            <li>• QWERTY layout with special characters (@, .)</li>
+                                            <li>• Backspace and Clear functions</li>
+                                            <li>• Space bar for multi-word entries</li>
+                                            <li>• Perfect for touchscreen devices</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- General Settings Tab -->
+                        <div id="settings-panel-general" class="settings-panel hidden space-y-6">
+                            <div class="bg-slate-700/30 p-4 rounded-lg border border-slate-600">
+                                <h3 class="text-lg font-semibold mb-4 text-slate-200">System Settings</h3>
+                                <p class="text-slate-400 text-sm">Additional system settings coming soon...</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center pt-6 border-t border-slate-600 mt-6">
+                            <button type="submit" class="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-indigo-500 transition-colors disabled:bg-slate-500">
+                                Save Settings
+                            </button>
+                            <span id="settings-status" class="ml-4 text-sm"></span>
+                        </div>
                     </form>
                  </main>
             </section>
@@ -1041,7 +1142,7 @@ require_once __DIR__ . '/../wp-load.php';
         <div class="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow-2xl w-full max-w-md transform transition-all">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-2xl font-bold">Search Customer</h2>
-                <button onclick="cartManager.hideCustomerSearch()" class="text-slate-400 hover:text-white">
+                <button onclick="window.hideCustomerSearch()" class="text-slate-400 hover:text-white">
                     <i class="fas fa-times text-xl"></i>
                 </button>
             </div>
@@ -1052,7 +1153,7 @@ require_once __DIR__ . '/../wp-load.php';
                            id="customer-search-input"
                            placeholder="Search by name or email..."
                            class="w-full px-3 py-2 bg-slate-700 text-slate-200 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none pr-10">
-                    <button onclick="cartManager.toggleKeyboard()"
+                    <button onclick="window.toggleCustomerKeyboard()"
                             class="absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white p-1"
                             title="Toggle on-screen keyboard">
                         <i class="fas fa-keyboard"></i>

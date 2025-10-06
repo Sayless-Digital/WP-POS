@@ -1,6 +1,6 @@
-// WP POS v1.8.55 - Held Cart Customer Functionality Fixed
+// WP POS v1.8.65 - Hidden Receipt Dialog Scrollbar While Keeping Scroll
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('WP POS v1.8.55 loaded - Held Cart Customer Functionality Fixed');
+    console.log('WP POS v1.8.65 loaded - Hidden Receipt Dialog Scrollbar While Keeping Scroll');
     // Initialize Routing Manager
     const routingManager = new RoutingManager();
 
@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Orders Management
         orders: {
             all: [],
-            filters: { date: 'all', status: 'all', source: 'all', orderId: '' }
+            filters: { date: 'all', status: 'all', source: 'all', customer: 'all', orderId: '' }
         },
         
         // Product Filters
@@ -308,11 +308,24 @@ document.addEventListener('DOMContentLoaded', () => {
             const result = await response.json();
             if (result.success) {
                 appState.settings = result.data;
+                // Initialize keyboard auto-show based on loaded settings
+                initKeyboardAutoShow();
             } else { throw new Error(result.message || 'Failed to parse settings.'); }
         } catch (error) {
             console.error("Could not load receipt settings.", error);
-            appState.settings = { name: "Store Name", email: "", phone: "", address: "", footer_message_1: "Thank you!", footer_message_2: "" };
+            appState.settings = {
+                name: "Store Name",
+                email: "",
+                phone: "",
+                address: "",
+                footer_message_1: "Thank you!",
+                footer_message_2: "",
+                virtual_keyboard_enabled: true,
+                virtual_keyboard_auto_show: false
+            };
             alert('Warning: Could not load store settings. Receipts may display default info.');
+            // Initialize with defaults
+            initKeyboardAutoShow();
         }
     }
 
@@ -633,6 +646,45 @@ document.addEventListener('DOMContentLoaded', () => {
         if (orderDateFilter) orderDateFilter.addEventListener('change', e => { appState.orders.filters.date = e.target.value; fetchOrders(); });
         const orderSourceFilter = document.getElementById('order-source-filter');
         if (orderSourceFilter) orderSourceFilter.addEventListener('change', e => { appState.orders.filters.source = e.target.value; fetchOrders(); });
+        // Customer filter search input
+        const orderCustomerFilterInput = document.getElementById('order-customer-filter');
+        if (orderCustomerFilterInput) {
+            let customerSearchTimeout;
+            orderCustomerFilterInput.addEventListener('input', e => {
+                clearTimeout(customerSearchTimeout);
+                const query = e.target.value.trim();
+                
+                if (query.length < 2) {
+                    hideCustomerFilterResults();
+                    return;
+                }
+                
+                customerSearchTimeout = setTimeout(async () => {
+                    await searchCustomersForFilter(query);
+                }, 300);
+            });
+        }
+        
+        // Clear customer filter button
+        const clearCustomerFilterBtn = document.getElementById('clear-customer-filter-btn');
+        if (clearCustomerFilterBtn) {
+            clearCustomerFilterBtn.addEventListener('click', () => {
+                appState.orders.filters.customer = 'all';
+                document.getElementById('order-customer-filter').value = '';
+                clearCustomerFilterBtn.classList.add('hidden');
+                hideCustomerFilterResults();
+                fetchOrders();
+            });
+        }
+        
+        // Hide customer filter results when clicking outside
+        document.addEventListener('click', (e) => {
+            const filterInput = document.getElementById('order-customer-filter');
+            const resultsDiv = document.getElementById('order-customer-filter-results');
+            if (filterInput && resultsDiv && !filterInput.contains(e.target) && !resultsDiv.contains(e.target)) {
+                hideCustomerFilterResults();
+            }
+        });
         const orderStatusFilter = document.getElementById('order-status-filter');
         if (orderStatusFilter) orderStatusFilter.addEventListener('change', e => { appState.orders.filters.status = e.target.value; fetchOrders(); });
         const settingsForm = document.getElementById('settings-form');
@@ -1511,6 +1563,83 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Customer filter search functions
+    async function searchCustomersForFilter(query) {
+        if (!query || query.length < 2) {
+            hideCustomerFilterResults();
+            return;
+        }
+
+        try {
+            const nonce = document.getElementById('jpos-customer-search-nonce')?.value;
+            const response = await fetch(`api/customers.php?query=${encodeURIComponent(query)}&nonce=${nonce}`);
+            
+            if (!response.ok) {
+                throw new Error('Search failed');
+            }
+
+            const data = await response.json();
+            
+            if (data.success) {
+                displayCustomerFilterResults(data.data.customers);
+            } else {
+                throw new Error(data.message || 'Search failed');
+            }
+        } catch (error) {
+            console.error('Customer filter search error:', error);
+            hideCustomerFilterResults();
+        }
+    }
+
+    function displayCustomerFilterResults(customers) {
+        const results = document.getElementById('order-customer-filter-results');
+        if (!results) return;
+
+        if (customers.length === 0) {
+            results.innerHTML = '<div class="px-3 py-2 text-sm text-slate-400">No customers found</div>';
+            results.classList.remove('hidden');
+            return;
+        }
+
+        results.innerHTML = customers.map(customer => `
+            <div class="px-3 py-2 text-sm text-slate-200 hover:bg-slate-600 cursor-pointer" onclick="selectCustomerForFilter(${customer.id}, '${customer.name.replace(/'/g, "\\'")}')">
+                <div class="font-semibold">${customer.name}</div>
+                <div class="text-xs text-slate-400">${customer.email}</div>
+            </div>
+        `).join('');
+        
+        results.classList.remove('hidden');
+    }
+
+    function hideCustomerFilterResults() {
+        const results = document.getElementById('order-customer-filter-results');
+        if (results) {
+            results.classList.add('hidden');
+        }
+    }
+
+    window.selectCustomerForFilter = function(customerId, customerName) {
+        const input = document.getElementById('order-customer-filter');
+        const clearBtn = document.getElementById('clear-customer-filter-btn');
+        
+        // Set the input value to customer name
+        input.value = customerName;
+        
+        // Set the filter to customer ID
+        appState.orders.filters.customer = customerId.toString();
+        
+        // Show clear button
+        if (clearBtn) {
+            clearBtn.classList.remove('hidden');
+        }
+        
+        // Hide results
+        hideCustomerFilterResults();
+        
+        // Fetch filtered orders
+        fetchOrders();
+    }
+
     async function processTransaction() {
         if (appState.cart.items.length === 0 || !appState.drawer.isOpen) return;
 
@@ -1519,19 +1648,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function fetchOrders() {
-        const c = document.getElementById('order-list'); 
+        const c = document.getElementById('order-list');
         c.innerHTML = getSkeletonLoaderHtml('list-rows', 20);
-        const params = `date_filter=${appState.orders.filters.date}&status_filter=${appState.orders.filters.status}&source_filter=${appState.orders.filters.source}`;
+        const params = `date_filter=${appState.orders.filters.date}&status_filter=${appState.orders.filters.status}&source_filter=${appState.orders.filters.source}&customer_filter=${appState.orders.filters.customer}`;
         try {
-            const response = await fetch(`/jpos/api/orders.php?${params}`); 
+            const response = await fetch(`/jpos/api/orders.php?${params}`);
             if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
             const result = await response.json();
             if (!result.success) throw new Error(result.data.message);
             appState.orders.all = result.data || [];
             renderOrders();
-        } catch (error) { 
+        } catch (error) {
             console.error("Error in fetchOrders:", error);
-            c.innerHTML = `<p class="p-10 text-center text-red-400">Error: Could not fetch order data. ${error.message || 'Unknown error'}</p>`; 
+            c.innerHTML = `<p class="p-10 text-center text-red-400">Error: Could not fetch order data. ${error.message || 'Unknown error'}</p>`;
         }
     }
     
@@ -3052,25 +3181,112 @@ document.addEventListener('DOMContentLoaded', () => {
     window.removeMetaDataRow = removeMetaDataRow;
 
     function populateSettingsForm() {
-        document.getElementById('setting-name').value = appState.settings.name || ''; document.getElementById('setting-logo-url').value = appState.settings.logo_url || ''; document.getElementById('setting-email').value = appState.settings.email || ''; document.getElementById('setting-phone').value = appState.settings.phone || ''; document.getElementById('setting-address').value = appState.settings.address || ''; document.getElementById('setting-footer1').value = appState.settings.footer_message_1 || ''; document.getElementById('setting-footer2').value = appState.settings.footer_message_2 || '';
+        document.getElementById('setting-name').value = appState.settings.name || '';
+        document.getElementById('setting-logo-url').value = appState.settings.logo_url || '';
+        document.getElementById('setting-email').value = appState.settings.email || '';
+        document.getElementById('setting-phone').value = appState.settings.phone || '';
+        document.getElementById('setting-address').value = appState.settings.address || '';
+        document.getElementById('setting-footer1').value = appState.settings.footer_message_1 || '';
+        document.getElementById('setting-footer2').value = appState.settings.footer_message_2 || '';
+        
+        // Virtual keyboard settings
+        const enableKeyboard = document.getElementById('setting-keyboard-enabled');
+        const autoShowKeyboard = document.getElementById('setting-keyboard-auto-show');
+        if (enableKeyboard) {
+            enableKeyboard.checked = appState.settings.virtual_keyboard_enabled !== false; // Default to true
+        }
+        if (autoShowKeyboard) {
+            autoShowKeyboard.checked = appState.settings.virtual_keyboard_auto_show === true;
+        }
+        
+        // Initialize keyboard auto-show based on settings
+        initKeyboardAutoShow();
+        
+        // Initialize settings tabs
+        initSettingsTabs();
+    }
+    
+    function initSettingsTabs() {
+        const tabs = document.querySelectorAll('.settings-tab');
+        const panels = document.querySelectorAll('.settings-panel');
+        
+        if (!tabs.length || !panels.length) return;
+        
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Get the tab name from the ID (e.g., 'settings-tab-receipt' -> 'receipt')
+                const tabName = tab.id.replace('settings-tab-', '');
+                
+                // Update active tab styling
+                tabs.forEach(t => {
+                    t.classList.remove('border-indigo-500', 'text-indigo-400', 'bg-slate-700/50');
+                    t.classList.add('border-transparent', 'text-slate-400');
+                });
+                tab.classList.remove('border-transparent', 'text-slate-400');
+                tab.classList.add('border-indigo-500', 'text-indigo-400', 'bg-slate-700/50');
+                
+                // Show corresponding panel
+                panels.forEach(panel => {
+                    panel.classList.add('hidden');
+                });
+                const activePanel = document.getElementById(`settings-panel-${tabName}`);
+                if (activePanel) {
+                    activePanel.classList.remove('hidden');
+                }
+            });
+        });
     }
 
     async function saveSettings(event) {
-        event.preventDefault(); const statusEl = document.getElementById('settings-status'); const saveBtn = event.target.querySelector('button[type="submit"]');
-        saveBtn.disabled = true; statusEl.textContent = 'Saving...'; statusEl.className = 'ml-4 text-sm text-slate-400';
-        const data = { name: document.getElementById('setting-name').value, logo_url: document.getElementById('setting-logo-url').value, email: document.getElementById('setting-email').value, phone: document.getElementById('setting-phone').value, address: document.getElementById('setting-address').value, footer_message_1: document.getElementById('setting-footer1').value, footer_message_2: document.getElementById('setting-footer2').value, nonce: appState.nonces.settings };
+        event.preventDefault();
+        const statusEl = document.getElementById('settings-status');
+        const saveBtn = event.target.querySelector('button[type="submit"]');
+        saveBtn.disabled = true;
+        statusEl.textContent = 'Saving...';
+        statusEl.className = 'ml-4 text-sm text-slate-400';
+        
+        // Get virtual keyboard settings
+        const enableKeyboard = document.getElementById('enable-virtual-keyboard');
+        const autoShowKeyboard = document.getElementById('auto-show-keyboard');
+        
+        const data = {
+            name: document.getElementById('setting-name').value,
+            logo_url: document.getElementById('setting-logo-url').value,
+            email: document.getElementById('setting-email').value,
+            phone: document.getElementById('setting-phone').value,
+            address: document.getElementById('setting-address').value,
+            footer_message_1: document.getElementById('setting-footer1').value,
+            footer_message_2: document.getElementById('setting-footer2').value,
+            virtual_keyboard_enabled: enableKeyboard ? enableKeyboard.checked : true,
+            virtual_keyboard_auto_show: autoShowKeyboard ? autoShowKeyboard.checked : false,
+            nonce: appState.nonces.settings
+        };
+        
         try {
             const response = await fetch('/jpos/api/settings.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
             if (!response.ok) throw new Error(`Server responded with ${response.status}`);
-            const result = await response.json(); if (!result.success) throw new Error(result.data.message || 'Failed to save settings.');
-            statusEl.textContent = result.data.message || 'Settings saved successfully!'; statusEl.className = 'ml-4 text-sm text-green-400';
+            const result = await response.json();
+            if (!result.success) throw new Error(result.data.message || 'Failed to save settings.');
+            statusEl.textContent = result.data.message || 'Settings saved successfully!';
+            statusEl.className = 'ml-4 text-sm text-green-400';
+            
+            // Update appState with keyboard settings
+            appState.settings.virtual_keyboard_enabled = data.virtual_keyboard_enabled;
+            appState.settings.virtual_keyboard_auto_show = data.virtual_keyboard_auto_show;
+            
             await loadReceiptSettings();
-        } catch (error) { 
-            console.error("Error saving settings:", error); 
-            statusEl.textContent = `Error: ${error.message}`; 
-            statusEl.className = 'ml-4 text-sm text-red-400'; 
+            
+            // Re-initialize keyboard auto-show with new settings
+            initKeyboardAutoShow();
+        } catch (error) {
+            console.error("Error saving settings:", error);
+            statusEl.textContent = `Error: ${error.message}`;
+            statusEl.className = 'ml-4 text-sm text-red-400';
         }
-        finally { saveBtn.disabled = false; setTimeout(() => { statusEl.textContent = ''; }, 5000); }
+        finally {
+            saveBtn.disabled = false;
+            setTimeout(() => { statusEl.textContent = ''; }, 5000);
+        }
     }
 
     function showReceipt(data) {
@@ -3308,6 +3524,70 @@ document.addEventListener('DOMContentLoaded', () => {
         appState.discount = savedDiscount ? JSON.parse(savedDiscount) : { amount: '', label: '', amountType: 'flat' };
     }
 
+    // Virtual keyboard auto-show management
+    let keyboardFocusListeners = [];
+    
+    function initKeyboardAutoShow() {
+        // Remove existing listeners
+        keyboardFocusListeners.forEach(({ element, handler }) => {
+            element.removeEventListener('focus', handler);
+        });
+        keyboardFocusListeners = [];
+        
+        // Check if keyboard is enabled and auto-show is enabled
+        const keyboardEnabled = appState.settings.virtual_keyboard_enabled !== false;
+        const autoShowEnabled = appState.settings.virtual_keyboard_auto_show === true;
+        
+        // Update keyboard button visibility in customer search modal
+        const keyboardBtn = document.getElementById('customer-keyboard-btn');
+        if (keyboardBtn) {
+            if (keyboardEnabled) {
+                keyboardBtn.classList.remove('hidden');
+            } else {
+                keyboardBtn.classList.add('hidden');
+            }
+        }
+        
+        if (!keyboardEnabled || !autoShowEnabled) {
+            return; // Don't attach listeners if disabled
+        }
+        
+        // Get all input and textarea elements that should trigger keyboard
+        const inputs = document.querySelectorAll('input[type="text"], input[type="email"], input[type="search"], textarea');
+        
+        inputs.forEach(input => {
+            // Skip inputs that are inside specific excluded containers
+            const excludedContainers = ['stock-edit-modal', 'product-editor-modal', 'fee-discount-modal'];
+            let shouldExclude = false;
+            
+            for (const containerId of excludedContainers) {
+                const container = document.getElementById(containerId);
+                if (container && container.contains(input)) {
+                    shouldExclude = true;
+                    break;
+                }
+            }
+            
+            if (shouldExclude) {
+                return; // Skip this input
+            }
+            
+            // Create focus handler
+            const focusHandler = () => {
+                // Only show keyboard for visible inputs
+                if (input.offsetParent !== null && window.onScreenKeyboard) {
+                    window.onScreenKeyboard.show(input);
+                }
+            };
+            
+            // Attach listener
+            input.addEventListener('focus', focusHandler);
+            
+            // Store for cleanup
+            keyboardFocusListeners.push({ element: input, handler: focusHandler });
+        });
+    }
+
     init();
     loadCartState();
     renderCart();
@@ -3343,6 +3623,42 @@ document.addEventListener('DOMContentLoaded', () => {
         renderHeldCarts();
     }
 
+    // Helper function to format dates relative to today
+    function formatRelativeDate(dateString) {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        // Reset time parts for date comparison
+        today.setHours(0, 0, 0, 0);
+        yesterday.setHours(0, 0, 0, 0);
+        const compareDate = new Date(date);
+        compareDate.setHours(0, 0, 0, 0);
+        
+        const timeString = date.toLocaleString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+        });
+        
+        if (compareDate.getTime() === today.getTime()) {
+            return `Today @ ${timeString}`;
+        } else if (compareDate.getTime() === yesterday.getTime()) {
+            return `Yesterday @ ${timeString}`;
+        } else {
+            return date.toLocaleString('en-US', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            });
+        }
+    }
+
     function renderHeldCarts() {
         const list = document.getElementById('held-carts-list');
         const heldCarts = JSON.parse(localStorage.getItem('jpos_held_carts') || '[]');
@@ -3352,61 +3668,71 @@ document.addEventListener('DOMContentLoaded', () => {
             list.innerHTML = '<div class="text-center text-slate-400 py-10">No held carts.</div>';
             return;
         }
-        // Table header
+        // Table header with all columns including fee and discount
         const table = document.createElement('div');
         table.className = 'w-full';
         table.innerHTML = `
-            <div class="grid grid-cols-12 gap-2 font-bold text-xs text-slate-400 border-b border-slate-700 py-2 mb-2">
-                <div class="col-span-3">Date Held</div>
-                <div class="col-span-2">Customer</div>
-                <div class="col-span-1">Items</div>
-                <div class="col-span-2">Fee</div>
-                <div class="col-span-2">Discount</div>
-                <div class="col-span-1">Total</div>
-                <div class="col-span-1 text-right">Actions</div>
+            <div class="grid grid-cols-[auto,auto,auto,auto,auto,auto,auto] gap-3 font-bold text-xs text-slate-400 border-b border-slate-700 py-2 mb-2">
+                <div class="w-44 text-left">Date Held</div>
+                <div class="w-16 text-center">Items</div>
+                <div class="w-32 text-center truncate">Customer</div>
+                <div class="w-20 text-center">Fee</div>
+                <div class="w-20 text-center">Discount</div>
+                <div class="w-24 text-center">Total</div>
+                <div class="w-40 text-right">Actions</div>
             </div>
         `;
         list.appendChild(table);
         heldCarts.forEach(held => {
-            // Calculate total
-            let total = 0;
+            // Calculate subtotal
+            let subtotal = 0;
             (held.cart || []).forEach(item => {
-                total += (parseFloat(item.price) || 0) * (item.qty || 0);
+                subtotal += (parseFloat(item.price) || 0) * (item.qty || 0);
             });
-            // Apply fee
+            
+            // Calculate fee
+            let feeVal = 0;
+            let feeDisplay = '-';
             if (held.fee && held.fee.amount) {
-                let feeVal = 0;
                 if (held.fee.amountType === 'percentage') {
-                    feeVal = total * (parseFloat(held.fee.amount) / 100);
+                    feeVal = subtotal * (parseFloat(held.fee.amount) / 100);
+                    feeDisplay = `${held.fee.amount}%`;
                 } else {
                     feeVal = parseFloat(held.fee.amount);
+                    feeDisplay = `$${feeVal.toFixed(2)}`;
                 }
-                total += feeVal;
             }
-            // Apply discount
+            
+            // Calculate discount
+            let discountVal = 0;
+            let discountDisplay = '-';
             if (held.discount && held.discount.amount) {
-                let discountVal = 0;
                 if (held.discount.amountType === 'percentage') {
-                    discountVal = total * (parseFloat(held.discount.amount) / 100);
+                    discountVal = subtotal * (parseFloat(held.discount.amount) / 100);
+                    discountDisplay = `${held.discount.amount}%`;
                 } else {
                     discountVal = parseFloat(held.discount.amount);
+                    discountDisplay = `$${discountVal.toFixed(2)}`;
                 }
-                total -= Math.abs(discountVal);
             }
+            
+            // Calculate total
+            const total = subtotal + feeVal - Math.abs(discountVal);
+            
             const row = document.createElement('div');
-            row.className = 'grid grid-cols-12 gap-2 items-center bg-slate-800 border border-slate-700 rounded-lg mb-2 py-2 px-2 cursor-pointer hover:bg-slate-700/70';
+            row.className = 'grid grid-cols-[auto,auto,auto,auto,auto,auto,auto] gap-3 items-center bg-slate-800 border border-slate-700 rounded-lg mb-2 py-3 px-3 cursor-pointer hover:bg-slate-700/70';
             row.setAttribute('data-id', held.id);
-            const customerDisplay = held.customer ? `<div class="truncate" title="${held.customer.name}">${held.customer.name}</div>` : '<div class="text-slate-500">-</div>';
+            const customerDisplay = held.customer ? `<div class="truncate" title="${held.customer.name}">${held.customer.name}</div>` : '<div class="text-slate-500 text-sm">No customer</div>';
             row.innerHTML = `
-                <div class="col-span-3 text-slate-300">${formatDateTime(held.time)}</div>
-                <div class="col-span-2 text-slate-300">${customerDisplay}</div>
-                <div class="col-span-1 text-slate-300">${held.cart.length}</div>
-                <div class="col-span-2 text-green-400">${held.fee.amount ? (held.fee.amountType === 'percentage' ? held.fee.amount + '%' : '$' + parseFloat(held.fee.amount).toFixed(2)) : '-'}</div>
-                <div class="col-span-2 text-amber-400">${held.discount.amount ? (held.discount.amountType === 'percentage' ? held.discount.amount + '%' : '$' + parseFloat(held.discount.amount).toFixed(2)) : '-'}</div>
-                <div class="col-span-1 text-slate-100 font-mono">$${total.toFixed(2)}</div>
-                <div class="col-span-1 flex gap-2 justify-end">
-                    <button class="restore-held-btn bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-1 rounded" data-id="${held.id}">Restore</button>
-                    <button class="delete-held-btn bg-red-600 hover:bg-red-500 text-white px-4 py-1 rounded" data-id="${held.id}">Delete</button>
+                <div class="w-44 text-left text-slate-300 text-sm">${formatRelativeDate(held.time)}</div>
+                <div class="w-16 text-center text-slate-300 text-sm">${held.cart.length}</div>
+                <div class="w-32 text-center truncate text-slate-300 text-sm">${customerDisplay}</div>
+                <div class="w-20 text-center text-green-400 text-sm font-mono">${feeDisplay}</div>
+                <div class="w-20 text-center text-amber-400 text-sm font-mono">${discountDisplay}</div>
+                <div class="w-24 text-center text-slate-100 font-mono text-sm font-semibold">$${total.toFixed(2)}</div>
+                <div class="w-40 flex justify-end gap-2 justify-self-end">
+                    <button class="restore-held-btn bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded text-xs font-medium transition-colors" data-id="${held.id}">Restore</button>
+                    <button class="delete-held-btn bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded text-xs font-medium transition-colors" data-id="${held.id}">Delete</button>
                 </div>
             `;
             // Only open modal if not clicking on an action button
@@ -4668,4 +4994,4 @@ document.addEventListener('DOMContentLoaded', () => {
     window.detachCustomer = detachCustomer;
     window.toggleCustomerKeyboard = toggleCustomerKeyboard;
 });
-// WP POS v1.8.55 - Held Cart Customer Functionality Fixed - CACHE BUST
+// WP POS v1.8.62 - Fixed Customer Filter Dropdown Z-Index Higher Than Table Headers - CACHE BUST

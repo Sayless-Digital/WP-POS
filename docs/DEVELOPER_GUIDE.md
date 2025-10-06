@@ -1,5 +1,334 @@
 # WP POS Developer Guide
 
+## Recent Updates
+
+### Version 1.8.70 - Unified Settings Save Logic
+**Date**: October 6, 2025
+
+**Problem**:
+- Virtual keyboard settings were not saving consistently
+- User reported settings only saved when other fields (name, email, etc.) were also changed
+- Keyboard-only changes showed "Settings are unchanged" message
+
+**Root Cause**:
+- Initial fix in v1.8.69 used separate logic for keyboard settings vs other settings
+- This created inconsistent behavior - keyboard settings had special handling while other fields didn't
+- User expected all settings to behave the same way
+
+**Solution (v1.8.70)**:
+Unified all settings handling with simple array comparison in [`api/settings.php:53-82`](../api/settings.php:53-82):
+
+```php
+$current_settings = get_option(JPOS_SETTINGS_OPTION_KEY, get_jpos_default_settings());
+$old_settings = $current_settings; // Save original for comparison
+
+// Update settings with validated data
+if (isset($validated_data['logo_url'])) $current_settings['logo_url'] = $validated_data['logo_url'];
+if (isset($validated_data['name'])) $current_settings['name'] = $validated_data['name'];
+// ... other text fields ...
+
+// Handle virtual keyboard settings (boolean values don't need validation)
+if (isset($data['virtual_keyboard_enabled'])) {
+    $current_settings['virtual_keyboard_enabled'] = (bool)$data['virtual_keyboard_enabled'];
+}
+if (isset($data['virtual_keyboard_auto_show'])) {
+    $current_settings['virtual_keyboard_auto_show'] = (bool)$data['virtual_keyboard_auto_show'];
+}
+
+// Check if anything actually changed by comparing old and new settings
+$settings_changed = ($old_settings !== $current_settings);
+
+if ($settings_changed) {
+    // Force update since we detected changes
+    update_option(JPOS_SETTINGS_OPTION_KEY, $current_settings, false);
+    JPOS_Error_Handler::send_success([], 'Settings saved successfully.');
+} else {
+    JPOS_Error_Handler::send_success([], 'Settings are unchanged.');
+}
+```
+
+**Key Improvements**:
+1. **Unified Logic**: All settings (text fields and booleans) use the same change detection
+2. **Simple Comparison**: Uses PHP's `!==` operator to compare entire arrays
+3. **Consistent Behavior**: Whether you change name, email, or keyboard settings - same logic applies
+4. **Clean Code**: Removed complex separate tracking for keyboard settings
+
+**Previous Approach (v1.8.69)** - Deprecated:
+
+```php
+// Handle virtual keyboard settings (boolean values don't need validation)
+$keyboard_changed = false;
+if (isset($data['virtual_keyboard_enabled'])) {
+    $new_enabled = (bool)$data['virtual_keyboard_enabled'];
+    if (!isset($current_settings['virtual_keyboard_enabled']) || $current_settings['virtual_keyboard_enabled'] !== $new_enabled) {
+        $keyboard_changed = true;
+    }
+    $current_settings['virtual_keyboard_enabled'] = $new_enabled;
+}
+if (isset($data['virtual_keyboard_auto_show'])) {
+    $new_auto_show = (bool)$data['virtual_keyboard_auto_show'];
+    if (!isset($current_settings['virtual_keyboard_auto_show']) || $current_settings['virtual_keyboard_auto_show'] !== $new_auto_show) {
+        $keyboard_changed = true;
+    }
+    $current_settings['virtual_keyboard_auto_show'] = $new_auto_show;
+}
+
+// Force update if keyboard settings changed, even if other settings are the same
+if ($keyboard_changed) {
+    update_option(JPOS_SETTINGS_OPTION_KEY, $current_settings, false);
+    JPOS_Error_Handler::send_success([], 'Settings saved successfully.');
+} else {
+    $result = update_option(JPOS_SETTINGS_OPTION_KEY, $current_settings);
+    if ($result) {
+        JPOS_Error_Handler::send_success([], 'Settings saved successfully.');
+    } else {
+        JPOS_Error_Handler::send_success([], 'Settings are unchanged.');
+    }
+}
+```
+
+**Key Changes**:
+1. **Boolean Comparison**: Strict comparison (`!==`) to detect actual changes in boolean values
+2. **Change Tracking**: `$keyboard_changed` flag tracks if any keyboard setting changed
+3. **Forced Update**: When keyboard settings change, pass `false` as third parameter to `update_option()` to bypass WordPress's value comparison
+4. **Success Message**: Always returns "Settings saved successfully" when keyboard settings change
+
+**Technical Details**:
+- WordPress `update_option($key, $value, $autoload)` uses `===` comparison internally
+- Third parameter `false` forces database update even when values appear identical
+- Boolean type coercion ensures consistent comparison
+- Maintains backward compatibility with existing settings save logic
+
+**Testing Instructions**:
+1. Hard refresh browser (Ctrl+F5)
+2. Navigate to Settings
+3. Toggle "Enable Virtual Keyboard" checkbox
+4. Click Save - should show "Settings saved successfully"
+5. Refresh page - checkbox should remain in new state
+6. Toggle "Auto-show on Focus" checkbox
+7. Click Save - should show "Settings saved successfully"
+8. Refresh page - both checkboxes should reflect saved state
+
+**Cache Busting**:
+- Updated version from 1.8.68 to 1.8.69 in [`index.php:25`](../index.php:25)
+
+---
+
+### Version 1.8.68 - Virtual Keyboard Settings Persistence Fix
+**Date**: October 6, 2025
+
+**Problem**: 
+- Virtual keyboard settings (enable/disable and auto-show) were not persisting after save
+- Auto-show keyboard functionality was not working on input focus
+
+**Root Causes**:
+1. The API endpoint [`api/settings.php`](../api/settings.php:1) was not handling the new `virtual_keyboard_enabled` and `virtual_keyboard_auto_show` boolean fields
+2. [`initKeyboardAutoShow()`](../assets/js/main.js:3482) was only called from [`populateSettingsForm()`](../assets/js/main.js:3170), which runs when viewing the settings page, not during app initialization
+
+**Changes Made**:
+
+1. **API Settings Handler** ([`api/settings.php`](../api/settings.php:1))
+   - Added keyboard settings to default configuration at lines 12-22:
+     ```php
+     'virtual_keyboard_enabled' => true,
+     'virtual_keyboard_auto_show' => false,
+     ```
+   - Added boolean handling for keyboard settings in save logic at lines 62-67:
+     ```php
+     if (isset($data['virtual_keyboard_enabled'])) {
+         $current_settings['virtual_keyboard_enabled'] = (bool)$data['virtual_keyboard_enabled'];
+     }
+     if (isset($data['virtual_keyboard_auto_show'])) {
+         $current_settings['virtual_keyboard_auto_show'] = (bool)$data['virtual_keyboard_auto_show'];
+     }
+     ```
+
+2. **App Initialization** ([`assets/js/main.js`](../assets/js/main.js:1))
+   - Modified [`loadReceiptSettings()`](../assets/js/main.js:304) to initialize keyboard after loading settings:
+     ```javascript
+     if (result.success) {
+         appState.settings = result.data;
+         initKeyboardAutoShow(); // Initialize on app load
+     }
+     ```
+   - Added keyboard settings to error fallback defaults
+
+3. **Cache Busting** ([`index.php`](../index.php:25))
+   - Incremented version from 1.8.67 to 1.8.68
+
+**Technical Details**:
+- **Boolean Type Coercion**: Used `(bool)` casting in PHP to ensure boolean values are stored correctly in WordPress options
+- **Event Listener Initialization**: Moving `initKeyboardAutoShow()` call to app load ensures focus listeners are attached based on loaded settings whenever the app starts
+- **State Management**: Settings are now properly synchronized between API, localStorage, and appState
+
+**Testing Instructions**:
+1. Hard refresh browser (Ctrl+F5 or Cmd+Shift+R) to clear cache
+2. Navigate to Settings page
+3. Enable both "Enable Virtual Keyboard" and "Auto-show on Focus" checkboxes
+4. Click Save
+5. Navigate away and return to Settings - checkboxes should remain checked
+6. Navigate to POS page
+7. Click any text input (search, customer name, etc.) - keyboard should automatically appear
+
+## Virtual Keyboard System (v1.8.67)
+
+### Overview
+The virtual keyboard system provides a touch-friendly on-screen keyboard for text input, particularly useful on tablets and touch devices used in POS environments.
+
+### Technical Implementation
+
+#### Keyboard Module
+- **Location**: [`assets/js/modules/keyboard.js`](../assets/js/modules/keyboard.js:1)
+- **Class**: `OnScreenKeyboard`
+- **Global Instance**: `window.onScreenKeyboard`
+
+#### Key Features
+1. **QWERTY Layout**: Standard keyboard layout with special keys (@, .)
+2. **Touch-Optimized**: Large buttons with visual feedback
+3. **Z-Index Management**: Appears above all content (z-[9999])
+4. **Event Handling**: Triggers input events for compatibility with search features
+
+#### Settings Integration
+
+**Settings Storage**:
+```javascript
+appState.settings.virtual_keyboard_enabled // Boolean, default: true
+appState.settings.virtual_keyboard_auto_show // Boolean, default: false
+```
+
+**Settings Form** ([`index.php:705-719`](../index.php:705-719)):
+```html
+<div class="bg-slate-700 p-4 rounded-lg mb-4">
+    <h3>Virtual Keyboard Settings</h3>
+    <label>
+        <input type="checkbox" id="enable-virtual-keyboard">
+        Enable Virtual Keyboard
+    </label>
+    <label>
+        <input type="checkbox" id="auto-show-keyboard">
+        Auto-show keyboard on input focus
+    </label>
+</div>
+```
+
+**Save Handler** ([`assets/js/main.js:3174`](../assets/js/main.js:3174)):
+```javascript
+async function saveSettings(event) {
+    const data = {
+        virtual_keyboard_enabled: enableKeyboard?.checked ?? true,
+        virtual_keyboard_auto_show: autoShowKeyboard?.checked ?? false,
+        // ... other settings
+    };
+    // Save to API and update appState
+}
+```
+
+**Load Handler** ([`assets/js/main.js:3170`](../assets/js/main.js:3170)):
+```javascript
+function populateSettingsForm() {
+    enableKeyboard.checked = appState.settings.virtual_keyboard_enabled !== false;
+    autoShowKeyboard.checked = appState.settings.virtual_keyboard_auto_show === true;
+    initKeyboardAutoShow(); // Initialize auto-show listeners
+}
+```
+
+#### Auto-Show Functionality
+
+**Implementation** ([`assets/js/main.js:3482`](../assets/js/main.js:3482)):
+```javascript
+function initKeyboardAutoShow() {
+    // Remove existing listeners
+    keyboardFocusListeners.forEach(({ element, handler }) => {
+        element.removeEventListener('focus', handler);
+    });
+    keyboardFocusListeners = [];
+    
+    // Check settings
+    const keyboardEnabled = appState.settings.virtual_keyboard_enabled !== false;
+    const autoShowEnabled = appState.settings.virtual_keyboard_auto_show === true;
+    
+    if (!keyboardEnabled || !autoShowEnabled) return;
+    
+    // Attach focus listeners to all text inputs
+    const inputs = document.querySelectorAll('input[type="text"], input[type="email"], input[type="search"], textarea');
+    
+    inputs.forEach(input => {
+        // Skip excluded modals
+        const excludedContainers = ['stock-edit-modal', 'product-editor-modal', 'fee-discount-modal'];
+        // ... check if input is in excluded container
+        
+        const focusHandler = () => {
+            if (input.offsetParent !== null && window.onScreenKeyboard) {
+                window.onScreenKeyboard.show(input);
+            }
+        };
+        
+        input.addEventListener('focus', focusHandler);
+        keyboardFocusListeners.push({ element: input, handler: focusHandler });
+    });
+}
+```
+
+#### Keyboard Button Visibility
+
+The keyboard toggle button in the customer search modal is controlled by the enable setting:
+```javascript
+const keyboardBtn = document.getElementById('customer-keyboard-btn');
+if (keyboardEnabled) {
+    keyboardBtn.classList.remove('hidden');
+} else {
+    keyboardBtn.classList.add('hidden');
+}
+```
+
+### Bug Fixes (v1.8.67)
+
+#### Fixed Customer Dialog Close Button
+**Problem**: X button didn't close the modal
+**Root Cause**: Called non-existent `cartManager.hideCustomerSearch()`
+**Solution**: Changed to `window.hideCustomerSearch()` at [`index.php:1069`](../index.php:1069)
+
+#### Fixed Keyboard Z-Index
+**Problem**: Keyboard appeared below content
+**Root Cause**: z-50 too low, modals use z-100
+**Solution**: Increased to z-[9999] at [`keyboard.js:29`](../assets/js/modules/keyboard.js:29)
+
+### Testing
+
+**Test Auto-Show Functionality**:
+1. Enable both keyboard settings in Settings page
+2. Click any text input field
+3. Keyboard should automatically appear
+4. Disable auto-show setting
+5. Keyboard should only appear when clicking keyboard button
+
+**Test Keyboard Visibility Control**:
+1. Disable virtual keyboard in settings
+2. Keyboard button should be hidden
+3. Auto-show should not work
+4. Enable keyboard setting
+5. Button should reappear
+
+### API Integration
+
+Virtual keyboard settings are saved via the settings API endpoint:
+
+**Endpoint**: `/api/settings.php`
+**Method**: POST
+**Payload**:
+```json
+{
+    "virtual_keyboard_enabled": true,
+    "virtual_keyboard_auto_show": false,
+    "nonce": "..."
+}
+```
+
+# WP POS Developer Guide
+
+**Last Updated**: October 6, 2025
+**System Version**: 1.8.66
+
 ## Overview
 
 WP POS (WordPress Point of Sale) is a modern, modular point-of-sale system built on WordPress. This guide provides comprehensive information for developers working with the WP POS codebase.
@@ -210,7 +539,10 @@ Retrieve product catalog with filtering options.
 - **Note**: Product creation and image upload must be done through WooCommerce admin - these features have been removed from the POS interface
 
 ### Order Processing
-- **GET** `/api/orders.php` - Fetch orders with filters
+- **GET** `/api/orders.php` - Fetch orders with filters (date, status, source, customer, order ID)
+  - New in v1.8.59: Customer filtering support via `customer_filter` parameter
+  - Enhanced in v1.8.60: Frontend converted to searchable input using customer search API
+  - Returns customer information (customer_id, customer_name) in all order responses
 - **POST** `/api/checkout.php` - Process checkout
 - **POST** `/api/refund.php` - Process refunds
 
@@ -641,6 +973,104 @@ const response = await fetch('/wp-pos/api/reports.php?period=this_month');
 ```
 
 ### Order Endpoints
+
+#### GET /api/orders.php
+Retrieve orders with comprehensive filtering options.
+
+**Query Parameters:**
+- `date_filter`: (optional) Date range filter - 'all', 'today', 'this_week', 'this_month', 'this_year'
+- `status_filter`: (optional) Order status filter - 'all' or specific WooCommerce order status
+- `source_filter`: (optional) Order source filter - 'all', 'pos', 'online'
+- `customer_filter`: (optional) Customer ID filter - 'all' or specific customer ID (v1.8.59)
+- `order_id_search`: (optional) Search by order number or ID
+- `limit`: (optional) Maximum number of orders to return, default: 100
+
+**Customer Filtering (v1.8.59-v1.8.60):**
+
+Backend API (v1.8.59):
+When `customer_filter` parameter is provided with a valid customer ID, the API filters orders using an EXISTS subquery:
+```sql
+EXISTS (
+    SELECT 1 FROM wp_postmeta pm
+    WHERE pm.post_id = p.ID
+    AND pm.meta_key = '_customer_user'
+    AND pm.meta_value = %d
+)
+```
+
+Frontend Implementation (v1.8.60):
+The customer filter UI was enhanced from a static dropdown to a searchable input field:
+- **Search Input**: Users type customer name or email (minimum 2 characters)
+- **Real-time Search**: Uses [`api/customers.php`](../api/customers.php:1) with 300ms debounce
+- **Results Display**: Shows matching customers with name and email in dropdown
+- **Selection**: Click customer to filter orders by that customer ID
+- **Clear Button**: Quick reset to show all customers
+- **Click-Outside**: Automatically closes results dropdown
+
+**Frontend Functions:**
+- [`searchCustomersForFilter(query)`](../assets/js/main.js:1543) - Fetches customer search results
+- [`displayCustomerFilterResults(customers)`](../assets/js/main.js:1562) - Renders search results dropdown
+- [`selectCustomerForFilter(customerId, customerName)`](../assets/js/main.js:1611) - Handles customer selection
+- [`hideCustomerFilterResults()`](../assets/js/main.js:1598) - Closes results dropdown
+
+**Response:**
+```json
+{
+    "success": true,
+    "data": {
+        "orders": [
+            {
+                "id": 123,
+                "number": "1001",
+                "date": "Jan 2, 2025, 9:15 am",
+                "status": "completed",
+                "source": "POS",
+                "total": 25.99,
+                "item_count": 3,
+                "customer_id": 5,
+                "customer_name": "John Doe",
+                "payment_method": "Cash"
+            }
+        ],
+        "total": 1,
+        "filters": {
+            "date": "all",
+            "status": "all",
+            "source": "all",
+            "customer": "5"
+        }
+    }
+}
+```
+
+**Customer Data Fallback Logic:**
+The API implements a hierarchical fallback to ensure customer names are always available:
+1. First attempts to get WordPress user data via `get_userdata($customer_id)`
+2. Falls back to billing first name + last name from order
+3. Final fallback to "Guest" if no customer information available
+
+**Example Usage:**
+```javascript
+// Backend: Get all orders
+const response = await fetch('/api/orders.php');
+
+// Backend: Get orders for specific customer
+const response = await fetch('/api/orders.php?customer_filter=5');
+
+// Backend: Combine customer filter with other filters
+const response = await fetch('/api/orders.php?customer_filter=5&status_filter=completed&date_filter=this_month');
+
+// Frontend: Search customers for filter
+const customers = await searchCustomersForFilter('john');
+// Returns: [{ id: 5, name: 'John Doe', email: 'john@example.com' }, ...]
+
+// Frontend: Display results
+displayCustomerFilterResults(customers);
+
+// Frontend: User selects customer
+selectCustomerForFilter(5, 'John Doe');
+// Triggers order refresh with customer_filter=5
+```
 
 #### POST /api/orders.php
 Create a new order.
@@ -1273,7 +1703,9 @@ The customer attachment feature allows POS operators to search for and attach cu
 - **Layout**: QWERTY layout optimized for name/email entry
 - **Special Keys**: Space, Backspace, Clear, @, .
 - **Compatibility**: Works with both touch and mouse input
-- **Integration**: Toggleable via keyboard icon button
+- **Integration**: Toggleable via keyboard icon button in customer search modal
+- **Global Function**: [`window.toggleCustomerKeyboard()`](../assets/js/main.js:1546) helper function
+- **Fixed in v1.8.66**: Corrected button onclick handler from `cartManager.toggleKeyboard()` to `window.toggleCustomerKeyboard()`
 
 #### State Management
 - **Location**: [`assets/js/modules/state.js`](../assets/js/modules/state.js:33)
@@ -1469,8 +1901,77 @@ const cartData = {
   - Test visual display updates, not just data state
   - Verify UI reflects state changes immediately
 
+### Held Carts Table Layout and Date Formatting (v1.8.57)
+
+#### Improved Date Display
+- **Problem**: Held carts table showed raw date/time strings that were verbose and hard to scan quickly
+- **Solution**: Implemented relative date formatting with new [`formatRelativeDate()`](../assets/js/main.js:3344) helper function
+- **Date Format Logic**:
+  - **Today's carts**: Display as "Today @ HH:MM AM/PM" (e.g., "Today @ 2:30 PM")
+  - **Yesterday's carts**: Display as "Yesterday @ HH:MM AM/PM" (e.g., "Yesterday @ 9:15 AM")
+  - **Older carts**: Keep full date and time (e.g., "2025-10-04 3:45 PM")
+- **Implementation**: Function compares cart timestamp against today/yesterday start/end times using UTC timezone-aware logic
+
+#### Fixed Table Layout
+- **Problem**: Columns were jumbled, poorly aligned, and inconsistently sized (restore button, price, actions, customer overlapping)
+- **Root Cause**: Used generic `grid-cols-12` with manual span assignments that didn't provide proper column control
+- **Solution**: Redesigned grid layout in [`renderHeldCarts()`](../assets/js/main.js:3344):
+  - Changed from `grid-cols-12` to `grid-cols-[auto,1fr,auto,auto,auto]`
+  - Date column: Fixed width `w-44` (perfect for "Yesterday @ 12:30 PM")
+  - Items column: Compact `w-16` for item count
+  - Customer column: Flexible `1fr` with `truncate` for responsive text
+  - Price column: Fixed width `w-24` for currency display
+  - Actions column: Fixed width `w-32` for buttons
+- **Benefits**:
+  - Proper column alignment and spacing
+  - Restore button, price, and actions clearly separated
+  - Customer names truncate gracefully with ellipsis
+  - Responsive design maintains layout integrity
+
+#### Technical Implementation
+```javascript
+// Helper function for relative dates
+function formatRelativeDate(timestamp) {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterdayStart = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000);
+    
+    if (date >= todayStart) {
+        return `Today @ ${date.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`;
+    } else if (date >= yesterdayStart) {
+        return `Yesterday @ ${date.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`;
+    } else {
+        return date.toLocaleString('en-US', {
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: 'numeric', minute: '2-digit', hour12: true
+        });
+    }
+}
+
+// Grid layout with proper column widths
+<div class="grid grid-cols-[auto,1fr,auto,auto,auto] gap-4 items-center">
+    <div class="w-44">${formatRelativeDate(held.timestamp)}</div>
+    <div class="w-16 text-center">${itemsCount}</div>
+    <div class="flex-1 truncate">${customerDisplay}</div>
+    <div class="w-24 text-right">${price}</div>
+    <div class="w-32 flex gap-2">${buttons}</div>
+</div>
+```
+
+#### Testing
+1. Hold multiple carts at different times (today, yesterday, older)
+2. Verify date formatting shows correct relative format
+3. Check column alignment and spacing is consistent
+4. Test with long customer names to verify truncation
+5. Verify restore/delete buttons are properly positioned
+
 ## Version History
 
+- v1.8.66: Fixed virtual keyboard functionality in customer search modal - corrected broken function reference at [`index.php:1080`](../index.php:1080) from non-existent `cartManager.toggleKeyboard()` to existing `window.toggleCustomerKeyboard()` helper function at [`main.js:1546-1551`](../assets/js/main.js:1546-1551), keyboard button now properly triggers [`OnScreenKeyboard.toggle()`](../assets/js/modules/keyboard.js:181) with correct input element reference, virtual keyboard displays at bottom of screen when clicked, works identically to fee/discount numeric keypad, auto-hides when modal closes
+- v1.8.60: Enhanced customer filtering with searchable input - converted static dropdown to real-time search using [`api/customers.php`](../api/customers.php:1), users search by name/email with 300ms debounce, implemented [`searchCustomersForFilter()`](../assets/js/main.js:1543), [`displayCustomerFilterResults()`](../assets/js/main.js:1562), [`selectCustomerForFilter()`](../assets/js/main.js:1611), updated UI in [`index.php:482-495`](../index.php:482-495), removed old [`populateCustomerFilter()`](../assets/js/main.js:1627-1641), improves scalability for large customer databases
+- v1.8.59: Implemented customer filtering in order view - added backend API support in [`orders.php:72-81`](../api/orders.php:72-81) with SQL filtering by customer ID, customer data in order responses at [`orders.php:100-122`](../api/orders.php:100-122), initial static dropdown implementation
+- v1.8.57: Fixed held carts table layout and date formatting - implemented relative date display ("Today @ 2:30 PM", "Yesterday @ 9:15 AM", full date for older), redesigned grid layout from `grid-cols-12` to `grid-cols-[auto,1fr,auto,auto,auto]` with fixed column widths (date: w-44, items: w-16, price: w-24, actions: w-32) and flexible customer column with truncation, eliminated jumbled alignment issues
 - v1.8.56: Fixed customer display not clearing after holding cart - modified [`clearCart()`](../assets/js/main.js:1372) to explicitly set `appState.cart.customer = null` when `fullReset = true`, ensuring the visual display updates to match the cleared state. Customer save/restore functionality already working correctly from v1.8.55
 - v1.8.55: Fixed held cart customer functionality - resolved three critical issues: customer data now saved when holding cart, customer name displayed in held carts table with truncated display, customer properly restored when retrieving held cart. Modified [`holdCurrentCart()`](../assets/js/main.js:3327), [`renderHeldCarts()`](../assets/js/main.js:3344), and [`restoreHeldCart()`](../assets/js/main.js:3466). Version updated in [`index.php`](../index.php:25)
 - v1.8.54: Implemented customer attachment functionality for POS orders - created customer search API endpoint [`api/customers.php`](../api/customers.php:1), on-screen keyboard component [`assets/js/modules/keyboard.js`](../assets/js/modules/keyboard.js:1), customer state management, UI integration with search modal and cart display, held cart persistence

@@ -1,5 +1,116 @@
 # WP POS User Manual
 
+## Virtual Keyboard (v1.8.68)
+
+### What is the Virtual Keyboard?
+
+The virtual keyboard is a touch-friendly on-screen keyboard that appears at the bottom of your screen. It's especially useful when using the POS system on tablets or touch devices where a physical keyboard isn't available.
+
+### Accessing the Virtual Keyboard
+
+There are two ways to use the virtual keyboard:
+
+1. **Manual Mode**: Click the keyboard icon button when you need it (e.g., in customer search)
+2. **Auto-Show Mode**: The keyboard automatically appears when you click any text input field
+
+### Keyboard Settings
+
+You can control the virtual keyboard from the Settings page.
+
+#### To Access Keyboard Settings:
+
+1. Click the menu button (☰) in the top-left corner
+2. Select "Settings" from the menu
+3. Scroll to the "Virtual Keyboard Settings" section
+
+#### Available Settings:
+
+**Enable Virtual Keyboard**
+- When checked: Virtual keyboard is available for use
+- When unchecked: Virtual keyboard is completely disabled and hidden
+- Default: Enabled
+
+**Auto-show keyboard on input focus**
+- When checked: Keyboard automatically appears when you click any text field
+- When unchecked: You must click the keyboard button to show it manually
+- Default: Disabled
+- **Note**: This setting only works if "Enable Virtual Keyboard" is also checked
+
+#### Recommended Settings:
+
+**For Touch Devices (Tablets)**:
+- ✅ Enable Virtual Keyboard: Checked
+- ✅ Auto-show keyboard: Checked
+- This provides the most convenient experience with automatic keyboard display
+
+**For Desktop/Laptop with Physical Keyboard**:
+- ✅ Enable Virtual Keyboard: Checked
+- ⬜ Auto-show keyboard: Unchecked
+- This keeps the keyboard available but doesn't show it automatically
+
+**To Disable Completely**:
+- ⬜ Enable Virtual Keyboard: Unchecked
+- ⬜ Auto-show keyboard: Unchecked (automatically disabled)
+- Use this if you never want to see the virtual keyboard
+
+### Using the Virtual Keyboard
+
+#### Keyboard Layout:
+- **Letter Keys**: Standard QWERTY layout for typing names and text
+- **Space**: Adds a space between words
+- **Backspace**: Deletes the last character
+- **Clear**: Clears all text in the input field
+- **Special Keys**: @ and . for typing email addresses
+
+#### Tips for Use:
+- The keyboard appears at the bottom of the screen
+- Click the X button in the top-right corner to hide the keyboard
+- The keyboard automatically hides when you close a modal/dialog
+- Text you type appears immediately in the focused input field
+
+### Troubleshooting
+
+**Settings not saving (Fixed in v1.8.68):**
+- **Status**: This issue has been resolved in version 1.8.68
+- **What was fixed**: Virtual keyboard settings now properly save and persist across page reloads
+- **Expected behavior**: When you enable settings and save, they remain checked when you return to Settings page
+- **If you still experience issues**:
+  1. Hard refresh your browser (Ctrl+F5 or Cmd+Shift+R) to clear cache
+  2. Check that version 1.8.68 or higher is loaded
+  3. Try saving settings again
+  4. Contact support if problem persists
+
+**Auto-show not working (Fixed in v1.8.68):**
+- **Status**: This issue has been resolved in version 1.8.68
+- **What was fixed**: Auto-show keyboard now properly initializes when you load the page
+- **Expected behavior**: With both settings enabled, keyboard automatically appears when you click any text input
+- **If you still experience issues**:
+  1. Hard refresh your browser (Ctrl+F5 or Cmd+Shift+R) to clear cache
+  2. Verify both "Enable Virtual Keyboard" and "Auto-show keyboard" are checked in Settings
+  3. Save your settings and refresh the page
+  4. Try clicking a text input field (customer search, product search, etc.)
+  5. Contact support if problem persists
+
+**Keyboard doesn't appear when clicking input fields:**
+- Check that "Enable Virtual Keyboard" is checked in Settings
+- Check that "Auto-show keyboard" is checked in Settings
+- Try clicking the keyboard button manually (if available)
+- Hard refresh browser (Ctrl+F5) if you recently updated
+
+**Keyboard appears below content:**
+- This has been fixed in v1.8.67
+- If you still see this issue, try refreshing your browser (Ctrl+F5)
+
+**Keyboard button is hidden:**
+- Check that "Enable Virtual Keyboard" is checked in Settings
+- Save your settings and refresh the page
+
+**X button doesn't close customer dialog:**
+- This has been fixed in v1.8.67
+- If you still see this issue, try refreshing your browser (Ctrl+F5)
+
+# WP POS User Manual
+
 ## Getting Started
 
 ### Login
@@ -194,12 +305,13 @@ You can now attach customer information to orders for better tracking and custom
    - Customer search modal appears
    - Enter at least 2 characters of customer name or email address
    
-3. **Use On-Screen Keyboard** (Optional)
+3. **Use On-Screen Keyboard** (Optional - Fixed in v1.8.66)
    - Click the keyboard icon in the search box
    - Touch-friendly keyboard appears at bottom of screen
    - Type customer name or email using on-screen keys
    - Compatible with both touch and mouse input
    - Press Space, Backspace, or Clear as needed
+   - **Note**: Keyboard functionality was fixed in version 1.8.66
 
 4. **Select Customer from Results**
    - Search results appear as you type (with 300ms delay)
@@ -253,8 +365,52 @@ You can now attach customer information to orders for better tracking and custom
 
 ### Viewing Orders
 - Access order history from the Orders section
-- Filter orders by date, status, or payment method
-- Search for specific orders
+- Filter orders by date, status, payment method, or customer (new in v1.8.59)
+- Search for specific orders or customers
+
+### Filtering Orders by Customer (Enhanced in v1.8.60)
+You can filter the order list to show only orders from a specific customer using the searchable customer filter:
+
+1. **Access Customer Filter**
+   - Navigate to the Orders page
+   - Look for the customer search field in the filter bar (next to date/status filters)
+   - The field shows placeholder text "Search customer..."
+
+2. **Search for Customer**
+   - **Type to Search**: Enter at least 2 characters of the customer's name or email
+   - **View Results**: Search results appear automatically in a dropdown below the input
+   - **Customer Details**: Each result shows the customer's full name and email address
+   - **Fast Search**: Results appear as you type with a short delay for performance
+
+3. **Select Customer**
+   - **Click to Select**: Click on any customer from the search results
+   - **Instant Filter**: Order list immediately updates to show only that customer's orders
+   - **Visual Feedback**: Selected customer's name appears in the search field
+   - **Results Close**: Dropdown automatically closes after selection
+
+4. **Clear Filter**
+   - **X Button**: Click the X button that appears when a customer is selected
+   - **Show All**: Order list returns to displaying all orders
+   - **Quick Reset**: Filter clears instantly with one click
+
+5. **Additional Features**
+   - **Click Outside**: Click anywhere outside the dropdown to close it without selecting
+   - **Real-time Search**: Search updates as you type (300ms delay for performance)
+   - **Works with Filters**: Combine with date, status, and source filters
+   - **Filter Persistence**: Selection remains when refreshing order data
+
+**Search Tips:**
+- Type customer's first or last name
+- Search by email address works too
+- Minimum 2 characters required to start search
+- Partial matches work (e.g., "john" finds "John Doe")
+- Search is case-insensitive
+
+**Why Searchable?**
+- Faster for stores with many customers
+- Easy to find specific customers
+- No need to scroll through long dropdown lists
+- Type what you remember (name or email)
 
 ### Order Details
 Each order shows:
@@ -434,13 +590,20 @@ Customize the interface:
   3. Check internet connection
   4. Contact support if issue persists
 
-#### On-Screen Keyboard Not Appearing
-- **Problem**: Keyboard button does nothing
-- **Solutions**:
-  1. Click the keyboard icon again to toggle
-  2. Check if keyboard is already visible at bottom of screen
-  3. Refresh the page to reset keyboard
-  4. Use regular keyboard if touch keyboard doesn't work
+#### On-Screen Keyboard Not Appearing (Fixed in v1.8.66)
+- **Status**: This issue has been resolved in version 1.8.66
+- **What was fixed**: Virtual keyboard now properly appears when clicking the keyboard button in the customer search modal
+- **Expected behavior**:
+  1. Click the keyboard icon in the customer search field
+  2. Touch-friendly QWERTY keyboard appears at bottom of screen
+  3. Type customer name or email using on-screen keys
+  4. Click keyboard icon again or close modal to hide keyboard
+- **If you still experience issues**:
+  1. Refresh the page (F5 or Ctrl+F5) to ensure you have the latest version
+  2. Check that version 1.8.66 or higher is loaded
+  3. Try clicking the keyboard icon again to toggle
+  4. Use regular keyboard as alternative if needed
+  5. Contact support if problem persists
 
 #### Customer Not Attaching
 - **Problem**: Clicking customer doesn't attach them
@@ -672,12 +835,59 @@ For technical support or questions:
 - Phone: (555) 123-4567
 - Website: https://example.com/support
 
+## Held Carts (Updated in v1.8.57)
+
+### Viewing Held Carts
+
+The Held Carts page displays all carts you've temporarily saved for later:
+
+1. **Navigate to Held Carts**: Click "Held Carts" in the side menu
+2. **View Your Held Carts**: See all carts with important information at a glance
+
+### Held Cart Information Display
+
+Each held cart shows:
+- **Date/Time**: When the cart was held
+  - Carts held today show as "Today @ 2:30 PM" (easy to spot recent holds)
+  - Yesterday's carts show as "Yesterday @ 9:15 AM"
+  - Older carts show full date like "2025-10-04 3:45 PM"
+- **Items**: Number of items in the cart
+- **Customer**: Customer name if one was attached (or "-" if no customer)
+- **Price**: Total cart value
+- **Actions**: Restore or Delete buttons
+
+### Managing Held Carts
+
+**To Restore a Cart:**
+1. Click the "Restore" button on the desired cart
+2. The cart contents, customer info, and totals are automatically loaded
+3. Continue with the transaction where you left off
+
+**To Delete a Cart:**
+1. Click the "Delete" button (trash icon)
+2. The held cart is permanently removed
+3. This action cannot be undone
+
+### Tips for Using Held Carts
+
+- Use held carts when a customer needs to step away temporarily
+- Attach customers to carts before holding so you remember who they're for
+- Check the date/time to identify which cart belongs to which customer
+- Held carts are saved in your browser's local storage
+- Clearing browser data will remove held carts
+
 ## Version Information
 
-- Current Version: 1.8.56
+- Current Version: 1.8.68
 - Last Updated: October 6, 2025
-- Latest Update: WP POS v1.8.56 - Fixed customer display not clearing from cart after holding - customer display box now properly disappears when cart is held and customer data is correctly restored when retrieving held cart
+- Latest Update: WP POS v1.8.68 - Fixed virtual keyboard settings persistence and auto-show initialization - settings now properly save and reload, auto-show keyboard now works correctly on all text inputs when enabled
 - Previous Updates:
+  - v1.8.67 - Enhanced virtual keyboard system with comprehensive settings and auto-show functionality
+  - v1.8.66 - Fixed virtual keyboard functionality in customer search modal
+  - v1.8.60 - Enhanced customer filtering with searchable input - users can now search for customers by name or email instead of selecting from a dropdown
+  - v1.8.59 - Implemented customer filtering in order view with initial static dropdown
+  - v1.8.57 - Fixed held carts table layout and date formatting
+  - v1.8.56 - Fixed customer display not clearing from cart after holding
   - v1.8.55 - Fixed held cart customer functionality - customer data now properly saved, displayed in held carts table, and restored when retrieving cart
   - v1.8.54 - Implemented customer attachment functionality for POS orders with search, on-screen keyboard, and held cart persistence
   - v1.8.53 - Improved POS cart UI layout by moving Clear Cart button to directly below cart items for better visual hierarchy and easier access

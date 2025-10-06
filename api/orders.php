@@ -70,6 +70,17 @@ if (isset($_GET['status_filter']) && !empty($_GET['status_filter']) && $_GET['st
     $sql .= $wpdb->prepare(" AND p.post_status = %s", $status);
 }
 
+// --- Append Customer Filters ---
+if (isset($_GET['customer_filter']) && !empty($_GET['customer_filter']) && $_GET['customer_filter'] !== 'all') {
+    $customer_id = intval($_GET['customer_filter']);
+    $sql .= " AND EXISTS (
+        SELECT 1 FROM {$wpdb->prefix}postmeta pm
+        WHERE pm.post_id = p.ID AND pm.meta_key = %s AND pm.meta_value = %d
+    )";
+    $sql_params[] = '_customer_user';
+    $sql_params[] = $customer_id;
+}
+
 $sql .= " ORDER BY p.post_date DESC LIMIT %d";
 $sql_params[] = $limit;
 
@@ -97,6 +108,27 @@ if (!empty($order_ids)) {
         $split_payments = $order->get_meta('_jpos_split_payments', true);
         $split_payments = $split_payments ? json_decode($split_payments, true) : null;
         
+        // Get customer information
+        $customer_id = $order->get_customer_id();
+        $customer_name = '';
+        if ($customer_id) {
+            $customer = get_userdata($customer_id);
+            if ($customer) {
+                $customer_name = trim($customer->first_name . ' ' . $customer->last_name);
+                if (empty($customer_name)) {
+                    $customer_name = $customer->display_name;
+                }
+            }
+        }
+        if (empty($customer_name)) {
+            $billing_first = $order->get_billing_first_name();
+            $billing_last = $order->get_billing_last_name();
+            $customer_name = trim($billing_first . ' ' . $billing_last);
+            if (empty($customer_name)) {
+                $customer_name = 'Guest';
+            }
+        }
+        
         $response_data[] = [
             'id'           => $order->get_id(),
             'order_number' => $order->get_order_number(),
@@ -106,6 +138,8 @@ if (!empty($order_ids)) {
             'subtotal'     => wc_format_decimal($order->get_subtotal(), 2),
             'item_count'   => $order->get_item_count(),
             'source'       => $order_source,
+            'customer_id'  => $customer_id,
+            'customer_name' => $customer_name,
             'items'        => array_map(function($item) {
                 $product = $item->get_product();
                 return [

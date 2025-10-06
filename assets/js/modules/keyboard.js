@@ -26,7 +26,7 @@ class OnScreenKeyboard {
     createKeyboard() {
         const container = document.createElement('div');
         container.id = 'on-screen-keyboard';
-        container.className = 'fixed bottom-0 left-0 right-0 bg-slate-800 border-t border-slate-700 p-4 z-50 hidden';
+        container.className = 'fixed bottom-0 left-0 right-0 bg-slate-800 border-t border-slate-700 p-4 z-[9999] hidden';
         container.style.transition = 'transform 0.3s ease-in-out';
         
         const keyboardGrid = document.createElement('div');
