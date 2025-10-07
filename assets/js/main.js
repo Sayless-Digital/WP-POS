@@ -36,6 +36,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const settingsManager = new SettingsManager(state, uiHelpers);
     const sessionsManager = new SessionsManager(state, uiHelpers);
     
+    // Load settings into state on app initialization
+    await settingsManager.loadReceiptSettings();
+    
     // Expose managers globally for routing and cross-module access
     window.uiHelpers = uiHelpers;
     window.authManager = authManager;

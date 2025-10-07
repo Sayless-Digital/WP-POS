@@ -9,12 +9,14 @@ class OnScreenKeyboard {
         this.targetInput = null;
         this.keyboardElement = null;
         this.isVisible = false;
+        this.isKeyboardInUse = false; // Track if keyboard is being actively used
         
-        // Keyboard layout - optimized for name/email search
+        // Full QWERTY keyboard layout with numbers and symbols
         this.layout = [
-            ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
-            ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
-            ['Z', 'X', 'C', 'V', 'B', 'N', 'M', '@', '.'],
+            ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '='],
+            ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '[', ']'],
+            ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ';', "'"],
+            ['Z', 'X', 'C', 'V', 'B', 'N', 'M', ',', '.', '/', '@'],
             ['Space', 'Backspace', 'Clear']
         ];
     }
@@ -26,8 +28,7 @@ class OnScreenKeyboard {
     createKeyboard() {
         const container = document.createElement('div');
         container.id = 'on-screen-keyboard';
-        container.className = 'fixed bottom-0 left-0 right-0 bg-slate-800 border-t border-slate-700 p-4 z-[9999] hidden';
-        container.style.transition = 'transform 0.3s ease-in-out';
+        container.className = 'fixed bottom-0 left-0 right-0 bg-slate-900/80 backdrop-blur-lg border-t border-slate-700 p-4 z-[9999] rounded-t-2xl transform translate-y-full transition-transform duration-300 ease-in-out';
         
         const keyboardGrid = document.createElement('div');
         keyboardGrid.className = 'max-w-4xl mx-auto space-y-2';
@@ -67,7 +68,7 @@ class OnScreenKeyboard {
     createKey(key, rowIndex) {
         const button = document.createElement('button');
         button.type = 'button';
-        button.className = 'bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-semibold transition-colors active:bg-slate-500 select-none';
+        button.className = 'bg-gradient-to-b from-slate-600 to-slate-700 hover:from-slate-500 hover:to-slate-600 text-white rounded-lg font-semibold transition-all select-none shadow-[0_4px_0_0_rgb(30,41,59)] hover:shadow-[0_2px_0_0_rgb(30,41,59)] active:shadow-[0_0_0_0_rgb(30,41,59)] active:translate-y-1 border border-slate-500';
         button.dataset.key = key;
         
         // Size classes based on key type
@@ -78,7 +79,7 @@ class OnScreenKeyboard {
             button.className += ' px-8 py-4 text-sm';
             button.innerHTML = '<i class="fas fa-backspace"></i> Back';
         } else if (key === 'Clear') {
-            button.className += ' px-8 py-4 text-sm bg-red-700 hover:bg-red-600';
+            button.className += ' px-8 py-4 text-sm bg-gradient-to-b from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 shadow-[0_4px_0_0_rgb(127,29,29)] hover:shadow-[0_2px_0_0_rgb(127,29,29)] active:shadow-[0_0_0_0_rgb(127,29,29)] border-red-500';
             button.textContent = 'Clear';
         } else {
             button.className += ' w-12 h-12 text-lg';
@@ -91,14 +92,7 @@ class OnScreenKeyboard {
             this.handleKeyPress(key);
         });
         
-        // Touch feedback
-        button.addEventListener('touchstart', (e) => {
-            button.classList.add('bg-slate-500');
-        });
-        
-        button.addEventListener('touchend', (e) => {
-            button.classList.remove('bg-slate-500');
-        });
+        // Touch feedback - already handled by active state with translate
         
         return button;
     }
@@ -109,6 +103,9 @@ class OnScreenKeyboard {
      */
     handleKeyPress(key) {
         if (!this.targetInput) return;
+        
+        // Set flag to indicate keyboard is in use
+        this.isKeyboardInUse = true;
         
         const currentValue = this.targetInput.value;
         
@@ -135,6 +132,11 @@ class OnScreenKeyboard {
         
         // Keep focus on input
         this.targetInput.focus();
+        
+        // Reset flag after a short delay
+        setTimeout(() => {
+            this.isKeyboardInUse = false;
+        }, 150);
     }
 
     /**
@@ -152,8 +154,8 @@ class OnScreenKeyboard {
             document.body.appendChild(keyboard);
         }
         
-        // Show keyboard
-        this.keyboardElement.classList.remove('hidden');
+        // Show keyboard with slide animation
+        this.keyboardElement.classList.remove('translate-y-full');
         this.isVisible = true;
         
         // Adjust page padding to account for keyboard
@@ -166,7 +168,7 @@ class OnScreenKeyboard {
     hide() {
         if (!this.keyboardElement) return;
         
-        this.keyboardElement.classList.add('hidden');
+        this.keyboardElement.classList.add('translate-y-full');
         this.isVisible = false;
         this.targetInput = null;
         
@@ -203,7 +205,13 @@ class OnScreenKeyboard {
         this.removeAutoShowListeners();
         
         // Check if auto-show is enabled in settings
-        const settings = window.stateManager?.getState('settings') || {};
+        let settings = window.stateManager?.getState('settings') || {};
+        
+        // Handle case where settings might be wrapped in API response format
+        if (settings.data) {
+            settings = settings.data;
+        }
+        
         const keyboardEnabled = settings.virtual_keyboard_enabled !== false;
         const autoShowEnabled = settings.virtual_keyboard_auto_show === true;
         
@@ -225,7 +233,21 @@ class OnScreenKeyboard {
             
             // Create bound handler for this input
             const focusHandler = () => this.show(input);
-            const blurHandler = () => this.hide();
+            const blurHandler = (e) => {
+                // Don't hide if keyboard is being actively used or clicking on keyboard
+                setTimeout(() => {
+                    if (this.isKeyboardInUse) {
+                        return; // Keyboard is in use, don't hide
+                    }
+                    
+                    const clickedInsideKeyboard = this.keyboardElement &&
+                        this.keyboardElement.contains(document.activeElement);
+                    
+                    if (!clickedInsideKeyboard && this.isVisible) {
+                        this.hide();
+                    }
+                }, 100);
+            };
             
             // Store handlers for later removal
             if (!this.autoShowHandlers) {

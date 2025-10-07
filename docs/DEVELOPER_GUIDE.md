@@ -1,5 +1,15 @@
 # WP POS Developer Guide
 
+## Latest Updates
+
+### v1.9.74 - Settings Page Loading Fix
+**Issue**: Settings page showed empty input fields instead of saved values
+**Root Cause**: Settings were never loaded into application state during initialization
+**Solution**: Added `await settingsManager.loadReceiptSettings()` in [`main.js:41`](../assets/js/main.js:41) immediately after SettingsManager initialization
+**Impact**: All settings inputs (store name, email, phone, address, receipt footer, keyboard settings) now properly populate when navigating to settings page
+
+---
+
 ## Customer Assignment System (v1.9.70) - Direct Database Approach
 
 ### Overview

@@ -18,7 +18,7 @@ class SettingsManager {
             
             const result = await response.json();
             if (result.success) {
-                this.state.settings = result.data;
+                this.state.updateState('settings', result.data);
                 
                 // Initialize keyboard auto-show based on loaded settings
                 if (window.initKeyboardAutoShow) {
@@ -29,7 +29,7 @@ class SettingsManager {
             }
         } catch (error) {
             console.error("Could not load receipt settings.", error);
-            this.state.settings = {
+            this.state.updateState('settings', {
                 name: "Store Name",
                 email: "",
                 phone: "",
@@ -38,7 +38,7 @@ class SettingsManager {
                 footer_message_2: "",
                 virtual_keyboard_enabled: true,
                 virtual_keyboard_auto_show: false
-            };
+            });
             alert('Warning: Could not load store settings. Receipts may display default info.');
             
             // Initialize with defaults
@@ -52,23 +52,31 @@ class SettingsManager {
      * Populate settings form with current values
      */
     populateSettingsForm() {
-        document.getElementById('setting-name').value = this.state.settings.name || '';
-        document.getElementById('setting-logo-url').value = this.state.settings.logo_url || '';
-        document.getElementById('setting-email').value = this.state.settings.email || '';
-        document.getElementById('setting-phone').value = this.state.settings.phone || '';
-        document.getElementById('setting-address').value = this.state.settings.address || '';
-        document.getElementById('setting-footer1').value = this.state.settings.footer_message_1 || '';
-        document.getElementById('setting-footer2').value = this.state.settings.footer_message_2 || '';
+        // Settings are already loaded during app initialization
+        let currentSettings = this.state.getState('settings') || {};
+        
+        // Handle case where settings might be wrapped in API response format
+        if (currentSettings.data) {
+            currentSettings = currentSettings.data;
+        }
+        
+        document.getElementById('setting-name').value = currentSettings.name || '';
+        document.getElementById('setting-logo-url').value = currentSettings.logo_url || '';
+        document.getElementById('setting-email').value = currentSettings.email || '';
+        document.getElementById('setting-phone').value = currentSettings.phone || '';
+        document.getElementById('setting-address').value = currentSettings.address || '';
+        document.getElementById('setting-footer1').value = currentSettings.footer_message_1 || '';
+        document.getElementById('setting-footer2').value = currentSettings.footer_message_2 || '';
         
         // Virtual keyboard settings
         const enableKeyboard = document.getElementById('setting-keyboard-enabled');
         const autoShowKeyboard = document.getElementById('setting-keyboard-auto-show');
         
         if (enableKeyboard) {
-            enableKeyboard.checked = this.state.settings.virtual_keyboard_enabled !== false; // Default to true
+            enableKeyboard.checked = currentSettings.virtual_keyboard_enabled !== false; // Default to true
         }
         if (autoShowKeyboard) {
-            autoShowKeyboard.checked = this.state.settings.virtual_keyboard_auto_show === true;
+            autoShowKeyboard.checked = currentSettings.virtual_keyboard_auto_show === true;
         }
         
         // Initialize keyboard auto-show based on settings
@@ -143,7 +151,7 @@ class SettingsManager {
             footer_message_2: document.getElementById('setting-footer2').value,
             virtual_keyboard_enabled: enableKeyboard ? enableKeyboard.checked : true,
             virtual_keyboard_auto_show: autoShowKeyboard ? autoShowKeyboard.checked : false,
-            nonce: this.state.nonces.settings
+            nonce: this.state.getState('nonces.settings')
         };
         
         try {
@@ -158,12 +166,15 @@ class SettingsManager {
             
             if (!result.success) throw new Error(result.data.message || 'Failed to save settings.');
             
-            statusEl.textContent = result.data.message || 'Settings saved successfully!';
+            const apiMessage = result.data.message || 'Settings saved successfully!';
+            statusEl.textContent = apiMessage;
             statusEl.className = 'ml-4 text-sm text-green-400';
             
             // Update appState with keyboard settings
-            this.state.settings.virtual_keyboard_enabled = data.virtual_keyboard_enabled;
-            this.state.settings.virtual_keyboard_auto_show = data.virtual_keyboard_auto_show;
+            const currentSettings = this.state.getState('settings') || {};
+            currentSettings.virtual_keyboard_enabled = data.virtual_keyboard_enabled;
+            currentSettings.virtual_keyboard_auto_show = data.virtual_keyboard_auto_show;
+            this.state.updateState('settings', currentSettings);
             
             await this.loadReceiptSettings();
             
@@ -172,7 +183,7 @@ class SettingsManager {
                 window.initKeyboardAutoShow();
             }
             
-            this.ui.showToast('Settings saved successfully!');
+            this.ui.showToast(apiMessage);
         } catch (error) {
             console.error("Error saving settings:", error);
             statusEl.textContent = `Error: ${error.message}`;
@@ -185,5 +196,10 @@ class SettingsManager {
     }
 }
 
-// Export as singleton
+// Export class
 window.SettingsManager = SettingsManager;
+
+// Create instance and expose methods globally for routing system
+// These will be properly initialized in main.js after StateManager is ready
+window.populateSettingsForm = null;
+window.saveSettings = null;

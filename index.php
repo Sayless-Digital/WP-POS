@@ -17,7 +17,7 @@ require_once __DIR__ . '/../wp-load.php';
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- Custom JSON syntax highlighting -->
     
-    <!-- WP POS v1.9.73 - Fixed Virtual Keyboard Auto-Show Implementation -->
+    <!-- WP POS v1.9.83 - 3D Depth Effect on Keyboard Keys -->
     
     <!-- Core Modules - Load First -->
     <script src="assets/js/modules/state.js?v=1.9.72&t=<?php echo time(); ?>"></script>
@@ -26,7 +26,7 @@ require_once __DIR__ . '/../wp-load.php';
     
     <!-- Auth & UI Modules -->
     <script src="assets/js/modules/auth.js?v=1.9.72&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/keyboard.js?v=1.9.73&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/keyboard.js?v=1.9.83&t=<?php echo time(); ?>"></script>
     
     <!-- Products Modules -->
     <script src="assets/js/modules/products/products.js?v=1.9.72&t=<?php echo time(); ?>"></script>
@@ -46,11 +46,11 @@ require_once __DIR__ . '/../wp-load.php';
     <script src="assets/js/modules/financial/reports.js?v=1.9.72&t=<?php echo time(); ?>"></script>
     
     <!-- Admin Modules -->
-    <script src="assets/js/modules/admin/settings.js?v=1.9.73&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/admin/settings.js?v=1.9.76&t=<?php echo time(); ?>"></script>
     <script src="assets/js/modules/admin/sessions.js?v=1.9.72&t=<?php echo time(); ?>"></script>
     
     <!-- Main Orchestrator - Load Last -->
-    <script src="assets/js/main.js?v=1.9.73&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/main.js?v=1.9.75&t=<?php echo time(); ?>"></script>
     <style>
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
@@ -331,7 +331,7 @@ require_once __DIR__ . '/../wp-load.php';
     <!-- Main App Wrapper (Initially hidden) -->
     <div id="main-app" class="hidden">
         <!-- Slide-out Menu -->
-        <nav id="side-menu" class="fixed top-0 left-0 h-full w-64 bg-slate-900/80 backdrop-blur-lg border-r border-slate-700 z-50">
+        <nav id="side-menu" class="fixed top-0 left-0 h-full w-64 bg-slate-900/80 backdrop-blur-lg border-r border-slate-700 z-50 rounded-r-2xl">
             <div class="p-4">
                 <!-- User Profile Section -->
                 <div id="user-profile-section" class="mb-6 p-3 bg-slate-800/50 rounded-lg border border-slate-600">
