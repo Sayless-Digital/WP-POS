@@ -430,8 +430,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const settingsForm = document.getElementById('settings-form');
         if (settingsForm) {
             settingsForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                settingsManager.saveSettings();
+                settingsManager.saveSettings(e);
             });
         }
         

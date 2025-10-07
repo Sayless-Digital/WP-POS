@@ -737,11 +737,37 @@ class ProductEditorManager {
 
                 if (!response.ok) throw new Error(`Server responded with ${response.status}`);
                 const result = await response.json();
-                if (!result.success) throw new Error(result.data?.message || result.message);
+                
+                // Log detailed debug information
+                console.log('=== PRODUCT UPDATE DEBUG ===');
+                console.log('Success:', result.success);
+                console.log('Message:', result.message || result.error);
+                if (result.debug) {
+                    console.log('Debug Info:', result.debug);
+                    console.log('Current Step:', result.debug.step);
+                    if (result.debug.exception_class) {
+                        console.error('Exception:', result.debug.exception_class);
+                        console.error('File:', result.debug.exception_file);
+                        console.error('Line:', result.debug.exception_line);
+                        console.error('Stack Trace:', result.debug.stack_trace);
+                    }
+                }
+                console.log('=========================');
+                
+                if (!result.success) {
+                    const errorMsg = result.error || result.data?.message || result.message || 'Unknown error';
+                    throw new Error(errorMsg);
+                }
 
                 // EDIT MODE SUCCESS
                 statusEl.textContent = 'Product updated successfully!';
                 statusEl.className = 'text-sm text-right h-5 mt-2 text-green-400';
+                
+                // Auto-refresh products list to show updated stock/details
+                console.log('Refreshing products after save...');
+                if (window.productsManager && typeof window.productsManager.fetchProducts === 'function') {
+                    await window.productsManager.fetchProducts();
+                }
             }
 
         } catch (error) {

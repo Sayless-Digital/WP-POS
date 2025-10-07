@@ -4,6 +4,7 @@
 require_once __DIR__ . '/../../wp-load.php';
 require_once __DIR__ . '/validation.php';
 require_once __DIR__ . '/error_handler.php';
+require_once __DIR__ . '/checkout-customer-fix.php'; // Hook-level customer protection
 
 define('JPOS_SETTINGS_OPTION_KEY', 'jpos_receipt_settings');
 
@@ -43,6 +44,11 @@ $fee_discount_data = $data['fee_discount'] ?? null;
 $split_payments = $data['split_payments'] ?? null;
 $current_user = wp_get_current_user();
 
+// Always use current cashier as customer (customer attachment feature removed)
+$order_customer_id = $current_user->ID;
+
+error_log("JPOS CHECKOUT - Using cashier as customer: " . $order_customer_id);
+
 if (empty($cart_items) && !$fee_discount_data) {
     wp_send_json_error(['message' => 'Cart is empty.'], 400);
     exit;
@@ -51,17 +57,51 @@ if (empty($cart_items) && !$fee_discount_data) {
 $wpdb->query('START TRANSACTION');
 
 try {
-    $order = new WC_Order();
-    $order->set_customer_id($current_user->ID);
-    $order->set_currency(get_woocommerce_currency());
-    $order->set_prices_include_tax('yes' === get_option('woocommerce_prices_include_tax'));
+    
+    // Create order - don't pass customer_id yet
+    $order = wc_create_order(['status' => 'pending']);
+    
+    if (!$order || is_wp_error($order)) {
+        throw new Exception("Failed to create order");
+    }
+    
+    $order_id = $order->get_id();
+    
+    // IMMEDIATELY write customer directly to database - bypass all WooCommerce methods
+    $wpdb->update(
+        $wpdb->posts,
+        ['post_author' => $order_customer_id],
+        ['ID' => $order_id],
+        ['%d'],
+        ['%d']
+    );
+    
+    // IMMEDIATELY write customer meta directly
+    update_post_meta($order_id, '_customer_user', $order_customer_id);
+    
+    // Force cache clear
+    clean_post_cache($order_id);
+    wp_cache_delete('order-' . $order_id, 'orders');
+    
+    error_log("JPOS CHECKOUT DEBUG - Order {$order_id} created, customer {$order_customer_id} written DIRECTLY to database");
+    
+    // Track who created the order via POS
+    $order->add_meta_data('_jpos_created_by', $current_user->ID, true);
+    $order->add_meta_data('_jpos_created_by_name', $current_user->display_name, true);
 
+    // Use store address for all POS sales
     $pos_settings = get_option(JPOS_SETTINGS_OPTION_KEY, []);
     $store_address = [
-        'first_name' => $pos_settings['name'] ?? 'In-Store', 'last_name'  => 'Sale',
-        'company'    => $pos_settings['name'] ?? 'JPOS Sale', 'address_1'  => $pos_settings['address'] ?? 'N/A',
-        'city'       => '', 'state'      => '', 'postcode'   => '', 'country'    => '',
-        'email'      => $pos_settings['email'] ?? $current_user->user_email, 'phone' => $pos_settings['phone'] ?? '',
+        'first_name' => $pos_settings['name'] ?? 'POS',
+        'last_name'  => 'Sale',
+        'company'    => $pos_settings['name'] ?? 'JPOS',
+        'address_1'  => $pos_settings['address'] ?? 'N/A',
+        'city'       => '',
+        'state'      => '',
+        'postcode'   => '',
+        'country'    => '',
+        'email'      => $pos_settings['email'] ?? $current_user->user_email,
+        'phone'      => $pos_settings['phone'] ?? '',
     ];
     $order->set_address($store_address, 'billing');
     $order->set_address($store_address, 'shipping');
@@ -120,18 +160,88 @@ try {
         ];
     }
 
-    $order->set_payment_method('jpos_payment'); 
+    $order->set_payment_method('jpos_payment');
     $order->set_payment_method_title($payment_method_title);
     $order->add_meta_data('_created_via_jpos', '1', true);
     if ($split_payments && is_array($split_payments) && count($split_payments) > 1) {
         $order->add_meta_data('_jpos_split_payments', json_encode($split_payments), true);
     }
     
+    // Calculate totals
     $order->calculate_totals(true);
+    
+    // Force customer in database again BEFORE save (calculate_totals may have changed it)
+    $wpdb->update(
+        $wpdb->posts,
+        ['post_author' => $order_customer_id],
+        ['ID' => $order_id],
+        ['%d'],
+        ['%d']
+    );
+    update_post_meta($order_id, '_customer_user', $order_customer_id);
+    
+    // Save the order
+    $saved_order_id = $order->save();
+    
+    if (!$saved_order_id) { throw new Exception("Could not save the order."); }
+    
+    // Force customer in database again AFTER save
+    $wpdb->update(
+        $wpdb->posts,
+        ['post_author' => $order_customer_id],
+        ['ID' => $order_id],
+        ['%d'],
+        ['%d']
+    );
+    update_post_meta($order_id, '_customer_user', $order_customer_id);
+    
+    error_log("JPOS CHECKOUT DEBUG - Order {$saved_order_id} saved, customer forced in DB");
+    
+    // Set status to completed
     $order->set_status('completed');
-    $order_id = $order->save();
-
-    if (!$order_id) { throw new Exception("Could not save the order."); }
+    
+    // Force customer in database again BEFORE status save
+    $wpdb->update(
+        $wpdb->posts,
+        ['post_author' => $order_customer_id],
+        ['ID' => $order_id],
+        ['%d'],
+        ['%d']
+    );
+    update_post_meta($order_id, '_customer_user', $order_customer_id);
+    
+    $order->save();
+    
+    // FINAL database write - this is the last word
+    $wpdb->update(
+        $wpdb->posts,
+        ['post_author' => $order_customer_id],
+        ['ID' => $order_id],
+        ['%d'],
+        ['%d']
+    );
+    update_post_meta($order_id, '_customer_user', $order_customer_id);
+    
+    // Clear all caches
+    clean_post_cache($order_id);
+    wp_cache_delete('order-' . $order_id, 'orders');
+    wc_delete_shop_order_transients($order_id);
+    
+    error_log("JPOS CHECKOUT DEBUG - Order {$order_id} completed, customer {$order_customer_id} FORCED in database (final)");
+    
+    // Schedule a background action to run AFTER any async WooCommerce processes
+    // This ensures customer persists even if WooCommerce has background jobs
+    if (function_exists('as_schedule_single_action')) {
+        as_schedule_single_action(
+            time() + 5, // 5 seconds from now
+            'jpos_final_customer_lock',
+            [
+                'order_id' => $order_id,
+                'customer_id' => $order_customer_id
+            ],
+            'jpos'
+        );
+    }
     
     $receipt_items = [];
     foreach ($order->get_items('line_item') as $item) {
@@ -163,6 +273,8 @@ try {
         'discount'     => $discount_data,
         'fees'         => $receipt_fees,
         'split_payments' => $split_payments,
+        'customer_name' => $customer_name,
+        'cashier_name' => $current_user->display_name,
     ];
     
     $wpdb->query('COMMIT');

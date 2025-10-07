@@ -13,7 +13,7 @@ class SettingsManager {
      */
     async loadReceiptSettings() {
         try {
-            const response = await fetch('/jpos/api/settings.php');
+            const response = await fetch('api/settings.php');
             if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
             
             const result = await response.json();
@@ -129,9 +129,9 @@ class SettingsManager {
         statusEl.textContent = 'Saving...';
         statusEl.className = 'ml-4 text-sm text-slate-400';
         
-        // Get virtual keyboard settings
-        const enableKeyboard = document.getElementById('enable-virtual-keyboard');
-        const autoShowKeyboard = document.getElementById('auto-show-keyboard');
+        // Get virtual keyboard settings (using correct IDs from HTML)
+        const enableKeyboard = document.getElementById('setting-keyboard-enabled');
+        const autoShowKeyboard = document.getElementById('setting-keyboard-auto-show');
         
         const data = {
             name: document.getElementById('setting-name').value,
@@ -147,7 +147,7 @@ class SettingsManager {
         };
         
         try {
-            const response = await fetch('/jpos/api/settings.php', {
+            const response = await fetch('api/settings.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)

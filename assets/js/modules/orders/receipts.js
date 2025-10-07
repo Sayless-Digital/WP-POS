@@ -185,6 +185,7 @@ class ReceiptsManager {
                 <p>Order No: #${data.order_number}</p>
                 <p>Date: ${this.ui.formatDateTime(data.date_created || data.date)}</p>
                 ${data.customer_name ? `<p>Customer: ${data.customer_name}</p>` : ''}
+                ${data.cashier_name ? `<p>Cashier: ${data.cashier_name}</p>` : ''}
             </div>
             <div class="mt-2">
                 <div class="grid grid-cols-12 gap-2 font-bold py-1">

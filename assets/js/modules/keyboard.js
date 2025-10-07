@@ -195,9 +195,70 @@ class OnScreenKeyboard {
     }
 
     /**
+     * Initialize auto-show functionality based on settings
+     * Attaches focus listeners to input fields when enabled
+     */
+    initAutoShow() {
+        // Remove existing listeners first
+        this.removeAutoShowListeners();
+        
+        // Check if auto-show is enabled in settings
+        const settings = window.stateManager?.getState('settings') || {};
+        const keyboardEnabled = settings.virtual_keyboard_enabled !== false;
+        const autoShowEnabled = settings.virtual_keyboard_auto_show === true;
+        
+        if (!keyboardEnabled || !autoShowEnabled) {
+            return; // Auto-show is disabled
+        }
+        
+        // Select all text, email, and search inputs (excluding specific modals)
+        const inputs = document.querySelectorAll(
+            'input[type="text"]:not(.no-keyboard), ' +
+            'input[type="email"]:not(.no-keyboard), ' +
+            'input[type="search"]:not(.no-keyboard)'
+        );
+        
+        inputs.forEach(input => {
+            // Skip inputs in product editor, fee/discount modals
+            const modal = input.closest('#product-editor-modal, #fee-modal, #discount-modal');
+            if (modal) return;
+            
+            // Create bound handler for this input
+            const focusHandler = () => this.show(input);
+            const blurHandler = () => this.hide();
+            
+            // Store handlers for later removal
+            if (!this.autoShowHandlers) {
+                this.autoShowHandlers = new Map();
+            }
+            this.autoShowHandlers.set(input, { focus: focusHandler, blur: blurHandler });
+            
+            // Attach listeners
+            input.addEventListener('focus', focusHandler);
+            input.addEventListener('blur', blurHandler);
+        });
+    }
+
+    /**
+     * Remove auto-show event listeners
+     */
+    removeAutoShowListeners() {
+        if (!this.autoShowHandlers) return;
+        
+        this.autoShowHandlers.forEach((handlers, input) => {
+            input.removeEventListener('focus', handlers.focus);
+            input.removeEventListener('blur', handlers.blur);
+        });
+        
+        this.autoShowHandlers.clear();
+    }
+
+    /**
      * Destroy keyboard instance
      */
     destroy() {
+        this.removeAutoShowListeners();
+        
         if (this.keyboardElement && this.keyboardElement.parentNode) {
             this.keyboardElement.parentNode.removeChild(this.keyboardElement);
         }
@@ -210,6 +271,13 @@ class OnScreenKeyboard {
 
 // Create global instance
 window.onScreenKeyboard = new OnScreenKeyboard();
+
+// Expose initAutoShow as global function for settings.js
+window.initKeyboardAutoShow = function() {
+    if (window.onScreenKeyboard) {
+        window.onScreenKeyboard.initAutoShow();
+    }
+};
 
 // Export for module usage
 if (typeof module !== 'undefined' && module.exports) {

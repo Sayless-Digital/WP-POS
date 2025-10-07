@@ -17,40 +17,40 @@ require_once __DIR__ . '/../wp-load.php';
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- Custom JSON syntax highlighting -->
     
-    <!-- WP POS v1.9.47 - Order Deletion API Response Fix -->
+    <!-- WP POS v1.9.73 - Fixed Virtual Keyboard Auto-Show Implementation -->
     
     <!-- Core Modules - Load First -->
-    <script src="assets/js/modules/state.js?v=1.9.23&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/routing.js?v=1.9.23&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/core/ui-helpers.js?v=1.9.23&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/state.js?v=1.9.72&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/routing.js?v=1.9.72&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/core/ui-helpers.js?v=1.9.72&t=<?php echo time(); ?>"></script>
     
     <!-- Auth & UI Modules -->
-    <script src="assets/js/modules/auth.js?v=1.9.23&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/keyboard.js?v=1.9.23&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/auth.js?v=1.9.72&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/keyboard.js?v=1.9.73&t=<?php echo time(); ?>"></script>
     
     <!-- Products Modules -->
-    <script src="assets/js/modules/products/products.js?v=1.9.23&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/products/product-editor.js?v=1.9.23&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/products/products.js?v=1.9.72&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/products/product-editor.js?v=1.9.72&t=<?php echo time(); ?>"></script>
     
     <!-- Cart Modules -->
-    <script src="assets/js/modules/cart/cart.js?v=1.9.38&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/cart/checkout.js?v=1.9.43&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/cart/held-carts.js?v=1.9.23&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/cart/cart.js?v=1.9.72&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/cart/checkout.js?v=1.9.72&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/cart/held-carts.js?v=1.9.72&t=<?php echo time(); ?>"></script>
     
     <!-- Orders & Receipts Modules -->
-    <script src="assets/js/modules/orders/orders.js?v=1.9.48&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/orders/receipts.js?v=1.9.46&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/orders/orders.js?v=1.9.72&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/orders/receipts.js?v=1.9.72&t=<?php echo time(); ?>"></script>
     
     <!-- Financial Modules -->
-    <script src="assets/js/modules/financial/drawer.js?v=1.9.23&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/financial/reports.js?v=1.9.27&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/financial/drawer.js?v=1.9.72&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/financial/reports.js?v=1.9.72&t=<?php echo time(); ?>"></script>
     
     <!-- Admin Modules -->
-    <script src="assets/js/modules/admin/settings.js?v=1.9.23&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/admin/sessions.js?v=1.9.23&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/admin/settings.js?v=1.9.73&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/admin/sessions.js?v=1.9.72&t=<?php echo time(); ?>"></script>
     
     <!-- Main Orchestrator - Load Last -->
-    <script src="assets/js/main.js?v=1.9.33&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/main.js?v=1.9.73&t=<?php echo time(); ?>"></script>
     <style>
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
@@ -269,7 +269,6 @@ require_once __DIR__ . '/../wp-load.php';
     <input type="hidden" id="jpos-product-edit-nonce" value="<?php echo wp_create_nonce('jpos_product_edit_nonce'); ?>">
     <input type="hidden" id="jpos-reports-nonce" value="<?php echo wp_create_nonce('jpos_reports_nonce'); ?>">
     <input type="hidden" id="jpos-barcode-nonce" value="<?php echo wp_create_nonce('jpos_barcode_nonce'); ?>">
-    <input type="hidden" id="jpos-customer-search-nonce" value="<?php echo wp_create_nonce('jpos_customer_search_nonce'); ?>">
 
     <!-- Login Screen -->
     <div id="login-screen" class="app-overlay hidden">
@@ -413,8 +412,6 @@ require_once __DIR__ . '/../wp-load.php';
                     <div class="flex-grow flex gap-3 overflow-hidden">
                         <main id="product-list" class="flex-grow p-1 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 overflow-y-auto"></main>
                         <aside class="w-80 flex-shrink-0 bg-slate-800/50 p-2 flex flex-col border-l border-slate-700 rounded-xl shadow-lg">
-                            <!-- Customer Display -->
-                            <div id="cart-customer-display" class="hidden"></div>
                             
                             <div id="cart-items" class="flex-grow overflow-y-auto space-y-1 pr-1"></div>
                             <button id="clear-cart-btn" class="w-full text-slate-400 p-1 text-xs hover:bg-slate-700 rounded-md transition-colors mt-1 mb-2">Clear Cart</button>
@@ -451,10 +448,6 @@ require_once __DIR__ . '/../wp-load.php';
                                 </button>
                             </div>
                             <div class="mt-2 flex-shrink-0">
-                                <button id="attach-customer-btn" class="w-full mb-2 px-2 py-2 bg-blue-600 hover:bg-blue-500 text-xs font-semibold rounded transition-colors flex items-center justify-center gap-2">
-                                    <i class="fas fa-user-plus"></i>
-                                    <span>Attach Customer</span>
-                                </button>
                                 <div class="flex items-center gap-2 mt-auto">
                                     <button id="hold-cart-btn" class="flex-1 px-2 py-2 bg-amber-500 hover:bg-amber-400 text-xs font-semibold rounded transition-colors">Hold Cart</button>
                                     <button id="checkout-btn" class="flex-1 px-2 py-2 bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold rounded transition-colors">Checkout</button>
@@ -514,7 +507,11 @@ require_once __DIR__ . '/../wp-load.php';
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                     </button>
                     <h1 class="text-xl font-bold mr-auto">Order History</h1>
-                    <div class="relative flex-grow min-w-[150px] max-w-[250px]">
+                    <!-- Single Bulk Actions Button -->
+                    <button id="bulk-actions-btn" class="px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-500 transition-colors disabled:bg-slate-500 disabled:cursor-not-allowed" disabled>
+                        Bulk Actions
+                    </button>
+                    <div class="relative flex-grow min-w-[100px] max-w-[180px]">
                         <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                             <svg class="w-4 h-4 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                         </div>
@@ -564,7 +561,10 @@ require_once __DIR__ . '/../wp-load.php';
                  </header>
                  <main class="flex-grow flex flex-col overflow-y-auto">
                     <div class="grid grid-cols-12 gap-4 sticky top-0 z-10 bg-slate-900 py-2 px-4 text-xs font-bold text-slate-400 uppercase border-b border-slate-700">
-                        <div class="col-span-2">Order #</div><div class="col-span-2">Date</div><div class="col-span-1">Source</div><div class="col-span-2">Status</div><div class="col-span-1 text-center">Items</div><div class="col-span-2 text-right">Total</div><div class="col-span-2 text-right">Actions</div>
+                        <div class="col-span-1 flex items-center">
+                            <input type="checkbox" id="select-all-orders" class="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500 cursor-pointer">
+                        </div>
+                        <div class="col-span-2">Order #</div><div class="col-span-2">Date</div><div class="col-span-1">Source</div><div class="col-span-1">Status</div><div class="col-span-1 text-center">Items</div><div class="col-span-2 text-right">Total</div><div class="col-span-2 text-right">Actions</div>
                     </div>
                     <div id="order-list" class="flex-grow p-2 space-y-2"></div>
                  </main>
@@ -1248,6 +1248,26 @@ require_once __DIR__ . '/../wp-load.php';
                     Delete and Restore Stock
                 </button>
                 <button id="delete-order-cancel-btn" class="w-full px-4 py-3 bg-slate-600 text-white rounded-lg hover:bg-slate-500 transition-colors">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Actions Modal -->
+    <div id="bulk-actions-modal" class="app-overlay hidden">
+        <div class="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow-2xl w-full max-w-md transform transition-all">
+            <h2 class="text-2xl font-bold mb-4 text-white">Bulk Actions</h2>
+            <p class="text-slate-300 mb-4"><span id="bulk-actions-count" class="font-bold text-white"></span> order(s) selected</p>
+            <p class="text-sm text-slate-400 mb-6">Choose an action to perform on the selected orders:</p>
+            <div class="space-y-3">
+                <button id="bulk-delete-without-stock-btn" class="w-full px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-500 transition-colors font-semibold">
+                    Delete Without Restoring Stock
+                </button>
+                <button id="bulk-delete-with-stock-btn" class="w-full px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-500 transition-colors font-semibold">
+                    Delete and Restore Stock
+                </button>
+                <button id="bulk-actions-cancel-btn" class="w-full px-4 py-3 bg-slate-600 text-white rounded-lg hover:bg-slate-500 transition-colors">
                     Cancel
                 </button>
             </div>

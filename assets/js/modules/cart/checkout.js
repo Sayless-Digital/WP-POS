@@ -372,6 +372,7 @@ class CheckoutManager {
      */
     async processCheckout(splits) {
         const feeDiscount = this.state.getState('cart.feeDiscount');
+        
         let payload = {
             cart_items: this.state.getState('cart.items') || [],
             payment_method: splits[0].method,
@@ -404,9 +405,18 @@ class CheckoutManager {
 
         if (result.success) {
             this.cart.clearCart(true);
+            
             if (window.refreshAllData) await window.refreshAllData();
+            
+            // Show receipt first
             if (window.receiptsManager) {
                 window.receiptsManager.showReceipt(result.data.receipt_data);
+            }
+            
+            // Then refresh products in background to show updated stock
+            console.log('Refreshing products after checkout...');
+            if (window.productsManager && typeof window.productsManager.fetchProducts === 'function') {
+                window.productsManager.fetchProducts(); // Don't await - let it run in background
             }
         } else {
             throw new Error(result.message || result.data?.message || 'Checkout failed.');

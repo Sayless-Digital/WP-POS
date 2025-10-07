@@ -5,9 +5,56 @@ class OrdersManager {
     constructor(state, uiHelpers) {
         this.state = state;
         this.ui = uiHelpers;
+        this.selectedOrders = new Set();
         
         // Setup modal event listeners
         this.setupReturnModal();
+        this.setupBulkActions();
+    }
+    
+    /**
+     * Setup bulk actions event listeners
+     */
+    setupBulkActions() {
+        // Select all checkbox
+        const selectAllCheckbox = document.getElementById('select-all-orders');
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', (e) => {
+                this.handleSelectAll(e.target.checked);
+            });
+        }
+        
+        // Bulk actions button - opens modal
+        const bulkActionsBtn = document.getElementById('bulk-actions-btn');
+        if (bulkActionsBtn) {
+            bulkActionsBtn.addEventListener('click', () => {
+                this.openBulkActionsModal();
+            });
+        }
+        
+        // Bulk actions modal buttons
+        const bulkActionsModal = document.getElementById('bulk-actions-modal');
+        const bulkDeleteWithoutStockBtn = document.getElementById('bulk-delete-without-stock-btn');
+        const bulkDeleteWithStockBtn = document.getElementById('bulk-delete-with-stock-btn');
+        const bulkActionsCancelBtn = document.getElementById('bulk-actions-cancel-btn');
+        
+        if (bulkDeleteWithoutStockBtn) {
+            bulkDeleteWithoutStockBtn.addEventListener('click', () => {
+                this.executeBulkDelete(false);
+            });
+        }
+        
+        if (bulkDeleteWithStockBtn) {
+            bulkDeleteWithStockBtn.addEventListener('click', () => {
+                this.executeBulkDelete(true);
+            });
+        }
+        
+        if (bulkActionsCancelBtn) {
+            bulkActionsCancelBtn.addEventListener('click', () => {
+                if (bulkActionsModal) bulkActionsModal.classList.add('hidden');
+            });
+        }
     }
     
     /**
@@ -86,6 +133,7 @@ class OrdersManager {
         filteredOrders.forEach(order => {
             const row = document.createElement('div');
             row.className = 'grid grid-cols-12 gap-4 items-center bg-slate-800 hover:bg-slate-700/50 p-3 rounded-lg text-sm';
+            row.dataset.orderId = order.id;
             
             const statusColors = {
                 completed: 'text-green-400',
@@ -97,12 +145,16 @@ class OrdersManager {
             };
             
             const sourceColor = order.source === 'POS' ? 'text-green-400' : 'text-blue-400';
+            const isSelected = this.selectedOrders.has(order.id);
             
             row.innerHTML = `
+                <div class="col-span-1 flex items-center">
+                    <input type="checkbox" class="order-checkbox w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500 cursor-pointer" data-order-id="${order.id}" ${isSelected ? 'checked' : ''}>
+                </div>
                 <div class="col-span-2 font-bold">#${order.order_number}</div>
                 <div class="col-span-2 text-slate-400">${this.ui.formatDateTime(order.date_created)}</div>
                 <div class="col-span-1 font-semibold ${sourceColor} text-xs">${order.source}</div>
-                <div class="col-span-2 font-semibold ${statusColors[order.status] || 'text-slate-300'}">${order.status.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>
+                <div class="col-span-1 font-semibold ${statusColors[order.status] || 'text-slate-300'}">${order.status.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>
                 <div class="col-span-1 text-center">${order.item_count}</div>
                 <div class="col-span-2 text-right font-mono">$${order.total}</div>
                 <div class="col-span-2 text-right flex gap-2 justify-end">
@@ -113,6 +165,19 @@ class OrdersManager {
             `;
             
             container.appendChild(row);
+        });
+        
+        // Attach checkbox event listeners
+        container.querySelectorAll('.order-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', (e) => {
+                const orderId = parseInt(e.target.dataset.orderId);
+                if (e.target.checked) {
+                    this.selectedOrders.add(orderId);
+                } else {
+                    this.selectedOrders.delete(orderId);
+                }
+                this.updateBulkActionUI();
+            });
         });
         
         // Attach event listeners
@@ -206,10 +271,10 @@ class OrdersManager {
         withStockBtn.textContent = 'Deleting...';
         
         try {
-            console.log('Sending DELETE request for order:', orderId, 'restore stock:', restoreStock);
+            console.log('Sending delete request for order:', orderId, 'restore stock:', restoreStock);
             
-            const response = await fetch('/jpos/api/orders.php', {
-                method: 'DELETE',
+            const response = await fetch('api/delete-order.php', {
+                method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
@@ -219,7 +284,7 @@ class OrdersManager {
                 })
             });
             
-            console.log('DELETE response status:', response.status, response.statusText);
+            console.log('Delete response status:', response.status, response.statusText);
             
             if (!response.ok) {
                 const errorText = await response.text();
@@ -228,25 +293,32 @@ class OrdersManager {
             }
             
             const result = await response.json();
-            console.log('DELETE API Response:', result);
-            console.log('Response data type:', typeof result.data, Array.isArray(result.data) ? 'Array' : 'Object');
-            
-            // Check if we got an orders array instead of delete confirmation
-            if (Array.isArray(result.data)) {
-                console.error('ERROR: Got orders array instead of delete confirmation!');
-                throw new Error('API returned wrong response - please check server configuration');
-            }
+            console.log('Delete API Response:', result);
+            console.log('Response data:', result.data);
             
             if (result.success) {
                 // WordPress wp_send_json_success wraps data
                 const message = result.data?.message || result.message || 'Order deleted successfully';
                 console.log('Success! Message:', message);
                 this.ui.showToast(message, 'success');
+                
+                // Reset buttons BEFORE closing modal
+                withoutStockBtn.disabled = false;
+                withStockBtn.disabled = false;
+                withoutStockBtn.textContent = 'Delete Without Restoring Stock';
+                withStockBtn.textContent = 'Delete and Restore Stock';
+                
                 modal.classList.add('hidden');
                 
                 // Refresh orders list
                 console.log('Refreshing orders list...');
                 await this.fetchOrders();
+                
+                // If stock was restored, also refresh products to show updated stock quantities
+                if (restoreStock && window.productsManager) {
+                    console.log('Refreshing products for updated stock...');
+                    await window.productsManager.fetchProducts();
+                }
             } else {
                 const errorMsg = result.data?.message || result.message || 'Failed to delete order';
                 throw new Error(errorMsg);
@@ -254,8 +326,7 @@ class OrdersManager {
         } catch (error) {
             console.error('Delete order error:', error);
             this.ui.showToast(`Error: ${error.message}`, 'error');
-        } finally {
-            // Re-enable buttons
+            // Reset buttons on error
             withoutStockBtn.disabled = false;
             withStockBtn.disabled = false;
             withoutStockBtn.textContent = 'Delete Without Restoring Stock';
@@ -480,6 +551,177 @@ class OrdersManager {
         
         this.hideCustomerFilterResults();
         this.fetchOrders();
+    }
+    
+    /**
+     * Handle select all checkbox
+     * @param {boolean} checked - Whether select all is checked
+     */
+    handleSelectAll(checked) {
+        const checkboxes = document.querySelectorAll('.order-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = checked;
+            const orderId = parseInt(checkbox.dataset.orderId);
+            if (checked) {
+                this.selectedOrders.add(orderId);
+            } else {
+                this.selectedOrders.delete(orderId);
+            }
+        });
+        this.updateBulkActionUI();
+    }
+    
+    /**
+     * Update bulk action UI based on selection
+     */
+    updateBulkActionUI() {
+        const bulkActionsBtn = document.getElementById('bulk-actions-btn');
+        const selectAllCheckbox = document.getElementById('select-all-orders');
+        const count = this.selectedOrders.size;
+        
+        // Enable/disable bulk actions button based on selection
+        if (bulkActionsBtn) {
+            bulkActionsBtn.disabled = count === 0;
+            bulkActionsBtn.textContent = count > 0 ? `Bulk Actions (${count})` : 'Bulk Actions';
+        }
+        
+        // Update select all checkbox state
+        if (selectAllCheckbox) {
+            const allCheckboxes = document.querySelectorAll('.order-checkbox');
+            const allChecked = allCheckboxes.length > 0 && Array.from(allCheckboxes).every(cb => cb.checked);
+            selectAllCheckbox.checked = allChecked;
+            selectAllCheckbox.indeterminate = count > 0 && !allChecked;
+        }
+    }
+    
+    /**
+     * Open bulk actions modal
+     */
+    openBulkActionsModal() {
+        if (this.selectedOrders.size === 0) {
+            this.ui.showToast('Please select at least one order', 'error');
+            return;
+        }
+        
+        const modal = document.getElementById('bulk-actions-modal');
+        const countSpan = document.getElementById('bulk-actions-count');
+        
+        if (countSpan) {
+            countSpan.textContent = this.selectedOrders.size;
+        }
+        
+        if (modal) {
+            modal.classList.remove('hidden');
+        }
+    }
+    
+    /**
+     * Execute bulk delete operation
+     * @param {boolean} restoreStock - Whether to restore stock
+     */
+    async executeBulkDelete(restoreStock) {
+        const modal = document.getElementById('bulk-actions-modal');
+        const withoutStockBtn = document.getElementById('bulk-delete-without-stock-btn');
+        const withStockBtn = document.getElementById('bulk-delete-with-stock-btn');
+        
+        // Disable buttons
+        if (withoutStockBtn) {
+            withoutStockBtn.disabled = true;
+            withoutStockBtn.textContent = 'Deleting...';
+        }
+        if (withStockBtn) {
+            withStockBtn.disabled = true;
+            withStockBtn.textContent = 'Deleting...';
+        }
+        
+        const orderIds = Array.from(this.selectedOrders);
+        let successCount = 0;
+        let errorCount = 0;
+        
+        try {
+            // Delete orders one by one
+            for (const orderId of orderIds) {
+                try {
+                    const response = await fetch('api/delete-order.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            order_id: orderId,
+                            restore_stock: restoreStock
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        if (result.success) {
+                            successCount++;
+                        } else {
+                            errorCount++;
+                        }
+                    } else {
+                        errorCount++;
+                    }
+                } catch (error) {
+                    console.error(`Error deleting order ${orderId}:`, error);
+                    errorCount++;
+                }
+            }
+            
+            // Show result
+            if (successCount > 0) {
+                const message = restoreStock
+                    ? `${successCount} order(s) deleted and stock restored`
+                    : `${successCount} order(s) deleted`;
+                this.ui.showToast(message, 'success');
+            }
+            
+            if (errorCount > 0) {
+                this.ui.showToast(`${errorCount} order(s) failed to delete`, 'error');
+            }
+            
+            // Clear selection
+            this.selectedOrders.clear();
+            
+            // Reset buttons
+            if (withoutStockBtn) {
+                withoutStockBtn.disabled = false;
+                withoutStockBtn.textContent = 'Delete Without Restoring Stock';
+            }
+            if (withStockBtn) {
+                withStockBtn.disabled = false;
+                withStockBtn.textContent = 'Delete and Restore Stock';
+            }
+            
+            // Close modal
+            if (modal) modal.classList.add('hidden');
+            
+            // Refresh orders list
+            await this.fetchOrders();
+            
+            // If stock was restored, refresh products
+            if (restoreStock && window.productsManager) {
+                await window.productsManager.fetchProducts();
+            }
+            
+            // Update UI
+            this.updateBulkActionUI();
+            
+        } catch (error) {
+            console.error('Bulk delete error:', error);
+            this.ui.showToast('Error during bulk delete operation', 'error');
+            
+            // Reset buttons
+            if (withoutStockBtn) {
+                withoutStockBtn.disabled = false;
+                withoutStockBtn.textContent = 'Delete Without Restoring Stock';
+            }
+            if (withStockBtn) {
+                withStockBtn.disabled = false;
+                withStockBtn.textContent = 'Delete and Restore Stock';
+            }
+        }
     }
 }
 
