@@ -1,3 +1,54 @@
+## Version 1.9.34 - Smart Fee/Discount Tab Switching (2025-10-07)
+
+### What's New
+The fee/discount modal now smartly remembers separate values for dollar amounts and percentages!
+
+### How It Works
+1. **Two Tabs**: Choose between "$ Flat" (dollar amounts) or "% Percentage"
+2. **Separate Memory**: Each tab remembers its own value
+3. **Smart Switching**: Switch between tabs without losing your entered values
+4. **Proper Display**: Cart shows "$5.00" for flat amounts and "10%" for percentages
+
+### Example Usage
+1. Open "Add Fee" or "Add Discount"
+2. Enter "5" in the Flat tab → shows as "+$5.00" in cart
+3. Click "% Percentage" tab
+4. Enter "10" → your "5" is still saved in Flat tab
+5. Switch back to "$ Flat" → "5" is still there!
+6. Click "Apply" → only the active tab's value is used
+
+### Benefits
+- ✅ No more losing your entered values when switching tabs
+- ✅ Easy to compare flat vs percentage amounts
+- ✅ Clear visual formatting ($ vs %)
+- ✅ Modal always starts with "$ Flat" tab selected
+
+---
+
+## Version 1.9.33 - Improved Fee/Discount Entry (2025-10-07)
+
+### What's Fixed
+The fee/discount numpad now works correctly without the bugs from v1.9.32:
+
+#### Fixed Issues:
+1. ✅ **No more double entry** - Numbers no longer appear twice when you click numpad buttons
+2. ✅ **Empty input field** - Modal opens with a clean empty field instead of "0.00"
+3. ✅ **Better backspace** - Backspace now clears to empty instead of leaving "0"
+
+### How to Use (Updated)
+1. Click "Add Fee" or "Add Discount" button
+2. Input field opens **empty and ready**
+3. Type numbers using keyboard OR click numpad buttons
+4. Click "Apply" to add the fee or discount
+
+### What Changed
+- Input field now starts completely empty
+- You'll see the "0.00" placeholder text until you start typing
+- No need to clear anything before entering your amount
+- Numpad clicks work reliably without duplicates
+
+---
+
 # WP POS User Manual
 
 ## Virtual Keyboard (v1.8.68)
@@ -447,6 +498,9 @@ Choose from preset periods or create custom ranges:
 #### 1. Sales Chart
 - **Full-width visualization** showing sales trends
 - **Dual-axis chart** displaying both revenue ($) and order counts
+- **Continuous timelines**: Chart shows all periods in the selected range, even days/hours with no sales (displayed as zero)
+  - Example: "This Week" shows all 7 days from Monday to Sunday, not just days with sales
+  - Empty periods appear as zero values on the chart for better visualization
 - **Intelligent time granularity**:
   - Same day: Hourly breakdown (9:00 AM, 10:00 AM, etc.)
   - Weekly/Monthly: Daily breakdown (Jan 1, Jan 2, etc.)
@@ -582,13 +636,19 @@ Customize the interface:
   3. Verify the customer exists in WordPress users
   4. Try a different spelling or partial name
 
-#### Search Not Working
-- **Problem**: Search field doesn't respond
-- **Solutions**:
-  1. Refresh the page (F5)
-  2. Close and reopen the customer search modal
-  3. Check internet connection
-  4. Contact support if issue persists
+#### Search Not Working (Fixed in v1.9.27)
+- **Status**: This issue has been resolved in version 1.9.27
+- **What was fixed**: Customer search now properly connects to the API and displays results
+- **Expected behavior**:
+  1. Type at least 2 characters in the search field
+  2. Results appear automatically showing customer names and emails
+  3. Click any result to attach that customer to the cart
+- **If you still experience issues**:
+  1. Hard refresh your browser (Ctrl+F5 or Cmd+Shift+R) to clear cache
+  2. Check that version 1.9.27 or higher is loaded
+  3. Verify you have internet connection
+  4. Check browser console for errors
+  5. Contact support if problem persists
 
 #### On-Screen Keyboard Not Appearing (Fixed in v1.8.66)
 - **Status**: This issue has been resolved in version 1.8.66
@@ -878,9 +938,9 @@ Each held cart shows:
 
 ## Version Information
 
-- Current Version: 1.8.68
-- Last Updated: October 6, 2025
-- Latest Update: WP POS v1.8.68 - Fixed virtual keyboard settings persistence and auto-show initialization - settings now properly save and reload, auto-show keyboard now works correctly on all text inputs when enabled
+- Current Version: 1.9.27
+- Last Updated: October 7, 2025
+- Latest Update: WP POS v1.9.27 - Fixed customer search functionality - search now properly displays results when typing customer names or emails in the "Attach Customer" dialog, with full API integration and error handling
 - Previous Updates:
   - v1.8.67 - Enhanced virtual keyboard system with comprehensive settings and auto-show functionality
   - v1.8.66 - Fixed virtual keyboard functionality in customer search modal
@@ -896,3 +956,28 @@ Each held cart shows:
   - v1.8.17 - Removed reporting functionality completely and corrected application branding
   - v1.8.3 - Advanced Attribute Management System
 - Next Update: Q1 2026
+
+## Version 1.9.32 - Improved Numpad Functionality (2025-10-07)
+
+### What's New
+The numpad in the Fee/Discount modal now works more intuitively! You can now click any numpad button and it will automatically insert the number into the amount field - no need to click on the input field first.
+
+### How to Use
+1. Click "Add Fee" or "Add Discount" button
+2. **NEW**: Click any numpad button - numbers insert automatically
+3. Click decimal point (.) to add decimals
+4. Click backspace (←) to remove last digit
+5. Click "Apply" to add the fee or discount
+
+### Benefits
+- ✅ Faster data entry on touchscreen devices
+- ✅ No need to manually focus the input field
+- ✅ Works great for tablets and POS terminals
+- ✅ Still supports keyboard typing if you prefer
+
+### Tips
+- The numpad still validates your input (numbers and decimal only)
+- You can mix numpad clicks and keyboard typing
+- Only one decimal point is allowed
+
+---

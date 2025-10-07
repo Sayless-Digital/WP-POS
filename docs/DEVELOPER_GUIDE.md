@@ -1,3 +1,128 @@
+## Version 1.9.34 - Separate Flat/Percentage Values and Proper Formatting (2025-10-07)
+
+### Changes
+- **Separate Value Storage**: Maintains independent values for flat ($) and percentage (%) tabs
+- **Tab Switching**: Preserves values when switching between flat and percentage modes
+- **Proper Formatting**: Displays "$5.00" for flat amounts and "10%" for percentages
+- **Default Tab**: Modal always opens with "Flat" tab selected
+
+### Technical Implementation
+**File**: [`assets/js/modules/cart/cart.js`](../assets/js/modules/cart/cart.js:26-145)
+
+**Key Features**:
+1. **Separate Storage Variables**: `flatValue` and `percentageValue` maintain independent values
+2. **Tab Switch Handler**: Saves current value before switching, loads appropriate value after
+3. **Conditional Formatting**: Cart display shows "%" or "$" based on `amountType`
+4. **Reset on Open**: Modal resets to "Flat" tab when opened
+
+```javascript
+// Store separate values for flat and percentage
+let flatValue = '';
+let percentageValue = '';
+
+// Type selector buttons - switch between flat and percentage
+typeSelector.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+        // Get current active type before switching
+        const wasFlat = typeSelector.querySelector('[data-state="active"]')?.dataset.value === 'flat';
+        
+        // Save current value to appropriate storage
+        if (wasFlat) {
+            flatValue = amountInput.value;
+        } else {
+            percentageValue = amountInput.value;
+        }
+        
+        // Update button states...
+        
+        // Load value for newly selected type
+        const nowFlat = btn.dataset.value === 'flat';
+        if (nowFlat) {
+            amountInput.value = flatValue;
+        } else {
+            amountInput.value = percentageValue;
+        }
+    });
+});
+```
+
+**Display Formatting**:
+```javascript
+// Format display based on type
+let displayAmount;
+if (discount.amountType === 'percentage') {
+    displayAmount = `-${discount.amount}%`;
+} else {
+    displayAmount = `-$${Math.abs(calculatedValue).toFixed(2)}`;
+}
+```
+
+### Use Cases
+1. **Enter flat fee**: Type "5", shows as "+$5.00" in cart
+2. **Switch to percentage**: Click "% Percentage", enter "10", shows as "+10%" in cart
+3. **Switch back**: Click "$ Flat", original "5" value is still there
+4. **Apply**: Only the active tab's value is used
+
+---
+
+## Version 1.9.33 - Fixed Numpad Double Entry and Empty Initial Value (2025-10-07)
+
+### Changes
+- **Fixed Double Entry Bug**: Removed duplicate event listeners that caused numbers to appear twice when clicking numpad buttons
+- **Empty Initial Value**: Changed from "0.00" to empty string so users don't need to backspace first
+- **Consolidated Event Handlers**: All numpad logic now handled in CartManager class only
+
+### Technical Implementation
+**File**: [`assets/js/modules/cart/cart.js`](../assets/js/modules/cart/cart.js:79-108)
+
+**Root Cause**: Duplicate event listeners in both `cart.js` and `main.js` caused each numpad click to fire twice.
+
+**Solution**: 
+1. Removed duplicate listeners from `main.js`
+2. Keep all numpad logic in `CartManager.setupFeeDiscountModal()`
+3. Changed initial value from `'0.00'` to `''` (empty string)
+4. Backspace now returns to `''` instead of `'0'`
+
+```javascript
+// In CartManager.setupFeeDiscountModal()
+// Numpad buttons
+document.querySelectorAll('.num-pad-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        let val = amountInput.value;
+        const char = btn.textContent;
+        
+        // Handle decimal point - only allow one
+        if (char === '.' && val.includes('.')) return;
+        
+        // Replace initial 0 with empty, or append to existing value
+        if (val === '0' && char !== '.') val = '';
+        
+        val += char;
+        
+        // Only allow 2 decimals
+        if (/^\d*(\.\d{0,2})?$/.test(val)) {
+            amountInput.value = val;
+        }
+    });
+});
+```
+
+### Changes Made
+1. **cart.js lines 48, 75, 105, 649, 667**: Changed `'0.00'` to `''`
+2. **main.js lines 458-503**: Removed duplicate numpad event listeners
+
+### Key Features
+1. **Clean Start**: Input opens empty and ready for typing
+2. **No Double Entry**: Each numpad click registers once
+3. **Placeholder Visible**: Users see "0.00" placeholder until they start typing
+4. **Better UX**: No need to clear "0.00" before entering value
+5. **Backspace Clears**: Backspace returns to empty state, not "0"
+
+### Use Case
+Modal now opens with clean empty input, making it faster to enter fees and discounts. Users can immediately start typing without clearing default values.
+
+---
+
 # WP POS Developer Guide
 
 ## Recent Updates
@@ -970,6 +1095,79 @@ const response = await fetch('/wp-pos/api/reports.php?period=custom&custom_start
 
 // Get this month's report
 const response = await fetch('/wp-pos/api/reports.php?period=this_month');
+
+### Customer Search Functionality Fix (v1.9.27)
+
+**Problem**: Customer search dialog opened but no results appeared when typing customer names or emails.
+
+**Root Cause**: The `searchCustomers()` method in CartManager was a placeholder that only logged to console instead of making actual API calls.
+
+**Solution**: Implemented full API integration in [`assets/js/modules/cart/cart.js:554-619`](../assets/js/modules/cart/cart.js:554-619):
+
+```javascript
+async searchCustomers(query) {
+    // Minimum 2 characters required
+    if (query.length < 2) {
+        resultsContainer.innerHTML = '<div>Enter at least 2 characters to search</div>';
+        return;
+    }
+    
+    // Get security token
+    const nonce = document.getElementById('jpos-customer-search-nonce').value;
+    
+    // Make API call
+    const response = await fetch(`api/customers.php?query=${encodeURIComponent(query)}&nonce=${nonce}`);
+    const data = await response.json();
+    
+    // Render results with click handlers
+    if (data.success && data.data.customers.length > 0) {
+        resultsContainer.innerHTML = customers.map(customer => `
+            <div onclick="window.attachCustomer(${customer.id}, '${customer.name}', '${customer.email}')">
+                <div>${customer.name}</div>
+                <div>${customer.email}</div>
+            </div>
+        `).join('');
+    }
+}
+```
+
+**Also Fixed**: `toggleCustomerKeyboard()` now properly integrates with virtual keyboard system.
+
+**Testing**: Type at least 2 characters in customer search - results appear immediately with customer names and emails.
+
+**Complete Period Data Filling (v1.9.26):**
+
+The reports API now fills missing periods with zero values to ensure continuous chart lines across the entire period, regardless of sales activity.
+
+**Implementation:**
+```php
+function generateAllPeriods($start_date, $end_date, $granularity) {
+    // Generates complete set of periods based on granularity
+    // - hour: Every hour in range
+    // - day: Every day in range  
+    // - month: Every month in range
+    // - year: Every year in range
+    return $periods; // Array of period strings
+}
+
+function getChartData($start_date, $end_date, $granularity) {
+    // 1. Fetch actual sales data from database
+    // 2. Generate complete list of all periods in range
+    // 3. Fill missing periods with zero values
+    // 4. Return complete dataset
+}
+```
+
+**Benefits:**
+- Charts display continuous lines across entire period
+- "This week" shows all 7 days, not just days with sales
+- "This month" shows all 30/31 days with proper timeline
+- Empty days shown as zero values, not missing data points
+- Better visual understanding of sales patterns and gaps
+
+**Example:**
+- Before: Monday (2 sales), Wednesday (1 sale) → 2 data points
+- After: Mon (2), Tue (0), Wed (1), Thu (0), Fri (0), Sat (0), Sun (0) → 7 data points
 ```
 
 ### Order Endpoints
@@ -2023,4 +2221,485 @@ function formatRelativeDate(timestamp) {
 - v1.8.3: User-Controlled Dropdowns - Fixed options dropdown opening automatically when searching attribute names, now only shows on user focus
 - v1.8.17: Complete Reporting Removal - Removed all reporting functionality and corrected application branding from WP-POS to WP POS (WordPress Point of Sale)
 - v1.8.55: Fixed held cart customer functionality - resolved three critical issues: customer data now saved when holding cart, customer name displayed in held carts table with truncated display, customer properly restored when retrieving held cart. Modified [`holdCurrentCart()`](../assets/js/main.js:3327), [`renderHeldCarts()`](../assets/js/main.js:3344), and [`restoreHeldCart()`](../assets/js/main.js:3466). Version updated in [`index.php`](../index.php:25)
+
+---
+
+## JavaScript Modularization Refactoring
+
+### Overview
+
+The WP POS codebase is undergoing a systematic modularization process to transform the monolithic [`main.js`](../assets/js/main.js:1) (4,997 lines) into focused, maintainable modules. This refactoring maintains 100% feature parity while improving code organization, testability, and developer experience.
+
+**Documentation**: For complete implementation details, timeline, and progress tracking, see [`docs/REFACTORING_PLAN.md`](REFACTORING_PLAN.md:1)
+
+### Current Status (v1.8.71)
+
+**Progress**: 71% Complete (10 of 14 modules created)
+**Modules Created**: 2,575 lines across 10 modules
+**Remaining Work**: 4 modules (~2,300 lines)
+**Main.js Reduction**: From 4,997 lines → Target ~250 lines
+
+### Architecture Changes
+
+#### Before: Monolithic Structure
+```javascript
+// main.js (4,997 lines)
+- All UI helpers
+- All business logic
+- All API calls
+- All event handlers
+- All state management
+```
+
+#### After: Modular Structure
+```
+assets/js/
+├── main.js (~250 lines - Orchestrator only)
+└── modules/
+    ├── core/
+    │   ├── state.js (219 lines) ✅
+    │   ├── routing.js (227 lines) ✅
+    │   └── ui-helpers.js (229 lines) ✅
+    ├── auth/
+    │   └── auth.js (265 lines) ✅
+    ├── products/
+    │   ├── products.js (500 lines) ⏳ Pending
+    │   └── product-editor.js (800 lines) ⏳ Pending
+    ├── cart/
+    │   ├── cart.js (400 lines) ⏳ Pending
+    │   ├── checkout.js (418 lines) ✅
+    │   └── held-carts.js (266 lines) ✅
+    ├── orders/
+    │   ├── orders.js (336 lines) ✅
+    │   └── receipts.js (246 lines) ✅
+    ├── financial/
+    │   ├── drawer.js (217 lines) ✅
+    │   └── reports.js (600 lines) ⏳ Pending
+    ├── admin/
+    │   ├── settings.js (195 lines) ✅
+    │   └── sessions.js (138 lines) ✅
+    └── ui/
+        └── keyboard.js (217 lines) ✅
+```
+
+### Completed Modules
+
+#### 1. UI Helpers Module (v1.8.71)
+**File**: [`assets/js/modules/core/ui-helpers.js`](../assets/js/modules/core/ui-helpers.js:1)
+**Lines**: 229
+**Purpose**: Centralized utility functions for UI operations
+
+**Key Features**:
+- Toast notifications with auto-dismiss
+- Date/time formatting (ISO to local)
+- Skeleton loader HTML generation
+- JSON syntax highlighting
+- Currency formatting
+
+**Usage**:
+```javascript
+const ui = new UIHelpers();
+ui.showToast('Operation successful', 'success');
+const formatted = ui.formatDateTime('2025-10-06T20:00:00Z');
+```
+
+**Integration**: No dependencies, used by all modules
+
+#### 2. Drawer Manager (v1.8.71)
+**File**: [`assets/js/modules/financial/drawer.js`](../assets/js/modules/financial/drawer.js:1)
+**Lines**: 217
+**Purpose**: Cash drawer operations and balance tracking
+
+**Key Features**:
+- Open/close cash drawer
+- Balance tracking
+- Transaction history
+- Multi-drawer support preparation
+
+**Dependencies**: StateManager, UIHelpers
+
+#### 3-10. Additional Completed Modules
+See [`docs/REFACTORING_PLAN.md`](REFACTORING_PLAN.md:16-32) for complete details on:
+- Auth Manager (265 lines)
+- Checkout Manager (418 lines)
+- Receipts Manager (246 lines)
+- Orders Manager (336 lines)
+- Held Carts Manager (266 lines)
+- Settings Manager (195 lines)
+- Sessions Manager (138 lines)
+
+### Remaining Critical Modules
+
+#### Cart Manager (Priority 1)
+**Status**: ⏳ Pending - BLOCKING CHECKOUT
+**Estimated Lines**: 400
+**Path**: `assets/js/modules/cart/cart.js`
+
+**Required Functionality**:
+```javascript
+class CartManager {
+    addToCart(product, variation, quantity)
+    removeFromCart(itemId)
+    updateQuantity(itemId, newQty)
+    clearCart()
+    
+    // Calculations
+    getSubtotal()
+    getTax()
+    getFees()
+    getDiscounts()
+    getTotal()
+    
+    // Customer management
+    attachCustomer(customerId)
+    detachCustomer()
+    
+    // State management
+    loadCartState()
+    saveCartState()
+    renderCart()
+}
+```
+
+**Critical Considerations**:
+- State persistence across page refresh
+- Variation handling with full data storage
+- Stock validation before adding items
+- Decimal precision in calculations
+- Customer association preservation
+
+#### Products Manager (Priority 1)
+**Status**: ⏳ Pending - BLOCKING SALES
+**Estimated Lines**: 500
+**Path**: `assets/js/modules/products/products.js`
+
+**Required Functionality**:
+```javascript
+class ProductsManager {
+    async fetchProducts(filters)
+    renderProductGrid()
+    filterProducts(query)
+    sortProducts(sortBy)
+    
+    // Variations
+    openVariationModal(productId)
+    renderVariations(product)
+    handleVariationSelection()
+    
+    // Stock management
+    checkHeldStock(productId, variationId)
+    validateStockAvailability()
+    
+    // Barcode scanning
+    handleBarcodeInput(barcode)
+    findProductByBarcode(barcode)
+    
+    // Stock view
+    renderStockList()
+    exportStockReport()
+}
+```
+
+**Critical Considerations**:
+- Complex variation modal UI (size/color matrix)
+- Held stock display in real-time
+- Barcode scanning (USB/Bluetooth support)
+- Performance with lazy loading
+- Debounced search with fuzzy matching
+
+### Integration Process
+
+#### Phase 5: Integration & Testing (Current)
+
+**Step 1: Create Remaining Modules** (Est. 8 hours)
+- Cart Manager (2 hours)
+- Products Manager (2.5 hours)
+- Reports Manager (2 hours)
+- Product Editor (3 hours)
+
+**Step 2: Update main.js** (Est. 2 hours)
+- Remove extracted code
+- Import all managers
+- Initialize in correct order
+- Set up event delegation
+- Expose global functions for routing
+
+**Step 3: Update index.php** (Est. 1 hour)
+- Add script tags for new modules
+- Verify loading order
+- Update version to 1.9.0
+
+**Step 4: Cross-Module Integration** (Est. 4 hours)
+Test all integration points:
+- CartManager → CheckoutManager
+- ProductsManager → CartManager
+- DrawerManager → CheckoutManager
+- HeldCartsManager → CartManager
+- OrdersManager → ReceiptsManager
+
+**Step 5: Testing Matrix** (Est. 6 hours)
+Comprehensive testing across:
+- Core functionality (14 test scenarios)
+- Browser compatibility (6 browsers)
+- Performance benchmarks
+- Error handling scenarios
+
+### Module Development Guidelines
+
+#### Creating a New Module
+
+1. **File Structure**:
+```javascript
+/**
+ * ModuleName - Brief description
+ * Dependencies: StateManager, UIHelpers, etc.
+ */
+class ModuleName {
+    constructor(dependencies) {
+        this.state = dependencies.state;
+        this.ui = dependencies.ui;
+        // Initialize
+    }
+    
+    // Public methods
+    async methodName() {
+        // Implementation
+    }
+    
+    // Private methods (prefix with _)
+    _privateMethod() {
+        // Internal use only
+    }
+}
+
+// Export
+window.moduleName = new ModuleName({
+    state: window.stateManager,
+    ui: window.uiHelpers
+});
+```
+
+2. **Documentation Requirements**:
+- JSDoc comments for all public methods
+- Parameter types and return values
+- Usage examples
+- Dependencies listed at top
+
+3. **Error Handling**:
+```javascript
+async fetchData() {
+    try {
+        const response = await fetch('/api/endpoint');
+        if (!response.ok) throw new Error('Fetch failed');
+        return await response.json();
+    } catch (error) {
+        this.ui.showToast(`Error: ${error.message}`, 'error');
+        console.error('[ModuleName]', error);
+        return { success: false, error: error.message };
+    }
+}
+```
+
+4. **State Management**:
+- Always use StateManager, never global variables
+- Save state after modifications
+- Validate state before use
+
+### Testing Strategy
+
+#### Unit Testing
+Test each module in isolation:
+```javascript
+// Test cart calculations
+const cart = new CartManager({ state, ui });
+cart.addToCart(product, null, 2);
+assert(cart.getSubtotal() === 50.00);
+```
+
+#### Integration Testing
+Test module interactions:
+```javascript
+// Test checkout flow
+cart.addToCart(product, null, 1);
+drawer.checkDrawerStatus();
+checkout.processTransaction();
+```
+
+#### Performance Testing
+Monitor key metrics:
+- Initial load time < 2s
+- Cart update < 100ms
+- Product grid render < 500ms
+- Checkout process < 1s
+
+### Common Issues & Solutions
+
+#### Issue: Module Load Order
+**Problem**: `ReferenceError: StateManager is not defined`
+**Solution**: Verify script order in [`index.php`](../index.php:1) - state.js must load first
+
+#### Issue: Cart Not Persisting
+**Problem**: Cart clears on page refresh
+**Solution**: Ensure CartManager calls `saveCartState()` after every modification
+
+#### Issue: Variation Modal Not Opening
+**Problem**: Click on product does nothing
+**Solution**: Add `window.productsManager.openVariationModal` in main.js
+
+### Migration Guide for Developers
+
+#### Before (Monolithic)
+```javascript
+function addToCart(product) {
+    cart.items.push(product);
+    renderCart();
+}
+```
+
+#### After (Modular)
+```javascript
+// Use CartManager
+window.cartManager.addToCart(product);
+// Cart automatically re-renders
+```
+
+### Performance Improvements
+
+**Expected Benefits**:
+- **Initial Load**: 2.3s → <1.5s (35% faster)
+- **Memory Usage**: 45MB → <35MB (22% reduction)
+- **Cart Update**: 180ms → <100ms (44% faster)
+- **Product Grid**: 850ms → <500ms (41% faster)
+
+**Optimization Strategies**:
+1. Lazy loading of admin modules
+2. Code splitting for vendor libraries
+3. Tree shaking to remove unused code
+4. Aggressive browser caching
+
+### Deployment Checklist
+
+**Before Deployment**:
+- [ ] All 14 modules created and tested
+- [ ] main.js reduced to <300 lines
+- [ ] index.php updated with module loading
+- [ ] Version updated to 1.9.0
+- [ ] All documentation updated
+- [ ] Backup created of current production
+
+**Deployment**:
+- [ ] Deploy during low-traffic period
+- [ ] Upload all module files
+- [ ] Update index.php
+- [ ] Clear CDN cache
+- [ ] Test critical path (Login → Add to Cart → Checkout)
+
+**Post-Deployment**:
+- [ ] Monitor error logs for 2 hours
+- [ ] Verify performance metrics
+- [ ] Check console for errors
+- [ ] Test on real POS hardware
+
+### Troubleshooting
+
+#### Diagnostic Commands
+```javascript
+// Check if all managers loaded
+console.log({
+    state: !!window.stateManager,
+    ui: !!window.uiHelpers,
+    auth: !!window.authManager,
+    cart: !!window.cartManager,
+    products: !!window.productsManager,
+    checkout: !!window.checkoutManager
+});
+
+// Check cart state
+console.log(window.cartManager.getState());
+
+// Force cart re-render
+window.cartManager.renderCart();
+```
+
+### Future Enhancements (Post-v1.9.0)
+
+**Phase 7: Advanced Features**
+- Offline mode with Service Worker
+- Multi-language i18n support
+- Advanced reports with predictive analytics
+- Mobile app (React Native)
+- GraphQL API migration
+
+**Phase 8: Performance**
+- Webpack/Rollup integration
+- Dynamic imports for code splitting
+- WebP image conversion
+- CDN integration (CloudFlare/CloudFront)
+
+### Resources
+
+**Documentation**:
+- Complete implementation plan: [`docs/REFACTORING_PLAN.md`](REFACTORING_PLAN.md:1)
+- User manual: [`docs/USER_MANUAL.md`](USER_MANUAL.md:1)
+- System overview: [`agents.md`](../agents.md:1)
+
+**Code References**:
+- Completed modules: [`assets/js/modules/`](../assets/js/modules/)
+- Current main.js: [`assets/js/main.js`](../assets/js/main.js:1)
+- Module loader: [`assets/js/modules/module-loader.js`](../assets/js/modules/module-loader.js:1)
+
+**Support**:
+- For modularization questions, consult the refactoring plan
+- For module-specific issues, see troubleshooting guide
+- For integration problems, review testing matrix
+
+---
+
 - v1.8.54: Implemented customer attachment functionality for POS orders - created customer search API endpoint [`api/customers.php`](../api/customers.php:1), on-screen keyboard component [`assets/js/modules/keyboard.js`](../assets/js/modules/keyboard.js:1), customer state management, UI integration with search modal and cart display, held cart persistence
+
+## Version 1.9.32 - Numpad Always Inserts to Amount Input (2025-10-07)
+
+### Changes
+- **Fee/Discount Numpad Enhancement**: Numpad buttons now always insert values into the amount input field, regardless of whether the input is focused
+- **Event Listeners**: Added dedicated event listeners for all `.num-pad-btn` buttons and the backspace button
+- **UX Improvement**: Numpad automatically focuses the input after each interaction for seamless data entry
+
+### Technical Implementation
+**File**: [`assets/js/main.js`](../assets/js/main.js:458-503)
+
+```javascript
+// Fee/Discount Numpad - Always insert into amount input
+const numpadButtons = document.querySelectorAll('.num-pad-btn');
+const numpadInput = document.getElementById('fee-discount-amount');
+const numpadBackspace = document.getElementById('num-pad-backspace');
+
+numpadButtons.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const value = btn.textContent;
+        const currentValue = numpadInput.value;
+        
+        // Handle decimal point - only allow one
+        if (value === '.') {
+            if (currentValue.includes('.')) return;
+        }
+        
+        // Insert the value and trigger validation
+        numpadInput.value = currentValue + value;
+        numpadInput.dispatchEvent(new Event('input', { bubbles: true }));
+        numpadInput.focus();
+    });
+});
+```
+
+### Key Features
+1. **Always Works**: No need to click on the input field first
+2. **Validation Preserved**: Still validates numeric-only input (from v1.9.31)
+3. **Single Decimal Point**: Prevents multiple decimal points
+4. **Auto-Focus**: Keeps input focused after numpad interaction
+5. **Backspace Support**: Properly removes last character
+
+### Use Case
+Perfect for touchscreen POS devices where users prefer tapping numpad buttons instead of using the keyboard. Now works seamlessly without requiring manual focus.
+
+---

@@ -137,30 +137,92 @@ function getGroupingFormat($granularity) {
 }
 
 /**
- * Get chart data with intelligent granularity
+ * Generate all periods in a date range based on granularity
+ */
+function generateAllPeriods($start_date, $end_date, $granularity) {
+    $periods = [];
+    $start = new DateTime($start_date);
+    $end = new DateTime($end_date);
+    
+    $current = clone $start;
+    
+    while ($current <= $end) {
+        switch ($granularity) {
+            case 'hour':
+                $periods[] = $current->format('Y-m-d H:00:00');
+                $current->modify('+1 hour');
+                break;
+            case 'day':
+                $periods[] = $current->format('Y-m-d');
+                $current->modify('+1 day');
+                break;
+            case 'month':
+                $periods[] = $current->format('Y-m');
+                $current->modify('first day of next month');
+                break;
+            case 'year':
+                $periods[] = $current->format('Y');
+                $current->modify('+1 year');
+                break;
+            default:
+                $periods[] = $current->format('Y-m-d');
+                $current->modify('+1 day');
+        }
+    }
+    
+    return $periods;
+}
+
+/**
+ * Get chart data with intelligent granularity and fill missing periods with zeros
  */
 function getChartData($start_date, $end_date, $granularity) {
     global $wpdb;
     
     $grouping_format = getGroupingFormat($granularity);
     
-    $sql = "SELECT 
+    $sql = "SELECT
         DATE_FORMAT(p.post_date, %s) as period,
         COUNT(*) as order_count,
         SUM(CAST(pm_total.meta_value AS DECIMAL(10,2))) as total_amount,
         AVG(CAST(pm_total.meta_value AS DECIMAL(10,2))) as avg_order_value
     FROM {$wpdb->prefix}posts p
     LEFT JOIN {$wpdb->prefix}postmeta pm_total ON p.ID = pm_total.post_id AND pm_total.meta_key = '_order_total'
-    WHERE p.post_type = 'shop_order' 
+    WHERE p.post_type = 'shop_order'
     AND p.post_status IN ('wc-completed', 'wc-processing', 'wc-on-hold')
-    AND p.post_date >= %s 
+    AND p.post_date >= %s
     AND p.post_date <= %s
     GROUP BY DATE_FORMAT(p.post_date, %s)
     ORDER BY period ASC";
     
     $results = $wpdb->get_results($wpdb->prepare($sql, $grouping_format, $start_date, $end_date, $grouping_format));
     
-    return $results;
+    // Create a lookup array for quick access
+    $data_lookup = [];
+    foreach ($results as $row) {
+        $data_lookup[$row->period] = $row;
+    }
+    
+    // Generate all periods in the range
+    $all_periods = generateAllPeriods($start_date, $end_date, $granularity);
+    
+    // Fill in complete data set with zeros for missing periods
+    $complete_data = [];
+    foreach ($all_periods as $period) {
+        if (isset($data_lookup[$period])) {
+            $complete_data[] = $data_lookup[$period];
+        } else {
+            // Create zero-value entry for missing period
+            $complete_data[] = (object)[
+                'period' => $period,
+                'order_count' => 0,
+                'total_amount' => 0,
+                'avg_order_value' => 0
+            ];
+        }
+    }
+    
+    return $complete_data;
 }
 
 /**

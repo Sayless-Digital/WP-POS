@@ -14,6 +14,52 @@ if (!is_user_logged_in() || !current_user_can('manage_woocommerce')) {
 
 global $wpdb;
 
+// Handle DELETE request for order deletion
+if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
+    $input = json_decode(file_get_contents('php://input'), true);
+    
+    if (!isset($input['order_id']) || !isset($input['restore_stock'])) {
+        wp_send_json_error(['message' => 'Missing required parameters'], 400);
+        exit;
+    }
+    
+    $order_id = intval($input['order_id']);
+    $restore_stock = filter_var($input['restore_stock'], FILTER_VALIDATE_BOOLEAN);
+    
+    $order = wc_get_order($order_id);
+    if (!$order) {
+        wp_send_json_error(['message' => 'Order not found'], 404);
+        exit;
+    }
+    
+    // If restore_stock is true, restore inventory for each item
+    if ($restore_stock) {
+        foreach ($order->get_items() as $item) {
+            $product_id = $item->get_variation_id() ? $item->get_variation_id() : $item->get_product_id();
+            $product = wc_get_product($product_id);
+            
+            if ($product && $product->managing_stock()) {
+                $current_stock = $product->get_stock_quantity();
+                $new_stock = $current_stock + $item->get_quantity();
+                $product->set_stock_quantity($new_stock);
+                $product->save();
+            }
+        }
+    }
+    
+    // Delete the order
+    $deleted = wp_delete_post($order_id, true); // true = force delete (bypass trash)
+    
+    if ($deleted) {
+        wp_send_json_success([
+            'message' => $restore_stock ? 'Order deleted and stock restored' : 'Order deleted without stock restoration'
+        ]);
+    } else {
+        wp_send_json_error(['message' => 'Failed to delete order'], 500);
+    }
+    exit;
+}
+
 $limit = 100; // Limit the number of orders returned for performance
 
 // Base SQL with conditional JPOS filter

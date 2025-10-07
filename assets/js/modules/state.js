@@ -42,7 +42,16 @@ class StateManager {
             // Orders Management
             orders: {
                 all: [],
-                filters: { date: 'all', status: 'all', source: 'all', orderId: '' }
+                filters: { date: 'all', status: 'all', source: 'all', orderId: '', customer: '' }
+            },
+            
+            // Reports
+            reports: {
+                currentPeriod: 'today',
+                chartData: null,
+                summary: null,
+                orders: [],
+                chart: null
             },
             
             // Product Filters

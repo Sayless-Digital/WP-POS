@@ -17,12 +17,40 @@ require_once __DIR__ . '/../wp-load.php';
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- Custom JSON syntax highlighting -->
     
-    <!-- WP POS Keyboard Module -->
-    <script src="assets/js/modules/keyboard.js?v=1.0.0&t=<?php echo time(); ?>"></script>
-    <!-- WP POS Routing Module -->
-    <script src="assets/js/modules/routing.js?v=1.5.11&t=<?php echo time(); ?>"></script>
-    <!-- WP POS JavaScript -->
-    <script src="assets/js/main.js?v=1.8.71&t=<?php echo time(); ?>"></script>
+    <!-- WP POS v1.9.47 - Order Deletion API Response Fix -->
+    
+    <!-- Core Modules - Load First -->
+    <script src="assets/js/modules/state.js?v=1.9.23&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/routing.js?v=1.9.23&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/core/ui-helpers.js?v=1.9.23&t=<?php echo time(); ?>"></script>
+    
+    <!-- Auth & UI Modules -->
+    <script src="assets/js/modules/auth.js?v=1.9.23&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/keyboard.js?v=1.9.23&t=<?php echo time(); ?>"></script>
+    
+    <!-- Products Modules -->
+    <script src="assets/js/modules/products/products.js?v=1.9.23&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/products/product-editor.js?v=1.9.23&t=<?php echo time(); ?>"></script>
+    
+    <!-- Cart Modules -->
+    <script src="assets/js/modules/cart/cart.js?v=1.9.38&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/cart/checkout.js?v=1.9.43&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/cart/held-carts.js?v=1.9.23&t=<?php echo time(); ?>"></script>
+    
+    <!-- Orders & Receipts Modules -->
+    <script src="assets/js/modules/orders/orders.js?v=1.9.48&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/orders/receipts.js?v=1.9.46&t=<?php echo time(); ?>"></script>
+    
+    <!-- Financial Modules -->
+    <script src="assets/js/modules/financial/drawer.js?v=1.9.23&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/financial/reports.js?v=1.9.27&t=<?php echo time(); ?>"></script>
+    
+    <!-- Admin Modules -->
+    <script src="assets/js/modules/admin/settings.js?v=1.9.23&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/admin/sessions.js?v=1.9.23&t=<?php echo time(); ?>"></script>
+    
+    <!-- Main Orchestrator - Load Last -->
+    <script src="assets/js/main.js?v=1.9.33&t=<?php echo time(); ?>"></script>
     <style>
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
@@ -390,14 +418,29 @@ require_once __DIR__ . '/../wp-load.php';
                             
                             <div id="cart-items" class="flex-grow overflow-y-auto space-y-1 pr-1"></div>
                             <button id="clear-cart-btn" class="w-full text-slate-400 p-1 text-xs hover:bg-slate-700 rounded-md transition-colors mt-1 mb-2">Clear Cart</button>
-                            <div class="flex flex-col gap-0 pb-1 mb-1 border-b border-slate-700">
-                                <div class="flex items-center justify-between">
-                                    <span class="text-sm font-medium text-slate-300">Total</span>
+                            <div class="flex flex-col gap-1 pb-2 mb-2 border-b border-slate-700">
+                                <!-- Cart Summary -->
+                                <div class="flex items-center justify-between mb-1">
                                     <span id="cart-summary" class="text-xs text-slate-400"></span>
-                                    <span id="cart-total" class="font-bold text-base">$0.00</span>
                                 </div>
+                                
+                                <!-- Subtotal -->
+                                <div class="flex items-center justify-between text-sm">
+                                    <span class="text-slate-300">Subtotal</span>
+                                    <span id="cart-subtotal" class="font-medium text-slate-200">$0.00</span>
+                                </div>
+                                
+                                <!-- Discount Row (hidden if no discount) -->
                                 <div id="cart-discount-row"></div>
+                                
+                                <!-- Fee Row (hidden if no fee) -->
                                 <div id="cart-fee-row"></div>
+                                
+                                <!-- Total (with top border for emphasis) -->
+                                <div class="flex items-center justify-between pt-1 mt-1 border-t border-slate-600">
+                                    <span class="text-base font-semibold text-white">Total</span>
+                                    <span id="cart-total" class="font-bold text-lg text-white">$0.00</span>
+                                </div>
                             </div>
                             <div class="flex gap-2 mb-2">
                                 <button id="add-discount-btn" class="flex-1 flex items-center justify-center gap-1 bg-slate-700 text-white px-2 py-2 rounded-md text-xs hover:bg-slate-600 transition-colors" title="Add Discount">
@@ -433,7 +476,10 @@ require_once __DIR__ . '/../wp-load.php';
                         </div>
                         <div>
                             <label for="fee-discount-amount" class="form-label">Amount</label>
-                            <input id="fee-discount-amount" type="text" inputmode="none" readonly class="form-input text-right text-lg font-bold py-2 px-2">
+                            <div class="relative">
+                                <input id="fee-discount-amount" type="text" inputmode="decimal" class="form-input text-right text-lg font-bold py-2 px-2" placeholder="0.00">
+                                <span id="fee-discount-percent-symbol" class="hidden absolute right-3 top-1/2 transform -translate-y-1/2 text-lg font-bold text-slate-400 pointer-events-none">%</span>
+                            </div>
                         </div>
                         <div id="fee-discount-type-selector" class="segmented-control flex p-1 rounded-lg bg-slate-700 border border-slate-600">
                             <button data-value="flat" data-state="active" class="px-2 py-1 text-xs rounded-md transition-colors">$ Flat</button>
@@ -1089,8 +1135,8 @@ require_once __DIR__ . '/../wp-load.php';
     </div>
     <!-- Split Payment Modal -->
 <div id="split-payment-modal" class="app-overlay hidden">
-  <div class="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow-2xl w-full max-w-md transform transition-all">
-    <h2 class="text-2xl font-bold mb-4">Checkout</h2>
+  <div class="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow-2xl w-full max-w-2xl transform transition-all">
+    <h2 class="text-2xl font-bold mb-4 text-center">Checkout</h2>
     <div id="split-payment-methods-list" class="space-y-2 mb-4"></div>
     <div id="split-payment-numpad" class="grid grid-cols-3 gap-1 mb-4">
       <button class="split-numpad-btn bg-slate-700 p-2 rounded-lg text-base font-bold hover:bg-slate-600 transition-colors">7</button>
@@ -1106,9 +1152,31 @@ require_once __DIR__ . '/../wp-load.php';
       <button class="split-numpad-btn bg-slate-700 p-2 rounded-lg text-base font-bold hover:bg-slate-600 transition-colors">0</button>
       <button id="split-numpad-backspace" class="bg-slate-700 p-2 rounded-lg text-base font-bold hover:bg-slate-600 transition-colors">←</button>
     </div>
-    <div class="flex justify-between items-center mb-4">
-      <span class="font-bold text-slate-300">Total:</span>
-      <span id="split-payment-total" class="font-mono text-slate-100 text-lg">$0.00</span>
+    <div class="bg-slate-700/50 rounded-lg p-4 mb-4 space-y-2">
+      <div class="flex items-center justify-between text-sm">
+        <span class="text-slate-300">Subtotal</span>
+        <span id="split-payment-subtotal" class="font-medium text-slate-200">$0.00</span>
+      </div>
+      <div id="split-payment-discount-row" class="hidden flex items-center justify-between text-sm">
+        <span class="text-slate-300">Discount</span>
+        <span id="split-payment-discount" class="font-medium text-red-400">$0.00</span>
+      </div>
+      <div id="split-payment-fee-row" class="hidden flex items-center justify-between text-sm">
+        <span class="text-slate-300">Fee</span>
+        <span id="split-payment-fee" class="font-medium text-green-400">$0.00</span>
+      </div>
+      <div class="flex items-center justify-between pt-2 mt-2 border-t border-slate-600">
+        <span class="text-base font-semibold text-white">Total</span>
+        <span id="split-payment-total" class="font-mono text-white text-lg font-bold">$0.00</span>
+      </div>
+      <div class="flex items-center justify-between text-sm pt-2 border-t border-slate-600">
+        <span class="text-slate-300">Amount Paid</span>
+        <span id="split-payment-paid" class="font-medium text-slate-200">$0.00</span>
+      </div>
+      <div id="split-payment-change-row" class="flex items-center justify-between text-sm">
+        <span class="text-slate-300">Change</span>
+        <span id="split-payment-change" class="font-medium text-blue-400">$0.00</span>
+      </div>
     </div>
     <div class="flex justify-end gap-2">
       <button id="split-payment-cancel" class="px-4 py-2 bg-slate-600 rounded-lg hover:bg-slate-500 text-white">Cancel</button>
@@ -1159,11 +1227,29 @@ require_once __DIR__ . '/../wp-load.php';
                         <i class="fas fa-keyboard"></i>
                     </button>
                 </div>
-                <p class="text-xs text-slate-400 mt-1">Enter at least 2 characters to search</p>
             </div>
             
             <div id="customer-search-results" class="space-y-2 max-h-96 overflow-y-auto">
-                <div class="text-center text-slate-400 py-4">Enter at least 2 characters to search</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Order Confirmation Modal -->
+    <div id="delete-order-modal" class="app-overlay hidden">
+        <div class="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow-2xl w-full max-w-md transform transition-all">
+            <h2 class="text-2xl font-bold mb-4 text-white">Delete Order</h2>
+            <p class="text-slate-300 mb-4">Are you sure you want to delete order <span id="delete-order-number" class="font-bold text-white"></span>?</p>
+            <p class="text-sm text-slate-400 mb-6">This action cannot be undone.</p>
+            <div class="space-y-3">
+                <button id="delete-order-without-stock-btn" class="w-full px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-500 transition-colors font-semibold">
+                    Delete Without Restoring Stock
+                </button>
+                <button id="delete-order-with-stock-btn" class="w-full px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-500 transition-colors font-semibold">
+                    Delete and Restore Stock
+                </button>
+                <button id="delete-order-cancel-btn" class="w-full px-4 py-3 bg-slate-600 text-white rounded-lg hover:bg-slate-500 transition-colors">
+                    Cancel
+                </button>
             </div>
         </div>
     </div>
