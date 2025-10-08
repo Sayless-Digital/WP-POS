@@ -32,7 +32,7 @@ if ($action === 'list') {
     // Define role types - only show relevant management roles
     $predefined_roles = ['wppos_manager', 'wppos_cashier', 'wppos_storekeeper'];
     $system_roles = ['administrator', 'shop_manager']; // Only show these system roles
-    $always_show_roles = array_merge($predefined_roles, $system_roles);
+    $always_show_roles = $system_roles; // Only auto-show system roles
     
     foreach ($all_roles as $role_slug => $role_data) {
         // Include roles that:
@@ -54,8 +54,8 @@ if ($action === 'list') {
                 $role_type = 'woocommerce';
             }
             
-            // Shop Manager and custom roles are editable, predefined and administrator are not
-            $is_editable = !in_array($role_slug, array_merge($predefined_roles, ['administrator']));
+            // Only Administrator is protected from editing, everything else is editable
+            $is_editable = $role_slug !== 'administrator';
             
             $wppos_roles[] = [
                 'slug' => $role_slug,

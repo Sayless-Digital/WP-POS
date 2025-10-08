@@ -17,7 +17,7 @@ require_once __DIR__ . '/../wp-load.php';
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- Custom JSON syntax highlighting -->
     
-    <!-- WP POS v1.9.117 - Limited roles display to Administrator and Shop Manager, made Shop Manager editable -->
+    <!-- WP POS v1.9.118 - Fixed predefined roles not showing when not installed -->
     
     <!-- Core Modules - Load First -->
     <script src="assets/js/modules/state.js?v=1.9.72&t=<?php echo time(); ?>"></script>
@@ -46,7 +46,7 @@ require_once __DIR__ . '/../wp-load.php';
     <script src="assets/js/modules/financial/reports.js?v=1.9.72&t=<?php echo time(); ?>"></script>
     
     <!-- Admin Modules -->
-    <script src="assets/js/modules/admin/settings.js?v=1.9.117&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/admin/settings.js?v=1.9.118&t=<?php echo time(); ?>"></script>
     <script src="assets/js/modules/admin/sessions.js?v=1.9.72&t=<?php echo time(); ?>"></script>
     
     <!-- Main Orchestrator - Load Last -->
