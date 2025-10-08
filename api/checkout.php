@@ -1,19 +1,18 @@
 <?php
-// FILE: /jpos/api/checkout.php
+// FILE: /wp-pos/api/checkout.php
 
 require_once __DIR__ . '/../../wp-load.php';
+require_once __DIR__ . '/jpos-auth-helper.php';
 require_once __DIR__ . '/validation.php';
 require_once __DIR__ . '/error_handler.php';
-require_once __DIR__ . '/checkout-customer-fix.php'; // Hook-level customer protection
+require_once __DIR__ . '/checkout-customer-fix.php';
 
 define('JPOS_SETTINGS_OPTION_KEY', 'jpos_receipt_settings');
 
 header('Content-Type: application/json');
 
-if (!is_user_logged_in() || !current_user_can('manage_woocommerce')) {
-    wp_send_json_error(['message' => 'Authentication required.'], 403);
-    exit;
-}
+// Require authentication
+jpos_require_auth('checkout');
 
 global $wpdb;
 
@@ -21,7 +20,7 @@ $data = JPOS_Validation::validate_json_input(file_get_contents('php://input'));
 
 // CSRF Protection: Verify nonce for checkout requests
 $nonce = $data['nonce'] ?? '';
-if (!wp_verify_nonce($nonce, 'jpos_checkout_nonce')) {
+if (!wp_verify_nonce($nonce, 'wppos_checkout_nonce')) {
     wp_send_json_error(['message' => 'Security token invalid. Please refresh the page and try again.'], 403);
     exit;
 }

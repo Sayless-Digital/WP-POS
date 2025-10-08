@@ -1,0 +1,3 @@
+[08-Oct-2025 01:33:01 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value 'UTC-4', using 'UTC' instead in Unknown on line 0
+[08-Oct-2025 01:38:11 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value 'UTC-4', using 'UTC' instead in Unknown on line 0
+[08-Oct-2025 01:44:54 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value 'UTC-4', using 'UTC' instead in Unknown on line 0

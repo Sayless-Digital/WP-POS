@@ -46,12 +46,28 @@ class OnScreenKeyboard {
             keyboardGrid.appendChild(rowElement);
         });
         
-        // Add close button
+        // Add control buttons
+        const controlsContainer = document.createElement('div');
+        controlsContainer.className = 'absolute top-2 right-2 flex gap-2';
+        
+        // Auto-show toggle button
+        const autoShowButton = document.createElement('button');
+        autoShowButton.id = 'keyboard-auto-show-toggle';
+        autoShowButton.className = 'text-slate-400 hover:text-white p-2 rounded transition-colors';
+        autoShowButton.title = 'Toggle Auto-show';
+        this.updateAutoShowButton(autoShowButton);
+        autoShowButton.onclick = () => this.toggleAutoShow();
+        controlsContainer.appendChild(autoShowButton);
+        
+        // Close button
         const closeButton = document.createElement('button');
-        closeButton.className = 'absolute top-2 right-2 text-slate-400 hover:text-white p-2';
+        closeButton.className = 'text-slate-400 hover:text-white p-2';
         closeButton.innerHTML = '<i class="fas fa-times"></i>';
+        closeButton.title = 'Close Keyboard';
         closeButton.onclick = () => this.hide();
-        container.appendChild(closeButton);
+        controlsContainer.appendChild(closeButton);
+        
+        container.appendChild(controlsContainer);
         
         container.appendChild(keyboardGrid);
         this.keyboardElement = container;
@@ -273,6 +289,91 @@ class OnScreenKeyboard {
         });
         
         this.autoShowHandlers.clear();
+    }
+
+    /**
+     * Toggle auto-show feature
+     */
+    async toggleAutoShow() {
+        // Get current settings
+        let settings = window.stateManager?.getState('settings') || {};
+        if (settings.data) {
+            settings = settings.data;
+        }
+        
+        // Toggle the setting
+        const newValue = !(settings.virtual_keyboard_auto_show === true);
+        
+        // Update in state
+        if (window.stateManager) {
+            const currentSettings = window.stateManager.getState('settings') || {};
+            currentSettings.virtual_keyboard_auto_show = newValue;
+            window.stateManager.updateState('settings', currentSettings);
+        }
+        
+        // Save to backend
+        try {
+            const nonce = window.stateManager?.getState('nonces.settings');
+            const response = await fetch('api/settings.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...settings,
+                    virtual_keyboard_auto_show: newValue,
+                    nonce: nonce
+                })
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                // Update button appearance
+                const button = document.getElementById('keyboard-auto-show-toggle');
+                if (button) {
+                    this.updateAutoShowButton(button);
+                }
+                
+                // Re-initialize auto-show
+                this.initAutoShow();
+                
+                // Show feedback
+                if (window.uiHelpers) {
+                    window.uiHelpers.showToast(
+                        newValue ? 'Keyboard auto-show enabled' : 'Keyboard auto-show disabled',
+                        'success'
+                    );
+                }
+            }
+        } catch (error) {
+            console.error('Error toggling auto-show:', error);
+            if (window.uiHelpers) {
+                window.uiHelpers.showToast('Failed to save setting', 'error');
+            }
+        }
+    }
+    
+    /**
+     * Update auto-show button appearance
+     * @param {HTMLElement} button The button element to update
+     */
+    updateAutoShowButton(button) {
+        let settings = window.stateManager?.getState('settings') || {};
+        if (settings.data) {
+            settings = settings.data;
+        }
+        
+        const isEnabled = settings.virtual_keyboard_auto_show === true;
+        
+        if (isEnabled) {
+            button.innerHTML = '<i class="fas fa-bolt"></i>';
+            button.classList.add('text-yellow-400');
+            button.classList.remove('text-slate-400');
+            button.title = 'Auto-show: ON (Click to disable)';
+        } else {
+            button.innerHTML = '<i class="fas fa-bolt-slash"></i>';
+            button.classList.remove('text-yellow-400');
+            button.classList.add('text-slate-400');
+            button.title = 'Auto-show: OFF (Click to enable)';
+        }
     }
 
     /**

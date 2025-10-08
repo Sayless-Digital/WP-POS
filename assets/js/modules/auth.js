@@ -296,6 +296,11 @@ class AuthManager {
             await window.drawerManager.checkDrawerStatus();
         }
         
+        // Initialize keyboard auto-show
+        if (window.initKeyboardAutoShow) {
+            window.initKeyboardAutoShow();
+        }
+        
         // Load and render cart state
         if (window.cartManager) {
             window.cartManager.loadCartState();
@@ -357,7 +362,8 @@ class AuthManager {
         const roles = this.stateManager.getState('auth.user.roles') || {};
         
         // Convert roles to array if it's an object
-        const rolesArray = Array.isArray(roles) ? roles : Object.keys(roles);
+        // Use Object.values() to get role names, not indices
+        const rolesArray = Array.isArray(roles) ? roles : Object.values(roles);
         
         // Administrators and shop managers have all capabilities
         if (rolesArray.includes('administrator') || rolesArray.includes('shop_manager')) {
@@ -414,7 +420,8 @@ class AuthManager {
         if (Array.isArray(roles)) {
             return roles.includes(role);
         } else if (typeof roles === 'object') {
-            return role in roles;
+            // Check if role exists in object values (not keys)
+            return Object.values(roles).includes(role);
         }
         return false;
     }

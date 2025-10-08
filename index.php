@@ -17,7 +17,7 @@ require_once __DIR__ . '/../wp-load.php';
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- Custom JSON syntax highlighting -->
     
-    <!-- WP POS v1.9.99 - Fixed roles object handling in RBAC -->
+    <!-- WP POS v1.9.117 - Limited roles display to Administrator and Shop Manager, made Shop Manager editable -->
     
     <!-- Core Modules - Load First -->
     <script src="assets/js/modules/state.js?v=1.9.72&t=<?php echo time(); ?>"></script>
@@ -25,8 +25,8 @@ require_once __DIR__ . '/../wp-load.php';
     <script src="assets/js/modules/core/ui-helpers.js?v=1.9.72&t=<?php echo time(); ?>"></script>
     
     <!-- Auth & UI Modules -->
-    <script src="assets/js/modules/auth.js?v=1.9.99&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/keyboard.js?v=1.9.83&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/auth.js?v=1.9.106&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/keyboard.js?v=1.9.103&t=<?php echo time(); ?>"></script>
     
     <!-- Products Modules -->
     <script src="assets/js/modules/products/products.js?v=1.9.72&t=<?php echo time(); ?>"></script>
@@ -34,7 +34,7 @@ require_once __DIR__ . '/../wp-load.php';
     
     <!-- Cart Modules -->
     <script src="assets/js/modules/cart/cart.js?v=1.9.72&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/cart/checkout.js?v=1.9.72&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/cart/checkout.js?v=1.9.101&t=<?php echo time(); ?>"></script>
     <script src="assets/js/modules/cart/held-carts.js?v=1.9.72&t=<?php echo time(); ?>"></script>
     
     <!-- Orders & Receipts Modules -->
@@ -46,11 +46,11 @@ require_once __DIR__ . '/../wp-load.php';
     <script src="assets/js/modules/financial/reports.js?v=1.9.72&t=<?php echo time(); ?>"></script>
     
     <!-- Admin Modules -->
-    <script src="assets/js/modules/admin/settings.js?v=1.9.90&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/admin/settings.js?v=1.9.117&t=<?php echo time(); ?>"></script>
     <script src="assets/js/modules/admin/sessions.js?v=1.9.72&t=<?php echo time(); ?>"></script>
     
     <!-- Main Orchestrator - Load Last -->
-    <script src="assets/js/main.js?v=1.9.99&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/main.js?v=1.9.101&t=<?php echo time(); ?>"></script>
     <style>
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
@@ -823,74 +823,168 @@ require_once __DIR__ . '/../wp-load.php';
 
                         <!-- Roles & Permissions Tab -->
                         <div id="settings-panel-roles" class="settings-panel hidden space-y-6">
-                            <div class="bg-slate-700/30 p-6 rounded-lg border border-slate-600">
-                                <h3 class="text-lg font-semibold text-white mb-4 flex items-center">
-                                    <i class="fas fa-user-shield mr-2 text-indigo-400"></i>
-                                    POS Roles & Permissions
-                                </h3>
-                                
-                                <!-- Role Status Display -->
-                                <div id="roles-status-container" class="mb-6">
-                                    <div class="flex items-center justify-center py-8">
-                                        <i class="fas fa-spinner fa-spin text-3xl text-slate-400"></i>
+                            
+                            <!-- Header Section -->
+                            <div class="bg-slate-700/30 border border-slate-600 rounded-lg p-4">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <h3 class="text-lg font-semibold text-white">Role Management</h3>
+                                        <p class="text-sm text-slate-400 mt-1">Control access to POS features with custom roles</p>
                                     </div>
+                                    <button id="show-create-dialog-btn" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-semibold transition-colors flex-shrink-0">
+                                        <i class="fas fa-plus mr-2"></i>Create Role
+                                    </button>
                                 </div>
-                                
-                                <!-- Role Information (hidden by default) -->
-                                <div id="roles-info" class="hidden space-y-4">
-                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        <!-- POS Manager Card -->
-                                        <div class="bg-slate-800/50 p-4 rounded-lg border border-slate-600">
-                                            <div class="flex items-center mb-2">
-                                                <i class="fas fa-user-tie text-indigo-400 mr-2"></i>
-                                                <h4 class="font-semibold text-white">POS Manager</h4>
-                                            </div>
-                                            <p class="text-sm text-slate-400">Full POS access except user management</p>
-                                            <div class="mt-2">
-                                                <span id="role-status-manager" class="text-xs px-2 py-1 rounded bg-green-900/30 text-green-400">
-                                                    <i class="fas fa-check-circle mr-1"></i>Active
-                                                </span>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- POS Cashier Card -->
-                                        <div class="bg-slate-800/50 p-4 rounded-lg border border-slate-600">
-                                            <div class="flex items-center mb-2">
-                                                <i class="fas fa-cash-register text-indigo-400 mr-2"></i>
-                                                <h4 class="font-semibold text-white">POS Cashier</h4>
-                                            </div>
-                                            <p class="text-sm text-slate-400">Basic POS operations only</p>
-                                            <div class="mt-2">
-                                                <span id="role-status-cashier" class="text-xs px-2 py-1 rounded bg-green-900/30 text-green-400">
-                                                    <i class="fas fa-check-circle mr-1"></i>Active
-                                                </span>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- POS Storekeeper Card -->
-                                        <div class="bg-slate-800/50 p-4 rounded-lg border border-slate-600">
-                                            <div class="flex items-center mb-2">
-                                                <i class="fas fa-boxes text-indigo-400 mr-2"></i>
-                                                <h4 class="font-semibold text-white">POS Storekeeper</h4>
-                                            </div>
-                                            <p class="text-sm text-slate-400">Inventory management only</p>
-                                            <div class="mt-2">
-                                                <span id="role-status-storekeeper" class="text-xs px-2 py-1 rounded bg-green-900/30 text-green-400">
-                                                    <i class="fas fa-check-circle mr-1"></i>Active
-                                                </span>
-                                            </div>
+                            </div>
+
+                            <!-- Predefined Role Templates -->
+                            <div class="bg-slate-700/30 rounded-lg border border-slate-600">
+                                <button type="button" id="templates-toggle" class="w-full p-4 flex items-center justify-between text-left hover:bg-slate-700/50 transition-colors">
+                                    <div>
+                                        <h3 class="text-base font-semibold text-white">Predefined Role Templates</h3>
+                                        <p class="text-xs text-slate-400 mt-1">Quick install pre-configured roles</p>
+                                    </div>
+                                    <i id="templates-icon" class="fas fa-chevron-down text-slate-400 transition-transform flex-shrink-0"></i>
+                                </button>
+                        
+                                <div id="templates-content" class="hidden px-4 pb-4">
+                                    <!-- Role Status Display -->
+                                    <div id="roles-status-container" class="mt-3">
+                                        <div class="flex items-center justify-center py-6">
+                                            <i class="fas fa-spinner fa-spin text-2xl text-slate-400"></i>
                                         </div>
                                     </div>
                                     
-                                    <div class="bg-blue-900/20 border border-blue-700/30 rounded-lg p-4 mt-4">
-                                        <div class="flex items-start">
-                                            <i class="fas fa-info-circle text-blue-400 mt-1 mr-3"></i>
-                                            <div class="text-sm text-slate-300">
-                                                <p class="font-semibold mb-2">How to assign roles:</p>
-                                                <p>Go to WordPress Admin → Users → Select User → Scroll to "Roles" section → Select a POS role</p>
+                                    <!-- Predefined Role Cards -->
+                                    <div id="roles-info" class="hidden space-y-2">
+                                        <div class="space-y-2 mt-3">
+                                            <!-- POS Manager -->
+                                            <div class="flex items-center justify-between p-3 bg-slate-800/50 rounded border border-slate-600">
+                                                <div class="flex items-center gap-3">
+                                                    <i class="fas fa-user-tie text-indigo-400"></i>
+                                                    <div>
+                                                        <div class="text-sm font-medium text-white">POS Manager</div>
+                                                        <div class="text-xs text-slate-400">Full POS access</div>
+                                                    </div>
+                                                </div>
+                                                <span id="role-status-manager" class="text-xs px-2 py-1 rounded bg-slate-600 text-slate-400">
+                                                    <i class="fas fa-circle-notch fa-spin"></i>
+                                                </span>
+                                            </div>
+                                            
+                                            <!-- POS Cashier -->
+                                            <div class="flex items-center justify-between p-3 bg-slate-800/50 rounded border border-slate-600">
+                                                <div class="flex items-center gap-3">
+                                                    <i class="fas fa-cash-register text-indigo-400"></i>
+                                                    <div>
+                                                        <div class="text-sm font-medium text-white">POS Cashier</div>
+                                                        <div class="text-xs text-slate-400">Sales operations only</div>
+                                                    </div>
+                                                </div>
+                                                <span id="role-status-cashier" class="text-xs px-2 py-1 rounded bg-slate-600 text-slate-400">
+                                                    <i class="fas fa-circle-notch fa-spin"></i>
+                                                </span>
+                                            </div>
+                                            
+                                            <!-- POS Storekeeper -->
+                                            <div class="flex items-center justify-between p-3 bg-slate-800/50 rounded border border-slate-600">
+                                                <div class="flex items-center gap-3">
+                                                    <i class="fas fa-boxes text-indigo-400"></i>
+                                                    <div>
+                                                        <div class="text-sm font-medium text-white">POS Storekeeper</div>
+                                                        <div class="text-xs text-slate-400">Inventory management</div>
+                                                    </div>
+                                                </div>
+                                                <span id="role-status-storekeeper" class="text-xs px-2 py-1 rounded bg-slate-600 text-slate-400">
+                                                    <i class="fas fa-circle-notch fa-spin"></i>
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
+                                </div>
+                            </div>
+
+                            <!-- All Roles List -->
+                            <div class="bg-slate-700/30 rounded-lg border border-slate-600">
+                                <div class="p-4 border-b border-slate-600">
+                                    <h3 class="text-base font-semibold text-white">All Roles</h3>
+                                </div>
+                                
+                                <div class="p-4">
+                                    <div id="roles-list" class="space-y-2 min-h-[200px]">
+                                        <div class="flex items-center justify-center py-12">
+                                            <i class="fas fa-spinner fa-spin text-3xl text-slate-400"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Info Box -->
+                            <div class="bg-blue-900/20 border border-blue-700/30 rounded-lg p-3">
+                                <div class="flex items-start gap-2">
+                                    <i class="fas fa-info-circle text-blue-400 text-sm"></i>
+                                    <div class="text-xs text-slate-300">
+                                        <p class="font-medium mb-1">How to Assign Roles</p>
+                                        <p>After creating roles, assign them to users in: <strong>WordPress Admin → Users → Select User → Roles</strong></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Create Role Dialog (outside settings panel) -->
+                        <div id="create-role-dialog" class="app-overlay hidden">
+                            <div class="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+                                <div class="p-4 border-b border-slate-700 flex items-center justify-between flex-shrink-0">
+                                    <h3 class="text-lg font-bold text-white">Create Custom Role</h3>
+                                    <button id="close-create-dialog-btn" class="text-slate-400 hover:text-white transition-colors">
+                                        <i class="fas fa-times text-lg"></i>
+                                    </button>
+                                </div>
+                                
+                                <div class="flex-1 overflow-y-auto p-6">
+                                    <form id="create-role-form" class="flex flex-col gap-6" novalidate>
+                                        <div>
+                                            <label for="new-role-name" class="block text-sm font-medium text-slate-300 mb-2">Role Name *</label>
+                                            <input type="text" id="new-role-name" name="role_name" required
+                                                class="w-full px-4 py-3 bg-slate-700 text-slate-200 rounded-lg border border-slate-600 focus:border-indigo-500 focus:outline-none"
+                                                placeholder="e.g., Store Manager">
+                                        </div>
+                                        
+                                        <div>
+                                            <label for="new-role-slug" class="block text-sm font-medium text-slate-300 mb-2">Role Slug *</label>
+                                            <input type="text" id="new-role-slug" name="role_slug" required
+                                                class="w-full px-4 py-3 bg-slate-700 text-slate-200 rounded-lg border border-slate-600 focus:border-indigo-500 focus:outline-none font-mono"
+                                                placeholder="store_manager">
+                                            <p class="text-xs text-slate-400 mt-2">Auto-generated from name. Lowercase letters, numbers, and underscores only.</p>
+                                        </div>
+                                        
+                                        <div class="flex-1 overflow-hidden flex flex-col min-h-0">
+                                            <label for="capabilities-checkboxes" class="block text-sm font-medium text-slate-300 mb-2">Capabilities *</label>
+                                            <div class="flex-1 overflow-y-auto bg-slate-700/30 rounded border border-slate-600">
+                                                <table class="w-full text-left">
+                                                    <thead class="sticky top-0 bg-slate-800 z-10">
+                                                        <tr class="border-b border-slate-600">
+                                                            <th class="py-2 px-3 text-xs font-medium text-slate-400 uppercase">Capability</th>
+                                                            <th class="py-2 px-3 text-xs font-medium text-slate-400 uppercase w-24">Enabled</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="capabilities-checkboxes">
+                                                        <!-- Capabilities will be dynamically loaded here -->
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                            <p class="text-xs text-slate-400 mt-2">Select at least one capability for this role</p>
+                                        </div>
+                                    </form>
+                                </div>
+                                
+                                <div class="p-4 border-t border-slate-700 flex gap-3 flex-shrink-0">
+                                    <button type="button" id="cancel-create-btn" class="flex-1 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors">
+                                        Cancel
+                                    </button>
+                                    <button type="submit" form="create-role-form" class="flex-1 px-4 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors font-semibold">
+                                        <i class="fas fa-plus-circle mr-2"></i>Create Role
+                                    </button>
                                 </div>
                             </div>
                         </div>

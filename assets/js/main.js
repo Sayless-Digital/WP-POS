@@ -1,6 +1,6 @@
-// WP POS v1.9.2 - Modularized Architecture with Button Event Listeners
+// WP POS v1.9.101 - Modularized Architecture with Button Event Listeners
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('WP POS v1.9.2 loaded - Button event listeners active');
+    console.log('WP POS v1.9.101 loaded - Fixed settings loading, API paths, RBAC, and checkout');
     
     // Initialize State Manager (already global from state.js)
     const state = window.stateManager;
@@ -149,14 +149,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         console.log('RBAC - User roles:', userRoles);
         
-        // Convert roles object to array if needed (WordPress returns {role: true})
+        // Convert roles object to array if needed
+        // WordPress can return: {0: 'administrator', 2: 'yith_pos_cashier'} or {administrator: true}
         let rolesArray = [];
         if (userRoles && typeof userRoles === 'object') {
             if (Array.isArray(userRoles)) {
                 rolesArray = userRoles;
             } else {
-                // Convert object keys to array
-                rolesArray = Object.keys(userRoles);
+                // Use Object.values() to get role names, not indices
+                rolesArray = Object.values(userRoles);
             }
         }
         

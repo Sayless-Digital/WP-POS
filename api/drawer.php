@@ -1,18 +1,16 @@
 <?php
-// FILE: /jpos/api/drawer.php
+// FILE: /wp-pos/api/drawer.php
 
 require_once __DIR__ . '/../../wp-load.php';
+require_once __DIR__ . '/jpos-auth-helper.php';
 require_once __DIR__ . '/validation.php';
 require_once __DIR__ . '/error_handler.php';
 
 header('Content-Type: application/json');
 global $wpdb;
 
-// --- CRITICAL SECURITY: AUTHENTICATION AND AUTHORIZATION ---
-if (!is_user_logged_in() || !current_user_can('manage_woocommerce')) {
-    wp_send_json_error(['message' => 'Authentication required.'], 403);
-    exit;
-}
+// Require authentication
+jpos_require_auth('drawer');
 
 // Ensure our custom table exists
 $table_name = $wpdb->prefix . 'jpos_drawer_history';
@@ -36,8 +34,15 @@ if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") != $table_name) {
 }
 
 $response = ['success' => false, 'message' => 'Invalid request.'];
-$data = JPOS_Validation::validate_json_input(file_get_contents('php://input'));
-$action = $data['action'] ?? $_GET['action'] ?? null;
+
+// Handle GET vs POST requests differently
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    $action = $_GET['action'] ?? null;
+    $data = [];
+} else {
+    $data = JPOS_Validation::validate_json_input(file_get_contents('php://input'));
+    $action = $data['action'] ?? null;
+}
 
 // CSRF Protection: Verify nonce for POST requests
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($action, ['open', 'close'])) {

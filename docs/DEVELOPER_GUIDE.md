@@ -1547,6 +1547,50 @@ php tests/php/test-database-optimizer.php
 
 ### Common Issues
 
+#### Settings Page Accordion Validation Errors (v1.9.114)
+- **Problem**: Browser validation errors appear when clicking accordion buttons in Settings page: "An invalid form control with name='role_name' is not focusable"
+- **Symptoms**:
+  - Clicking "Predefined Role Templates" accordion button triggers form validation
+  - Error messages reference hidden form fields (`role_name`, `role_slug`)
+  - Accordion doesn't expand, instead shows validation errors
+  - Console shows HTML5 validation constraint violations
+- **Root Cause**: Accordion button at [`index.php:842`](../index.php:842) was missing `type="button"` attribute, causing it to default to `type="submit"`. When clicked, it attempted to submit the parent `settings-form`, triggering HTML5 validation on all form controls including the required fields in the hidden "Create Role Dialog" modal at [`index.php:935-990`](../index.php:935-990)
+- **Solution (v1.9.114)**:
+  - Added `type="button"` attribute to accordion toggle button:
+    ```html
+    <!-- BEFORE (BROKEN - defaults to type="submit") -->
+    <button id="templates-toggle" class="w-full p-4...">
+    
+    <!-- AFTER (FIXED - explicitly set as button type) -->
+    <button type="button" id="templates-toggle" class="w-full p-4...">
+    ```
+  - Updated version from v1.9.113 to v1.9.114 in [`index.php:20`](../index.php:20)
+  - Updated cache-busting version for settings.js from v1.9.113 to v1.9.114 in [`index.php:49`](../index.php:49)
+  - Updated system version in [`agents.md:1859`](../agents.md:1859)
+  - Added version history entry in [`agents.md:2397`](../agents.md:2397)
+- **Technical Details**:
+  - **HTML5 Form Validation**: Browsers validate ALL form controls when a submit button is clicked, even if those controls are hidden
+  - **Button Type Attribute**: Buttons inside `<form>` elements default to `type="submit"` unless explicitly set to `type="button"`
+  - **Accordion Pattern**: Interactive buttons that toggle visibility should always use `type="button"` to prevent form submission
+  - **Browser Behavior**: Modern browsers (Chrome, Firefox, Safari, Edge) all enforce this validation consistently
+- **Prevention**:
+  - **ALWAYS specify `type="button"` on buttons that don't submit forms**
+  - Test all clickable elements inside forms to verify they don't trigger submission
+  - Use browser DevTools to check button types during development
+  - Be aware that omitting the `type` attribute creates a submit button by default
+- **Testing**:
+  1. Hard refresh browser (Ctrl+F5 or Cmd+Shift+R) to clear cache
+  2. Navigate to Settings page
+  3. Scroll to "Predefined Role Templates" section
+  4. Click the accordion header button
+  5. Verify accordion expands without validation errors
+  6. Verify no console errors appear
+  7. Test in multiple browsers to confirm fix
+- **Related Issues**:
+  - Any button inside a form that's not a submit button must have `type="button"`
+  - This applies to modal close buttons, accordion toggles, tab switches, etc.
+  - Hidden form fields can still trigger validation if form submission is attempted
+
 #### Product Creation Issues (v1.8.45)
 
 ##### Required Field Validation Error
