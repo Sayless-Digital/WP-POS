@@ -379,6 +379,12 @@ class CheckoutManager {
             fee_discount: feeDiscount?.type ? feeDiscount : null
         };
         
+        // Include attached customer if present
+        const customer = this.state.getState('cart.customer');
+        if (customer && customer.id) {
+            payload.customer_id = customer.id;
+        }
+        
         if (splits.length > 1) {
             payload.split_payments = splits.map(s => ({
                 method: s.method,

@@ -226,6 +226,18 @@ class UIHelpers {
                 }
             });
     }
+
+    /**
+     * Escape HTML characters to prevent XSS attacks
+     * @param {string} text - The text to escape
+     * @returns {string} Escaped HTML string
+     */
+    escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
 }
 
 // Export as singleton

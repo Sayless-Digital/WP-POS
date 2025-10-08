@@ -14,7 +14,8 @@ class RoutingManager {
             'sessions-page',
             'products-page',
             'held-carts-page',
-            'settings-page'
+            'settings-page',
+            'users-page'
         ];
         
         // Mapping between view IDs and menu button IDs
@@ -25,7 +26,8 @@ class RoutingManager {
             'sessions-page': 'menu-button-sessions',
             'products-page': 'menu-button-products',
             'held-carts-page': 'menu-button-held-carts',
-            'settings-page': 'menu-button-settings'
+            'settings-page': 'menu-button-settings',
+            'users-page': 'menu-button-users'
         };
         
         this.init();
@@ -177,6 +179,11 @@ class RoutingManager {
                 case 'settings-page':
                     if (typeof window.populateSettingsForm === 'function') {
                         window.populateSettingsForm();
+                    }
+                    break;
+                case 'users-page':
+                    if (typeof window.loadUsersPage === 'function') {
+                        await window.loadUsersPage();
                     }
                     break;
                 case 'pos-page':

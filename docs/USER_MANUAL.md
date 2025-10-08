@@ -578,6 +578,290 @@ Each session shows:
 - Session duration
 - Activity summary
 
+## User Management (New in v1.9.119)
+
+### What is User Management?
+
+The User Management feature allows administrators to create, edit, and manage WordPress users directly from the POS interface. This is useful for adding new cashiers, managers, or other staff members without leaving the POS system.
+
+### Accessing User Management
+
+1. **Open Side Menu**: Click the menu button (☰) in the top-left corner
+2. **Select Users**: Click "Users" from the menu
+3. **Users Page Loads**: You'll see a list of all WordPress users
+
+**Note**: User Management requires administrator privileges (`manage_options` capability).
+
+### Viewing Users
+
+The Users page displays all WordPress users in a table format:
+
+**User Information Displayed:**
+- **Name**: User's full name (first name + last name)
+- **Email**: User's email address
+- **Roles**: All roles assigned to the user (e.g., "Administrator", "JPOS Cashier")
+- **Registered**: When the user account was created
+- **Actions**: Edit and Delete buttons
+
+### Searching and Filtering Users
+
+**Search Users:**
+1. Use the search box at the top of the page
+2. Type any part of the user's name, email, or username
+3. Results update automatically as you type
+4. Clear the search to show all users again
+
+**Filter by Role:**
+1. Click the "Filter by Role" dropdown
+2. Select a role (e.g., "JPOS Cashier", "Administrator")
+3. Only users with that role will be displayed
+4. Select "All Roles" to show everyone
+
+**Refresh User List:**
+- Click the refresh button (🔄) to reload the user list
+- Useful after making changes or if the list seems outdated
+
+### Creating New Users
+
+**To Create a New User:**
+
+1. **Click "Create User"**: Button in the top-right corner
+2. **User Dialog Opens**: A form appears for entering user details
+
+**Fill in Required Fields:**
+- **Username** (Required): Unique username for login (alphanumeric, underscores, hyphens)
+- **Email** (Required): Valid email address (must be unique)
+- **Password** (Required): Secure password (minimum 8 characters recommended)
+- **First Name** (Optional): User's first name
+- **Last Name** (Optional): User's last name
+
+**Assign Roles:**
+- Check one or more role checkboxes
+- Common roles:
+  - **JPOS Cashier**: For POS operators
+  - **JPOS Manager**: For store managers
+  - **JPOS Administrator**: For system administrators
+  - **Customer**: For customer accounts
+- You can assign multiple roles to one user
+
+**Save the User:**
+1. Review all entered information
+2. Click "Save User" button
+3. Success message appears when user is created
+4. New user appears in the user list
+
+**Important Notes:**
+- Username cannot be changed after creation
+- Email must be unique across all users
+- Strong passwords are recommended for security
+
+### Editing Existing Users
+
+**To Edit a User:**
+
+1. **Find the User**: Search or scroll to find the user
+2. **Click Edit Button**: Click the pencil icon in the Actions column
+3. **User Dialog Opens**: Pre-filled with current user information
+
+**What You Can Edit:**
+- **Email**: Change user's email address (must remain unique)
+- **First Name**: Update user's first name
+- **Last Name**: Update user's last name
+- **Password**: Change user's password (leave blank to keep current password)
+- **Roles**: Add or remove role assignments
+
+**What You Cannot Edit:**
+- **Username**: Username is permanent and cannot be changed
+- **Registration Date**: Date user was created
+
+**Save Changes:**
+1. Modify the desired fields
+2. Click "Save User" button
+3. Success message appears when changes are saved
+4. User list updates with new information
+
+**Changing Passwords:**
+- Only fill in the password field if you want to change it
+- Leave password field empty to keep the current password
+- New password takes effect immediately
+- User will need to use new password for next login
+
+### Assigning and Managing Roles
+
+**Understanding Roles:**
+- Users can have multiple roles assigned
+- Roles determine what features users can access
+- Common POS roles:
+  - **JPOS Cashier**: Can process sales, view products, manage cart
+  - **JPOS Manager**: Cashier permissions + reports, sessions, settings
+  - **JPOS Administrator**: Full system access including user management
+  - **Administrator**: WordPress administrator (full site access)
+
+**To Assign Roles:**
+1. Open the user editor (create or edit)
+2. Scroll to the Roles section
+3. Check the boxes for roles you want to assign
+4. Uncheck boxes for roles you want to remove
+5. Click "Save User"
+
+**Role Assignment Tips:**
+- Assign minimum necessary roles for security
+- Most POS users only need "JPOS Cashier" role
+- Managers need "JPOS Manager" for reports access
+- Only trusted staff should have administrator roles
+- You can combine roles (e.g., Cashier + Customer)
+
+### Deleting Users
+
+**To Delete a User:**
+
+1. **Find the User**: Search or scroll to find the user
+2. **Click Delete Button**: Click the trash icon (🗑️) in the Actions column
+3. **Confirmation Dialog**: A warning dialog appears
+
+**Confirmation Dialog Shows:**
+- User name and email being deleted
+- Warning that this action cannot be undone
+- Content reassignment information
+
+**Confirm Deletion:**
+1. Review the information carefully
+2. Click "Delete" to proceed
+3. Click "Cancel" to abort
+
+**Important Safety Features:**
+
+**Cannot Delete:**
+- ❌ **Administrator Users**: Users with the "administrator" role cannot be deleted for security
+- ❌ **Your Own Account**: You cannot delete your own user account
+- ❌ **Without Reassignment**: All user content will be reassigned to the site admin
+
+**Content Reassignment:**
+- When a user is deleted, their orders and content are reassigned
+- Content is automatically reassigned to the site administrator (user ID 1)
+- This prevents orphaned orders and maintains data integrity
+
+**After Deletion:**
+- User is permanently removed from the system
+- User can no longer log in
+- All their content is preserved under the reassigned user
+- Action cannot be undone
+
+### User Management Best Practices
+
+**Security Recommendations:**
+1. **Strong Passwords**: Enforce minimum 8-character passwords with mixed characters
+2. **Unique Usernames**: Use meaningful, unique usernames for easy identification
+3. **Role Assignment**: Only assign necessary roles to each user
+4. **Regular Review**: Periodically review user list and remove inactive accounts
+5. **Email Verification**: Verify email addresses are correct for password reset functionality
+
+**Operational Tips:**
+1. **Clear Naming**: Use first and last names for easy identification
+2. **Role Documentation**: Document which roles have which permissions
+3. **Training**: Train new users on their specific role capabilities
+4. **Backup Admin**: Always have at least 2 administrator accounts
+5. **Access Control**: Regularly audit who has access to user management
+
+### Troubleshooting User Management
+
+#### Cannot Create User
+
+**Problem**: Error when trying to create new user
+
+**Common Solutions:**
+- **"Username already exists"**: Try a different username
+- **"Email already exists"**: Try a different email or check if user already exists
+- **"Username is required"**: Fill in the username field
+- **"Email is required"**: Fill in the email field
+- **"Password is required"**: Fill in the password field
+- **"Invalid email format"**: Check email address is properly formatted (e.g., user@example.com)
+
+#### Cannot Edit User
+
+**Problem**: Changes don't save or error occurs
+
+**Common Solutions:**
+- **"Email already exists"**: Another user is using that email address
+- **"User not found"**: Refresh the page and try again
+- **Changes don't save**: Check for error messages, verify internet connection
+
+#### Cannot Delete User
+
+**Problem**: Delete button doesn't work or shows error
+
+**Common Solutions:**
+- **"Cannot delete administrator users"**: Administrator-role users cannot be deleted for security
+- **"Cannot delete your own account"**: Log in as a different admin to delete your account
+- **"User not found"**: Refresh the page and try again
+
+#### Roles Not Showing
+
+**Problem**: Role checkboxes are empty or not loading
+
+**Common Solutions:**
+1. Refresh the page (F5)
+2. Check internet connection
+3. Verify you have administrator privileges
+4. Contact system administrator if problem persists
+
+#### Search Not Working
+
+**Problem**: Search doesn't return results
+
+**Common Solutions:**
+1. Check spelling of search term
+2. Try searching by email instead of name
+3. Clear search and try again
+4. Refresh the page
+5. Verify users exist in the system
+
+#### Permission Denied
+
+**Problem**: "Unauthorized access" error when accessing User Management
+
+**Solutions:**
+- **Verify Admin Access**: Only administrators can manage users
+- **Check User Role**: Ensure your account has `manage_options` capability
+- **Contact Administrator**: Request administrator privileges if needed
+- **Re-login**: Log out and log back in to refresh permissions
+
+### Common Questions
+
+**Q: Can I change a username after creating a user?**
+A: No, usernames are permanent. You'll need to create a new user with the desired username.
+
+**Q: What happens if I forget a user's password?**
+A: Edit the user and enter a new password in the password field.
+
+**Q: Can one user have multiple roles?**
+A: Yes, users can have multiple roles assigned simultaneously.
+
+**Q: What's the difference between JPOS Cashier and JPOS Manager?**
+A: Cashiers can process sales. Managers have additional access to reports, sessions, and settings.
+
+**Q: Why can't I delete an administrator?**
+A: This is a security feature to prevent accidental deletion of critical admin accounts.
+
+**Q: Do changes take effect immediately?**
+A: Yes, all changes (role assignments, passwords, etc.) take effect immediately.
+
+**Q: Can I bulk delete multiple users?**
+A: No, users must be deleted individually for safety.
+
+**Q: Where do deleted users' orders go?**
+A: Orders are automatically reassigned to the site administrator to preserve data.
+
+### User Management Keyboard Shortcuts
+
+While there are no dedicated keyboard shortcuts for user management, you can use standard browser shortcuts:
+- **Ctrl+F**: Search within the page
+- **Tab**: Navigate between form fields
+- **Enter**: Submit form (when focus is on Save button)
+- **Esc**: Close dialog (when dialog is open)
+
+---
+
 ## Settings and Configuration
 
 ### Receipt Settings
@@ -938,10 +1222,11 @@ Each held cart shows:
 
 ## Version Information
 
-- Current Version: 1.9.27
-- Last Updated: October 7, 2025
-- Latest Update: WP POS v1.9.27 - Fixed customer search functionality - search now properly displays results when typing customer names or emails in the "Attach Customer" dialog, with full API integration and error handling
+- Current Version: 1.9.119
+- Last Updated: October 8, 2025
+- Latest Update: WP POS v1.9.119 - Added comprehensive User Management system - administrators can now create, edit, and delete WordPress users directly from the POS interface with role assignment, search/filter capabilities, and safety guards against accidental administrator deletion
 - Previous Updates:
+  - v1.9.27 - Fixed customer search functionality - search now properly displays results when typing customer names or emails in the "Attach Customer" dialog, with full API integration and error handling
   - v1.8.67 - Enhanced virtual keyboard system with comprehensive settings and auto-show functionality
   - v1.8.66 - Fixed virtual keyboard functionality in customer search modal
   - v1.8.60 - Enhanced customer filtering with searchable input - users can now search for customers by name or email instead of selecting from a dropdown

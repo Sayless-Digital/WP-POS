@@ -43,10 +43,28 @@ $fee_discount_data = $data['fee_discount'] ?? null;
 $split_payments = $data['split_payments'] ?? null;
 $current_user = wp_get_current_user();
 
-// Always use current cashier as customer (customer attachment feature removed)
-$order_customer_id = $current_user->ID;
+// Check if customer is attached to cart, otherwise use cashier
+$customer_id = isset($data['customer_id']) ? intval($data['customer_id']) : null;
 
-error_log("JPOS CHECKOUT - Using cashier as customer: " . $order_customer_id);
+if ($customer_id && $customer_id > 0) {
+    // Use attached customer
+    $customer = get_userdata($customer_id);
+    if ($customer) {
+        $order_customer_id = $customer_id;
+        $customer_name = $customer->display_name;
+        error_log("JPOS CHECKOUT - Using attached customer: {$customer_name} (ID: {$order_customer_id})");
+    } else {
+        // Customer not found, fall back to cashier
+        $order_customer_id = $current_user->ID;
+        $customer_name = $current_user->display_name;
+        error_log("JPOS CHECKOUT - Customer ID {$customer_id} not found, using cashier as customer");
+    }
+} else {
+    // No customer attached, use cashier
+    $order_customer_id = $current_user->ID;
+    $customer_name = $current_user->display_name;
+    error_log("JPOS CHECKOUT - No customer attached, using cashier as customer: " . $order_customer_id);
+}
 
 if (empty($cart_items) && !$fee_discount_data) {
     wp_send_json_error(['message' => 'Cart is empty.'], 400);

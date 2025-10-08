@@ -1,6 +1,6 @@
-// WP POS v1.9.101 - Modularized Architecture with Button Event Listeners
+// WP POS v1.9.119 - Added User Management System
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('WP POS v1.9.101 loaded - Fixed settings loading, API paths, RBAC, and checkout');
+    console.log('WP POS v1.9.119 loaded - Added complete user management with role assignment');
     
     // Initialize State Manager (already global from state.js)
     const state = window.stateManager;
@@ -35,6 +35,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Initialize Admin Managers
     const settingsManager = new SettingsManager(state, uiHelpers);
     const sessionsManager = new SessionsManager(state, uiHelpers);
+    const usersManager = new UsersManager(state, uiHelpers);
     
     // Load settings into state on app initialization
     await settingsManager.loadReceiptSettings();
@@ -53,6 +54,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.reportsManager = reportsManager;
     window.settingsManager = settingsManager;
     window.sessionsManager = sessionsManager;
+    window.usersManager = usersManager;
     
     // Expose routing helper functions (called by routing.js)
     window.fetchOrders = () => ordersManager.fetchOrders();
@@ -61,6 +63,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.renderStockList = () => productsManager.renderStockList();
     window.populateSettingsForm = () => settingsManager.populateSettingsForm();
     window.renderHeldCarts = () => heldCartsManager.renderHeldCarts();
+    window.loadUsersPage = async () => {
+        // Load available roles for filter
+        const rolesResponse = await fetch('api/wp-roles-setup.php?action=list');
+        const rolesResult = await rolesResponse.json();
+        if (rolesResult.success) {
+            const roleFilter = document.getElementById('users-role-filter');
+            if (roleFilter) {
+                const roles = rolesResult.data.roles;
+                roleFilter.innerHTML = '<option value="all">All Roles</option>' +
+                    roles.map(role => `<option value="${role.slug}">${role.name}</option>`).join('');
+            }
+        }
+        // Load users
+        const users = await usersManager.loadUsers();
+        usersManager.renderUsersList(users);
+    };
     
     // Expose customer functions for HTML onclick handlers
     window.showCustomerSearch = () => cartManager.showCustomerSearch();
@@ -73,6 +91,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Expose product editor functions for HTML onclick handlers
     window.openProductEditor = (productId) => productEditorManager.openProductEditor(productId);
     window.openStockEditModal = (productId) => productsManager.openStockEditModal(productId);
+    
+    // Expose users management functions for HTML onclick handlers
+    window.editUser = (userId) => usersManager.showEditUserDialog(userId);
+    window.deleteUser = (userId, username) => usersManager.deleteUser(userId, username);
     
     // Expose menu toggle function (used by menu button)
     window.toggleMenu = function() {
@@ -241,7 +263,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             'menu-button-sessions': 'sessions-page',
             'menu-button-products': 'products-page',
             'menu-button-held-carts': 'held-carts-page',
-            'menu-button-settings': 'settings-page'
+            'menu-button-settings': 'settings-page',
+            'menu-button-users': 'users-page'
         };
         
         Object.entries(menuButtons).forEach(([buttonId, viewId]) => {
@@ -368,7 +391,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
             },
             'refresh-settings-btn': () => settingsManager.populateSettingsForm(),
-            'refresh-held-carts-btn': () => heldCartsManager.renderHeldCarts()
+            'refresh-held-carts-btn': () => heldCartsManager.renderHeldCarts(),
+            'refresh-users-btn': async () => {
+                const searchTerm = document.getElementById('users-search')?.value || '';
+                const roleFilter = document.getElementById('users-role-filter')?.value || 'all';
+                const users = await usersManager.loadUsers(searchTerm, roleFilter);
+                usersManager.renderUsersList(users);
+                uiHelpers.showToast('Users refreshed');
+            }
         };
         
         Object.entries(refreshButtons).forEach(([buttonId, handler]) => {
@@ -544,6 +574,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }, 300);
             });
         }
+        
+        // Users page event listeners
+        usersManager.setupEventListeners();
         
         // Apply RBAC restrictions after setting up listeners
         applyRBACRestrictions();

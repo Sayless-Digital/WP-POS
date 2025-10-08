@@ -17,7 +17,7 @@ require_once __DIR__ . '/../wp-load.php';
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- Custom JSON syntax highlighting -->
     
-    <!-- WP POS v1.9.118 - Fixed predefined roles not showing when not installed -->
+    <!-- WP POS v1.9.126 - Restored Attach Customer Button -->
     
     <!-- Core Modules - Load First -->
     <script src="assets/js/modules/state.js?v=1.9.72&t=<?php echo time(); ?>"></script>
@@ -26,7 +26,7 @@ require_once __DIR__ . '/../wp-load.php';
     
     <!-- Auth & UI Modules -->
     <script src="assets/js/modules/auth.js?v=1.9.106&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/keyboard.js?v=1.9.103&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/keyboard.js?v=1.9.125&t=<?php echo time(); ?>"></script>
     
     <!-- Products Modules -->
     <script src="assets/js/modules/products/products.js?v=1.9.72&t=<?php echo time(); ?>"></script>
@@ -34,7 +34,7 @@ require_once __DIR__ . '/../wp-load.php';
     
     <!-- Cart Modules -->
     <script src="assets/js/modules/cart/cart.js?v=1.9.72&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/cart/checkout.js?v=1.9.101&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/cart/checkout.js?v=1.9.128&t=<?php echo time(); ?>"></script>
     <script src="assets/js/modules/cart/held-carts.js?v=1.9.72&t=<?php echo time(); ?>"></script>
     
     <!-- Orders & Receipts Modules -->
@@ -48,9 +48,10 @@ require_once __DIR__ . '/../wp-load.php';
     <!-- Admin Modules -->
     <script src="assets/js/modules/admin/settings.js?v=1.9.118&t=<?php echo time(); ?>"></script>
     <script src="assets/js/modules/admin/sessions.js?v=1.9.72&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/admin/users.js?v=1.9.123&t=<?php echo time(); ?>"></script>
     
     <!-- Main Orchestrator - Load Last -->
-    <script src="assets/js/main.js?v=1.9.101&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/main.js?v=1.9.120&t=<?php echo time(); ?>"></script>
     <style>
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
@@ -269,6 +270,7 @@ require_once __DIR__ . '/../wp-load.php';
     <input type="hidden" id="jpos-product-edit-nonce" value="<?php echo wp_create_nonce('wppos_product_edit_nonce'); ?>">
     <input type="hidden" id="jpos-reports-nonce" value="<?php echo wp_create_nonce('wppos_reports_nonce'); ?>">
     <input type="hidden" id="jpos-barcode-nonce" value="<?php echo wp_create_nonce('wppos_barcode_nonce'); ?>">
+    <input type="hidden" id="jpos-customer-search-nonce" value="<?php echo wp_create_nonce('jpos_customer_search_nonce'); ?>">
 
     <!-- Login Screen -->
     <div id="login-screen" class="app-overlay hidden">
@@ -372,6 +374,10 @@ require_once __DIR__ . '/../wp-load.php';
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M3 12h18M3 17h18"></path></svg>
                         <span>Held Carts</span>
                     </button></li>
+                    <li><button id="menu-button-users" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                        <span>Users</span>
+                    </button></li>
                     <li><button id="menu-button-settings" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                         <span>Settings</span>
@@ -412,6 +418,8 @@ require_once __DIR__ . '/../wp-load.php';
                     <div class="flex-grow flex gap-3 overflow-hidden">
                         <main id="product-list" class="flex-grow p-1 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 overflow-y-auto"></main>
                         <aside class="w-80 flex-shrink-0 bg-slate-800/50 p-2 flex flex-col border-l border-slate-700 rounded-xl shadow-lg">
+                            <!-- Customer Display Container -->
+                            <div id="cart-customer-display" class="hidden"></div>
                             
                             <div id="cart-items" class="flex-grow overflow-y-auto space-y-1 pr-1"></div>
                             <button id="clear-cart-btn" class="w-full text-slate-400 p-1 text-xs hover:bg-slate-700 rounded-md transition-colors mt-1 mb-2">Clear Cart</button>
@@ -447,6 +455,9 @@ require_once __DIR__ . '/../wp-load.php';
                                     <i class="fa-solid fa-plus"></i> Fee
                                 </button>
                             </div>
+                            <button id="attach-customer-btn" class="w-full flex items-center justify-center gap-2 bg-blue-600 text-white px-2 py-2 rounded-md text-xs hover:bg-blue-500 transition-colors mb-2" title="Attach Customer">
+                                <i class="fa-solid fa-user"></i> Attach Customer
+                            </button>
                             <div class="mt-2 flex-shrink-0">
                                 <div class="flex items-center gap-2 mt-auto">
                                     <button id="hold-cart-btn" class="flex-1 px-2 py-2 bg-amber-500 hover:bg-amber-400 text-xs font-semibold rounded transition-colors">Hold Cart</button>
@@ -1002,11 +1013,64 @@ require_once __DIR__ . '/../wp-load.php';
                     </button>
                 </header>
                 <main class="flex-grow flex flex-col overflow-y-auto">
-                    <div id="held-carts-list" class="flex flex-col gap-3 p-4"></div>
-                 </main>
-            </section>
-        </div>
-    </div>
+                   <div id="held-carts-list" class="flex flex-col gap-3 p-4"></div>
+                </main>
+           </section>
+
+           <!-- Users Page -->
+           <section id="users-page" class="page-content w-full hidden flex flex-col p-3 gap-3">
+               <header class="flex items-center gap-4 p-2 bg-slate-800/80 backdrop-blur-sm border border-slate-700 rounded-xl shadow-lg flex-shrink-0">
+                   <button class="menu-toggle p-2 rounded-lg hover:bg-slate-700 transition-colors">
+                       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                   </button>
+                   <h1 class="text-xl font-bold mr-auto">User Management</h1>
+                   
+                   <!-- Search Input -->
+                   <div class="relative flex-grow min-w-[200px] max-w-[300px]">
+                       <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                           <svg class="w-4 h-4 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                           </svg>
+                       </div>
+                       <input type="text"
+                              id="users-search"
+                              placeholder="Search users..."
+                              class="w-full pl-10 p-2 rounded-lg bg-slate-700 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+                   </div>
+                   
+                   <!-- Role Filter -->
+                   <select id="users-role-filter" class="p-2 rounded-lg bg-slate-700 border border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                       <option value="all">All Roles</option>
+                   </select>
+                   
+                   <!-- Create User Button -->
+                   <button id="create-user-btn" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm rounded-lg transition-colors font-semibold">
+                       <i class="fas fa-plus mr-2"></i>Create User
+                   </button>
+                   
+                   <!-- Refresh Button -->
+                   <button id="refresh-users-btn" class="p-2 rounded-lg bg-slate-700 border border-slate-600 hover:bg-slate-600 transition-colors flex-shrink-0 flex items-center" title="Refresh Users Data">
+                       <i class="fa fa-refresh"></i>
+                   </button>
+               </header>
+               
+               <main class="flex-grow flex flex-col overflow-y-auto">
+                   <div class="grid grid-cols-12 gap-4 sticky top-0 bg-slate-900 py-2 px-4 text-xs font-bold text-slate-400 uppercase border-b border-slate-700">
+                       <div class="col-span-3">Name</div>
+                       <div class="col-span-3">Email</div>
+                       <div class="col-span-2">Roles</div>
+                       <div class="col-span-2">Registered</div>
+                       <div class="col-span-2 text-right">Actions</div>
+                   </div>
+                   <div id="users-list" class="flex-grow p-2 space-y-2">
+                       <div class="flex items-center justify-center py-12">
+                           <i class="fas fa-spinner fa-spin text-3xl text-slate-400"></i>
+                       </div>
+                   </div>
+               </main>
+           </section>
+       </div>
+   </div>
 
     <!-- Modals -->
     <div id="variation-modal" class="app-overlay hidden">
@@ -1437,6 +1501,98 @@ require_once __DIR__ . '/../wp-load.php';
                 </button>
                 <button id="bulk-actions-cancel-btn" class="w-full px-4 py-3 bg-slate-600 text-white rounded-lg hover:bg-slate-500 transition-colors">
                     Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Dialog Modal -->
+    <div id="user-dialog" class="app-overlay hidden">
+        <div class="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div class="p-4 border-b border-slate-700 flex items-center justify-between flex-shrink-0">
+                <h3 id="user-dialog-title" class="text-lg font-bold text-white">Create User</h3>
+                <button id="user-dialog-close" class="text-slate-400 hover:text-white transition-colors">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-6">
+                <form id="user-form" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="user-username" class="block text-sm font-medium text-slate-300 mb-2">Username *</label>
+                            <input type="text"
+                                   id="user-username"
+                                   name="username"
+                                   required
+                                   class="w-full px-4 py-2 bg-slate-700 text-slate-200 rounded-lg border border-slate-600 focus:border-indigo-500 focus:outline-none"
+                                   placeholder="username">
+                        </div>
+                        
+                        <div>
+                            <label for="user-email" class="block text-sm font-medium text-slate-300 mb-2">Email *</label>
+                            <input type="email"
+                                   id="user-email"
+                                   name="email"
+                                   required
+                                   class="w-full px-4 py-2 bg-slate-700 text-slate-200 rounded-lg border border-slate-600 focus:border-indigo-500 focus:outline-none"
+                                   placeholder="email@example.com">
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="user-first-name" class="block text-sm font-medium text-slate-300 mb-2">First Name</label>
+                            <input type="text"
+                                   id="user-first-name"
+                                   name="first_name"
+                                   class="w-full px-4 py-2 bg-slate-700 text-slate-200 rounded-lg border border-slate-600 focus:border-indigo-500 focus:outline-none"
+                                   placeholder="John">
+                        </div>
+                        
+                        <div>
+                            <label for="user-last-name" class="block text-sm font-medium text-slate-300 mb-2">Last Name</label>
+                            <input type="text"
+                                   id="user-last-name"
+                                   name="last_name"
+                                   class="w-full px-4 py-2 bg-slate-700 text-slate-200 rounded-lg border border-slate-600 focus:border-indigo-500 focus:outline-none"
+                                   placeholder="Doe">
+                        </div>
+                    </div>
+                    
+                    <div id="user-password-field">
+                        <label for="user-password" class="block text-sm font-medium text-slate-300 mb-2">Password *</label>
+                        <input type="password"
+                               id="user-password"
+                               name="password"
+                               required
+                               class="w-full px-4 py-2 bg-slate-700 text-slate-200 rounded-lg border border-slate-600 focus:border-indigo-500 focus:outline-none"
+                               placeholder="Enter password">
+                        <p class="text-xs text-slate-400 mt-1">Leave blank when editing to keep current password</p>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-2">Roles * (Select at least one)</label>
+                        <div id="user-roles-list" class="max-h-60 overflow-y-auto bg-slate-700/30 rounded border border-slate-600 p-2">
+                            <div class="flex items-center justify-center py-4">
+                                <i class="fas fa-spinner fa-spin text-slate-400"></i>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="p-4 border-t border-slate-700 flex gap-3 flex-shrink-0">
+                <button type="button"
+                        id="user-dialog-cancel"
+                        class="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors">
+                    Cancel
+                </button>
+                <button type="submit"
+                        form="user-form"
+                        id="user-dialog-save"
+                        class="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors font-semibold">
+                    <i class="fas fa-save mr-2"></i>Save User
                 </button>
             </div>
         </div>

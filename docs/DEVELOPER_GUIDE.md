@@ -817,6 +817,319 @@ Retrieve product catalog with filtering options.
 ### Customer Management
 - **GET** `/api/customers.php` - Search WordPress users by name or email
 
+### User Management (v1.9.119)
+
+#### GET /api/users.php
+
+Retrieve WordPress users with search and role filtering capabilities.
+
+**Action**: `list` (default)
+
+**Query Parameters:**
+- `action`: (optional) Must be "list" or omitted (default: "list")
+- `search`: (optional) Search term for username, email, display name, first name, or last name
+- `role`: (optional) Filter by WordPress role (e.g., "administrator", "jpos_cashier")
+
+**Security:**
+- Requires authentication with `manage_options` capability
+- Admin-only access
+
+**Response (Success):**
+```json
+{
+    "success": true,
+    "data": {
+        "users": [
+            {
+                "id": 123,
+                "username": "john_doe",
+                "email": "john@example.com",
+                "display_name": "John Doe",
+                "first_name": "John",
+                "last_name": "Doe",
+                "roles": ["jpos_cashier", "customer"],
+                "registered": "2025-01-15T10:30:00+00:00"
+            }
+        ],
+        "total": 1
+    }
+}
+```
+
+**Example Usage:**
+```javascript
+// Get all users
+const response = await fetch('/api/users.php?action=list');
+
+// Search users
+const response = await fetch('/api/users.php?action=list&search=john');
+
+// Filter by role
+const response = await fetch('/api/users.php?action=list&role=jpos_cashier');
+
+// Combined search and filter
+const response = await fetch('/api/users.php?action=list&search=john&role=administrator');
+```
+
+#### GET /api/users.php?action=get
+
+Retrieve detailed information for a single user.
+
+**Query Parameters:**
+- `action`: (required) Must be "get"
+- `id`: (required) WordPress user ID
+
+**Response (Success):**
+```json
+{
+    "success": true,
+    "data": {
+        "id": 123,
+        "username": "john_doe",
+        "email": "john@example.com",
+        "display_name": "John Doe",
+        "first_name": "John",
+        "last_name": "Doe",
+        "roles": ["jpos_cashier", "customer"],
+        "registered": "2025-01-15T10:30:00+00:00"
+    }
+}
+```
+
+**Example Usage:**
+```javascript
+const response = await fetch('/api/users.php?action=get&id=123');
+const data = await response.json();
+if (data.success) {
+    console.log(`User: ${data.data.display_name}`);
+    console.log(`Roles: ${data.data.roles.join(', ')}`);
+}
+```
+
+#### POST /api/users.php
+
+Create a new WordPress user or update an existing user.
+
+**Create User Request:**
+```json
+{
+    "action": "create",
+    "username": "john_doe",
+    "email": "john@example.com",
+    "password": "SecurePassword123!",
+    "first_name": "John",
+    "last_name": "Doe",
+    "roles": ["jpos_cashier", "customer"],
+    "nonce": "wp_nonce_value"
+}
+```
+
+**Update User Request:**
+```json
+{
+    "action": "update",
+    "user_id": 123,
+    "email": "newemail@example.com",
+    "first_name": "John",
+    "last_name": "Doe",
+    "password": "NewPassword123!",
+    "roles": ["jpos_manager", "customer"],
+    "nonce": "wp_nonce_value"
+}
+```
+
+**Delete User Request:**
+```json
+{
+    "action": "delete",
+    "user_id": 123,
+    "reassign": 1,
+    "nonce": "wp_nonce_value"
+}
+```
+
+**Create User Response:**
+```json
+{
+    "success": true,
+    "message": "User created successfully",
+    "data": {
+        "user_id": 124,
+        "username": "john_doe",
+        "email": "john@example.com"
+    }
+}
+```
+
+**Update User Response:**
+```json
+{
+    "success": true,
+    "message": "User updated successfully",
+    "data": {
+        "user_id": 123,
+        "updated_fields": ["email", "first_name", "roles"]
+    }
+}
+```
+
+**Delete User Response:**
+```json
+{
+    "success": true,
+    "message": "User deleted successfully",
+    "data": {
+        "deleted_user_id": 123,
+        "content_reassigned_to": 1
+    }
+}
+```
+
+**Error Responses:**
+
+**Validation Errors (400):**
+```json
+{
+    "success": false,
+    "message": "Username is required"
+}
+```
+
+**Uniqueness Conflicts (400):**
+```json
+{
+    "success": false,
+    "message": "Email address already exists"
+}
+```
+
+**Security Restrictions (403):**
+```json
+{
+    "success": false,
+    "message": "Cannot delete administrator users"
+}
+```
+
+```json
+{
+    "success": false,
+    "message": "Cannot delete your own user account"
+}
+```
+
+**Not Found (404):**
+```json
+{
+    "success": false,
+    "message": "User not found"
+}
+```
+
+**Field Requirements:**
+
+**Create User:**
+- `username` - Required, unique, alphanumeric with underscores/hyphens
+- `email` - Required, unique, valid email format
+- `password` - Required, minimum 8 characters recommended
+- `first_name` - Optional
+- `last_name` - Optional
+- `roles` - Optional, array of valid WordPress role slugs
+
+**Update User:**
+- `user_id` - Required, must exist
+- `email` - Optional, must be unique if changed
+- `first_name` - Optional
+- `last_name` - Optional
+- `password` - Optional, only include to change password
+- `roles` - Optional, array replaces all existing roles
+
+**Delete User:**
+- `user_id` - Required, must exist
+- `reassign` - Required, user ID to reassign content to
+- Cannot delete administrators
+- Cannot delete self
+
+**Security Features:**
+
+1. **Capability Check**: All actions require `manage_options` capability
+2. **Nonce Verification**: CSRF protection on all POST requests
+3. **Administrator Protection**: Cannot delete users with administrator role
+4. **Self-Protection**: Cannot delete your own user account
+5. **Input Sanitization**: All inputs sanitized before database operations
+6. **Email Validation**: Valid email format required
+7. **Username Validation**: Alphanumeric with limited special characters
+8. **Content Reassignment**: Prevents orphaned content on deletion
+
+**Integration with Role Management:**
+
+The user management system integrates with the existing role management system:
+- Uses roles from `/api/wp-roles-setup.php`
+- Validates role slugs against available roles
+- Supports multiple role assignment per user
+- Role changes take effect immediately
+
+**Frontend Integration:**
+
+The frontend module [`assets/js/modules/admin/users.js`](../assets/js/modules/admin/users.js:1) provides:
+- `UsersManager` class for all user operations
+- User list rendering with search and filters
+- Create/edit user dialogs
+- Role assignment interface
+- Delete confirmation with safety checks
+
+**Example: Complete User Workflow**
+```javascript
+// Initialize UsersManager
+const usersManager = new UsersManager(stateManager, uiHelpers);
+
+// Load all users
+await usersManager.loadUsers();
+
+// Search users
+await usersManager.loadUsers('john');
+
+// Filter by role
+await usersManager.loadUsers('', 'jpos_cashier');
+
+// Create new user
+const newUser = {
+    username: 'jane_smith',
+    email: 'jane@example.com',
+    password: 'SecurePass123!',
+    first_name: 'Jane',
+    last_name: 'Smith',
+    roles: ['jpos_cashier']
+};
+await usersManager.saveUser(newUser);
+
+// Update existing user
+const updatedUser = {
+    user_id: 123,
+    email: 'john.new@example.com',
+    roles: ['jpos_manager', 'customer']
+};
+await usersManager.saveUser(updatedUser);
+
+// Delete user
+await usersManager.deleteUser(123, 1); // Delete user 123, reassign to user 1
+```
+
+**Performance Considerations:**
+- User list caches in browser for 5 minutes
+- Search debounced to 300ms to reduce API calls
+- Pagination support (100 users per page by default)
+- Role loading optimized with single API call
+
+**Best Practices:**
+
+1. **Always Reassign Content**: When deleting users, always provide reassign parameter
+2. **Validate Roles**: Check role slugs against available roles before assignment
+3. **Strong Passwords**: Enforce minimum 8-character passwords
+4. **Unique Emails**: Verify email uniqueness before user creation
+5. **Admin Protection**: Never allow deletion of administrator accounts
+6. **Audit Trail**: Log all user management actions for security auditing
+
 ### System Management
 - **GET** `/api/settings.php` - Retrieve settings
 - **POST** `/api/settings.php` - Update settings
