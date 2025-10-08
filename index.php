@@ -17,7 +17,7 @@ require_once __DIR__ . '/../wp-load.php';
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- Custom JSON syntax highlighting -->
     
-    <!-- WP POS v1.9.126 - Restored Attach Customer Button -->
+    <!-- WP POS v1.9.132 - Users Tab: Removed User Type Filter, Kept Role Filter Only -->
     
     <!-- Core Modules - Load First -->
     <script src="assets/js/modules/state.js?v=1.9.72&t=<?php echo time(); ?>"></script>
@@ -48,7 +48,7 @@ require_once __DIR__ . '/../wp-load.php';
     <!-- Admin Modules -->
     <script src="assets/js/modules/admin/settings.js?v=1.9.118&t=<?php echo time(); ?>"></script>
     <script src="assets/js/modules/admin/sessions.js?v=1.9.72&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/admin/users.js?v=1.9.123&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/admin/users.js?v=1.9.132&t=<?php echo time(); ?>"></script>
     
     <!-- Main Orchestrator - Load Last -->
     <script src="assets/js/main.js?v=1.9.120&t=<?php echo time(); ?>"></script>

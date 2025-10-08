@@ -8,18 +8,46 @@ class UsersManager {
         this.state = stateManager;
         this.ui = uiHelpers;
         this.apiUrl = 'api/users.php';
+        this.currentOffset = 0;
+        this.limit = 20;
+        this.hasMore = true;
+        this.isLoading = false;
     }
 
     /**
      * Load users from API
      */
-    async loadUsers(searchTerm = '', roleFilter = 'all') {
+    async loadUsers(searchTerm = '', roleFilter = 'all', append = false) {
+        if (this.isLoading) return [];
+        
+        const container = document.getElementById('users-list');
+        if (!container) return [];
+        
+        // Show skeleton loader while fetching (only if not appending)
+        if (!append) {
+            container.innerHTML = this.ui.getSkeletonLoaderHtml('list-rows', 10);
+            this.currentOffset = 0;
+        } else {
+            // Show loading indicator at bottom when appending
+            const loadingDiv = document.createElement('div');
+            loadingDiv.id = 'users-loading-more';
+            loadingDiv.className = 'col-span-12 text-center py-4';
+            loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin text-slate-400"></i>';
+            container.appendChild(loadingDiv);
+        }
+        
+        this.isLoading = true;
+        
         try {
             const params = new URLSearchParams();
+            params.append('action', 'list');
+            params.append('offset', this.currentOffset.toString());
+            params.append('limit', this.limit.toString());
+            
             if (searchTerm) params.append('search', searchTerm);
             if (roleFilter && roleFilter !== 'all') params.append('role', roleFilter);
             
-            const url = `${this.apiUrl}?action=list${params.toString() ? '&' + params.toString() : ''}`;
+            const url = `${this.apiUrl}?${params.toString()}`;
             const response = await fetch(url);
             
             if (!response.ok) {
@@ -29,12 +57,25 @@ class UsersManager {
             const result = await response.json();
             
             if (result.success) {
+                // Store has_more flag
+                this.hasMore = result.data.has_more || false;
+                this.currentOffset += this.limit;
+                
                 // Store in state for reference
                 if (!this.state.users) {
                     this.state.users = {};
                 }
-                this.state.users.list = result.data.users;
+                
+                if (append) {
+                    // Append to existing list
+                    this.state.users.list = [...(this.state.users.list || []), ...result.data.users];
+                } else {
+                    // Replace list
+                    this.state.users.list = result.data.users;
+                }
+                
                 this.state.users.total = result.data.total;
+                
                 return result.data.users;
             } else {
                 throw new Error(result.data?.message || 'Failed to load users');
@@ -43,27 +84,36 @@ class UsersManager {
             console.error('Error loading users:', error);
             this.ui.showToast(error.message, 'error');
             return [];
+        } finally {
+            this.isLoading = false;
+            // Remove loading indicator if it exists
+            const loadingDiv = document.getElementById('users-loading-more');
+            if (loadingDiv) {
+                loadingDiv.remove();
+            }
         }
     }
 
     /**
      * Render users list in the table
      */
-    renderUsersList(users) {
+    renderUsersList(users, append = false) {
         const container = document.getElementById('users-list');
         if (!container) return;
 
         if (!users || users.length === 0) {
-            container.innerHTML = `
-                <div class="col-span-12 text-center py-12 text-slate-400">
-                    <i class="fas fa-users text-4xl mb-3"></i>
-                    <p>No users found</p>
-                </div>
-            `;
+            if (!append) {
+                container.innerHTML = `
+                    <div class="col-span-12 text-center py-12 text-slate-400">
+                        <i class="fas fa-users text-4xl mb-3"></i>
+                        <p>No users found</p>
+                    </div>
+                `;
+            }
             return;
         }
 
-        container.innerHTML = users.map(user => {
+        const userHtml = users.map(user => {
             const rolesList = user.role_names && user.role_names.length > 0 
                 ? user.role_names.join(', ') 
                 : 'No role';
@@ -94,6 +144,51 @@ class UsersManager {
                 </div>
             `;
         }).join('');
+        
+        if (append) {
+            container.insertAdjacentHTML('beforeend', userHtml);
+        } else {
+            container.innerHTML = userHtml;
+        }
+        
+        // Add "Load More" button if there are more users
+        if (this.hasMore) {
+            const loadMoreBtn = document.createElement('div');
+            loadMoreBtn.className = 'col-span-12 text-center py-4';
+            loadMoreBtn.innerHTML = `
+                <button id="load-more-users-btn" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm rounded-lg transition-colors">
+                    <i class="fas fa-chevron-down mr-2"></i>Load More
+                </button>
+            `;
+            container.appendChild(loadMoreBtn);
+            
+            // Attach event listener to load more button
+            const btn = document.getElementById('load-more-users-btn');
+            if (btn) {
+                btn.addEventListener('click', async () => {
+                    const searchTerm = document.getElementById('users-search')?.value || '';
+                    const roleFilter = document.getElementById('users-role-filter')?.value || 'all';
+                    const newUsers = await this.loadUsers(searchTerm, roleFilter, true);
+                    this.renderUsersList(newUsers, true);
+                });
+            }
+        }
+    }
+    
+    /**
+     * Toggle include customers setting
+     */
+    toggleIncludeCustomers(include) {
+        this.includeCustomers = include;
+        this.currentOffset = 0;
+        this.hasMore = true;
+        
+        // Reload users with new setting
+        const searchTerm = document.getElementById('users-search')?.value || '';
+        const roleFilter = document.getElementById('users-role-filter')?.value || 'all';
+        this.loadUsers(searchTerm, roleFilter).then(users => {
+            this.renderUsersList(users);
+        });
     }
 
     /**
@@ -296,11 +391,13 @@ class UsersManager {
                 this.ui.showToast(message);
                 this.closeUserDialog();
                 
-                // Reload users list
+                // Reload users list (reset to first page)
+                this.currentOffset = 0;
+                this.hasMore = true;
                 const searchTerm = document.getElementById('users-search')?.value || '';
                 const roleFilter = document.getElementById('users-role-filter')?.value || 'all';
-                const users = await this.loadUsers(searchTerm, roleFilter);
-                this.renderUsersList(users);
+                const users = await this.loadUsers(searchTerm, roleFilter, false);
+                this.renderUsersList(users, false);
             } else {
                 throw new Error(result.data?.message || result.message || 'Failed to save user');
             }
@@ -353,11 +450,13 @@ class UsersManager {
                 const message = result.data?.message || result.message || 'User deleted successfully';
                 this.ui.showToast(message, 'success');
                 
-                // Reload users list
+                // Reload users list (reset to first page)
+                this.currentOffset = 0;
+                this.hasMore = true;
                 const searchTerm = document.getElementById('users-search')?.value || '';
                 const roleFilter = document.getElementById('users-role-filter')?.value || 'all';
-                const users = await this.loadUsers(searchTerm, roleFilter);
-                this.renderUsersList(users);
+                const users = await this.loadUsers(searchTerm, roleFilter, false);
+                this.renderUsersList(users, false);
             } else {
                 throw new Error(result.data?.message || result.message || 'Failed to delete user');
             }
@@ -409,9 +508,11 @@ class UsersManager {
             searchInput.addEventListener('input', (e) => {
                 clearTimeout(searchTimeout);
                 searchTimeout = setTimeout(async () => {
+                    this.currentOffset = 0;
+                    this.hasMore = true;
                     const roleFilter = document.getElementById('users-role-filter')?.value || 'all';
-                    const users = await this.loadUsers(e.target.value, roleFilter);
-                    this.renderUsersList(users);
+                    const users = await this.loadUsers(e.target.value, roleFilter, false);
+                    this.renderUsersList(users, false);
                 }, 300);
             });
         }
@@ -420,11 +521,14 @@ class UsersManager {
         const roleFilter = document.getElementById('users-role-filter');
         if (roleFilter) {
             roleFilter.addEventListener('change', async (e) => {
+                this.currentOffset = 0;
+                this.hasMore = true;
                 const searchTerm = document.getElementById('users-search')?.value || '';
-                const users = await this.loadUsers(searchTerm, e.target.value);
-                this.renderUsersList(users);
+                const users = await this.loadUsers(searchTerm, e.target.value, false);
+                this.renderUsersList(users, false);
             });
         }
+        
     }
 }
 

@@ -39,10 +39,14 @@ if (empty($action)) {
 if ($action === 'list') {
     $search = isset($_GET['search']) ? sanitize_text_field($_GET['search']) : '';
     $role = isset($_GET['role']) ? sanitize_text_field($_GET['role']) : '';
+    $offset = isset($_GET['offset']) ? intval($_GET['offset']) : 0;
+    $limit = isset($_GET['limit']) ? intval($_GET['limit']) : 20;
     
     $args = [
         'orderby' => 'display_name',
-        'order' => 'ASC'
+        'order' => 'ASC',
+        'number' => $limit,
+        'offset' => $offset
     ];
     
     if (!empty($search)) {
@@ -64,28 +68,8 @@ if ($action === 'list') {
         $role_names_map[$role_slug] = translate_user_role($role_info['name']);
     }
     
-    // Define roles to show (admins, shop managers, and POS roles)
-    $allowed_role_prefixes = ['administrator', 'shop_manager', 'jpos_', 'wppos_'];
-    
     foreach ($users as $user) {
         $user_roles = $user->roles;
-        
-        // Filter: Only show users with admin, shop_manager, or POS roles (jpos_ or wppos_)
-        $has_relevant_role = false;
-        foreach ($user_roles as $role) {
-            if ($role === 'administrator' ||
-                $role === 'shop_manager' ||
-                strpos($role, 'jpos_') === 0 ||
-                strpos($role, 'wppos_') === 0) {
-                $has_relevant_role = true;
-                break;
-            }
-        }
-        
-        // Skip users who don't have any relevant roles
-        if (!$has_relevant_role) {
-            continue;
-        }
         
         // Map role slugs to display names using pre-loaded data
         $display_role_names = array_map(function($role) use ($role_names_map) {
@@ -103,9 +87,18 @@ if ($action === 'list') {
         ];
     }
     
+    // Get total count for pagination
+    $count_args = $args;
+    unset($count_args['number']);
+    unset($count_args['offset']);
+    $total_users = count(get_users($count_args));
+    
     wp_send_json_success([
         'users' => $user_data,
-        'total' => count($user_data)
+        'total' => count($user_data),
+        'has_more' => ($offset + $limit) < $total_users,
+        'offset' => $offset,
+        'limit' => $limit
     ]);
     exit;
 }
