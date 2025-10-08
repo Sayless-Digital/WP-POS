@@ -223,7 +223,7 @@ class CartManager {
                 payload.split_payments = splitPayments;
             }
 
-            const response = await fetch('/jpos/api/checkout.php', {
+            const response = await fetch('/wp-pos/api/checkout.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)

@@ -77,7 +77,7 @@ class ProductsManager {
         
         try {
             const nonce = this.state.getState('nonces.stock');
-            const response = await fetch('/jpos/api/stock.php', {
+            const response = await fetch('/wp-pos/api/stock.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ updates, nonce })
@@ -160,7 +160,7 @@ class ProductsManager {
      */
     async fetchProducts(filters = {}) {
         try {
-            const response = await fetch('/jpos/api/products.php');
+            const response = await fetch('/wp-pos/api/products.php');
             if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
             
             const result = await response.json();

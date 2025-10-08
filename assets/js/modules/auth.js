@@ -35,7 +35,7 @@ class AuthManager {
      */
     async checkAuthStatus() {
         try {
-            const response = await fetch('/jpos/api/auth.php?action=check_status');
+            const response = await fetch('/wp-pos/api/auth.php?action=check_status');
             if (!response.ok) throw new Error(`Server responded with ${response.status}`);
             const result = await response.json();
             
@@ -44,6 +44,8 @@ class AuthManager {
             const userData = result.data?.user || result.user;
             
             if (result.success && loggedIn && userData) {
+                console.log('Auth check - User data received:', userData);
+                console.log('Auth check - User roles:', userData.roles);
                 this.stateManager.updateState('auth.user', userData);
                 this.stateManager.updateState('auth.isLoggedIn', true);
                 return true;
@@ -110,7 +112,7 @@ class AuthManager {
         };
         
         try {
-            const response = await fetch('/jpos/api/auth.php', { 
+            const response = await fetch('/wp-pos/api/auth.php', { 
                 method: 'POST', 
                 headers: { 'Content-Type': 'application/json' }, 
                 body: JSON.stringify(data) 
@@ -123,6 +125,8 @@ class AuthManager {
                 // Handle WordPress wp_send_json_success response structure
                 const userData = result.data?.user || result.user;
                 if (userData) {
+                    console.log('Login - User data received:', userData);
+                    console.log('Login - User roles:', userData.roles);
                     this.stateManager.updateState('auth.user', userData);
                     this.stateManager.updateState('auth.isLoggedIn', true);
                     form.reset();
@@ -161,7 +165,7 @@ class AuthManager {
         }
         
         try {
-            await fetch('/jpos/api/auth.php?action=logout&nonce=' +
+            await fetch('/wp-pos/api/auth.php?action=logout&nonce=' +
                 encodeURIComponent(this.stateManager.getState('nonces.logout')));
             this.stateManager.resetState();
             this.showLoginScreen(true);
@@ -342,10 +346,99 @@ class AuthManager {
         
         return true;
     }
+
+    /**
+     * Check if current user has a specific capability
+     * @param {string} capability - The capability to check (e.g., 'wppos_view_reports')
+     * @returns {boolean} True if user has the capability
+     */
+    userCan(capability) {
+        const capabilities = this.stateManager.getState('auth.user.capabilities') || [];
+        const roles = this.stateManager.getState('auth.user.roles') || {};
+        
+        // Convert roles to array if it's an object
+        const rolesArray = Array.isArray(roles) ? roles : Object.keys(roles);
+        
+        // Administrators and shop managers have all capabilities
+        if (rolesArray.includes('administrator') || rolesArray.includes('shop_manager')) {
+            return true;
+        }
+        
+        return capabilities.includes(capability);
+    }
+
+    /**
+     * Check if current user has any of the specified capabilities
+     * @param {Array<string>} capabilities - Array of capabilities to check
+     * @returns {boolean} True if user has at least one capability
+     */
+    userCanAny(capabilities) {
+        return capabilities.some(cap => this.userCan(cap));
+    }
+
+    /**
+     * Check if current user has all of the specified capabilities
+     * @param {Array<string>} capabilities - Array of capabilities to check
+     * @returns {boolean} True if user has all capabilities
+     */
+    userCanAll(capabilities) {
+        return capabilities.every(cap => this.userCan(cap));
+    }
+
+    /**
+     * Get current user's capabilities
+     * @returns {Array<string>} Array of capability slugs
+     */
+    getUserCapabilities() {
+        return this.stateManager.getState('auth.user.capabilities') || [];
+    }
+
+    /**
+     * Get current user's roles
+     * @returns {Array<string>} Array of role slugs
+     */
+    getUserRoles() {
+        const roles = this.stateManager.getState('auth.user.roles') || {};
+        // Return as-is for compatibility - callers should handle both array and object
+        return roles;
+    }
+
+    /**
+     * Check if user has a specific role
+     * @param {string} role - The role slug to check
+     * @returns {boolean} True if user has the role
+     */
+    hasRole(role) {
+        const roles = this.getUserRoles();
+        // Handle both array and object formats
+        if (Array.isArray(roles)) {
+            return roles.includes(role);
+        } else if (typeof roles === 'object') {
+            return role in roles;
+        }
+        return false;
+    }
 }
 
 // Export as singleton for global access
 window.AuthManager = AuthManager;
+
+// Export global capability checking functions for easy access
+window.userCan = (capability) => {
+    return window.authManager ? window.authManager.userCan(capability) : false;
+};
+
+window.userCanAny = (capabilities) => {
+    return window.authManager ? window.authManager.userCanAny(capabilities) : false;
+};
+
+window.userCanAll = (capabilities) => {
+    return window.authManager ? window.authManager.userCanAll(capabilities) : false;
+};
+
+window.hasRole = (role) => {
+    return window.authManager ? window.authManager.hasRole(role) : false;
+};
 
 // Export for module usage (if needed)
 if (typeof module !== 'undefined' && module.exports) {

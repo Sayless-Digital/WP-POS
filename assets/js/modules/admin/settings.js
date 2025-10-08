@@ -51,8 +51,11 @@ class SettingsManager {
     /**
      * Populate settings form with current values
      */
-    populateSettingsForm() {
-        // Settings are already loaded during app initialization
+    async populateSettingsForm() {
+        // Reload settings to ensure we have the latest data
+        await this.loadReceiptSettings();
+        
+        // Get settings from state
         let currentSettings = this.state.getState('settings') || {};
         
         // Handle case where settings might be wrapped in API response format
@@ -60,13 +63,26 @@ class SettingsManager {
             currentSettings = currentSettings.data;
         }
         
-        document.getElementById('setting-name').value = currentSettings.name || '';
-        document.getElementById('setting-logo-url').value = currentSettings.logo_url || '';
-        document.getElementById('setting-email').value = currentSettings.email || '';
-        document.getElementById('setting-phone').value = currentSettings.phone || '';
-        document.getElementById('setting-address').value = currentSettings.address || '';
-        document.getElementById('setting-footer1').value = currentSettings.footer_message_1 || '';
-        document.getElementById('setting-footer2').value = currentSettings.footer_message_2 || '';
+        // Populate form fields
+        const fields = {
+            'setting-name': currentSettings.name || '',
+            'setting-logo-url': currentSettings.logo_url || '',
+            'setting-email': currentSettings.email || '',
+            'setting-phone': currentSettings.phone || '',
+            'setting-address': currentSettings.address || '',
+            'setting-footer1': currentSettings.footer_message_1 || '',
+            'setting-footer2': currentSettings.footer_message_2 || ''
+        };
+        
+        // Set field values safely
+        Object.entries(fields).forEach(([id, value]) => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.value = value;
+            } else {
+                console.warn(`Settings form element not found: ${id}`);
+            }
+        });
         
         // Virtual keyboard settings
         const enableKeyboard = document.getElementById('setting-keyboard-enabled');
@@ -86,6 +102,176 @@ class SettingsManager {
         
         // Initialize settings tabs
         this.initSettingsTabs();
+        
+        // Check roles status if on roles tab
+        this.checkRolesStatus();
+    }
+    
+    /**
+     * Check if POS roles exist and update UI
+     */
+    async checkRolesStatus() {
+        const container = document.getElementById('roles-status-container');
+        if (!container) return; // Not on roles tab
+        
+        try {
+            const response = await fetch('api/wp-roles-setup.php?action=check');
+            
+            if (!response.ok) {
+                throw new Error(`Server error: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.updateRolesUI(result.data);
+            } else {
+                throw new Error(result.data?.message || 'Failed to check roles');
+            }
+        } catch (error) {
+            console.error('Error checking roles status:', error);
+            
+            // Show error message in UI
+            container.innerHTML = `
+                <div class="text-center space-y-4">
+                    <div class="inline-flex items-center justify-center w-16 h-16 bg-red-900/20 border border-red-700/30 rounded-full">
+                        <i class="fas fa-exclamation-circle text-red-400 text-2xl"></i>
+                    </div>
+                    <div>
+                        <p class="font-semibold text-white mb-2">Error Loading Roles</p>
+                        <p class="text-sm text-slate-400 mb-4">${error.message}</p>
+                        <button onclick="settingsManager.checkRolesStatus()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors">
+                            <i class="fas fa-redo mr-2"></i>Try Again
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+    }
+    
+    /**
+     * Update roles UI based on status
+     * @param {Object} data Role status data
+     */
+    updateRolesUI(data) {
+        const container = document.getElementById('roles-status-container');
+        const rolesInfo = document.getElementById('roles-info');
+        
+        if (!container) return;
+        
+        if (data.roles_exist) {
+            // Roles exist - show status cards
+            container.innerHTML = `
+                <div class="flex items-center justify-between p-4 bg-green-900/20 border border-green-700/30 rounded-lg">
+                    <div class="flex items-center">
+                        <i class="fas fa-check-circle text-green-400 text-2xl mr-3"></i>
+                        <div>
+                            <p class="font-semibold text-white">POS Roles Installed</p>
+                            <p class="text-sm text-slate-400">All POS roles and capabilities are active</p>
+                        </div>
+                    </div>
+                    <button onclick="settingsManager.reinstallRoles()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors">
+                        <i class="fas fa-sync-alt mr-2"></i>Reinstall
+                    </button>
+                </div>
+            `;
+            
+            if (rolesInfo) {
+                rolesInfo.classList.remove('hidden');
+                
+                // Update individual role statuses
+                Object.entries(data.details).forEach(([role, exists]) => {
+                    const statusEl = document.getElementById(`role-status-${role.replace('jpos_', '')}`);
+                    if (statusEl) {
+                        if (exists) {
+                            statusEl.className = 'text-xs px-2 py-1 rounded bg-green-900/30 text-green-400';
+                            statusEl.innerHTML = '<i class="fas fa-check-circle mr-1"></i>Active';
+                        } else {
+                            statusEl.className = 'text-xs px-2 py-1 rounded bg-red-900/30 text-red-400';
+                            statusEl.innerHTML = '<i class="fas fa-times-circle mr-1"></i>Missing';
+                        }
+                    }
+                });
+            }
+        } else {
+            // Roles don't exist - show setup button
+            container.innerHTML = `
+                <div class="text-center space-y-4">
+                    <div class="inline-flex items-center justify-center w-16 h-16 bg-yellow-900/20 border border-yellow-700/30 rounded-full">
+                        <i class="fas fa-exclamation-triangle text-yellow-400 text-2xl"></i>
+                    </div>
+                    <div>
+                        <p class="font-semibold text-white mb-2">POS Roles Not Installed</p>
+                        <p class="text-sm text-slate-400 mb-4">Install roles to enable access control and user management</p>
+                        <button onclick="settingsManager.setupRoles()" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors">
+                            <i class="fas fa-plus-circle mr-2"></i>Install POS Roles
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            if (rolesInfo) {
+                rolesInfo.classList.add('hidden');
+            }
+        }
+    }
+    
+    /**
+     * Setup POS roles
+     */
+    async setupRoles() {
+        const container = document.getElementById('roles-status-container');
+        
+        // Show loading
+        container.innerHTML = `
+            <div class="flex items-center justify-center py-8">
+                <i class="fas fa-spinner fa-spin text-3xl text-indigo-400 mr-3"></i>
+                <span class="text-white">Installing POS roles...</span>
+            </div>
+        `;
+        
+        try {
+            const response = await fetch('api/wp-roles-setup.php?action=setup');
+            const result = await response.json();
+            
+            if (result.success) {
+                this.ui.showToast('POS roles installed successfully!', 'success');
+                
+                // Refresh status
+                setTimeout(() => {
+                    this.checkRolesStatus();
+                }, 500);
+            } else {
+                throw new Error(result.data?.message || 'Failed to install roles');
+            }
+        } catch (error) {
+            console.error('Error setting up roles:', error);
+            container.innerHTML = `
+                <div class="text-center space-y-4">
+                    <div class="inline-flex items-center justify-center w-16 h-16 bg-red-900/20 border border-red-700/30 rounded-full">
+                        <i class="fas fa-times-circle text-red-400 text-2xl"></i>
+                    </div>
+                    <div>
+                        <p class="font-semibold text-white mb-2">Installation Failed</p>
+                        <p class="text-sm text-slate-400 mb-4">${error.message}</p>
+                        <button onclick="settingsManager.setupRoles()" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors">
+                            <i class="fas fa-redo mr-2"></i>Try Again
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+    }
+    
+    /**
+     * Reinstall POS roles
+     */
+    async reinstallRoles() {
+        if (!confirm('This will reinstall all POS roles and capabilities. Existing role assignments will be preserved. Continue?')) {
+            return;
+        }
+        
+        await this.setupRoles();
     }
 
     /**
@@ -125,17 +311,17 @@ class SettingsManager {
 
     /**
      * Save settings to API
-     * @param {Event} event - Form submit event
+     * @param {Event} event - Button click event
      * @returns {Promise<void>}
      */
     async saveSettings(event) {
-        event.preventDefault();
+        if (event) event.preventDefault();
         
         const statusEl = document.getElementById('settings-status');
-        const saveBtn = event.target.querySelector('button[type="submit"]');
+        const saveBtn = document.getElementById('save-settings-btn');
         saveBtn.disabled = true;
         statusEl.textContent = 'Saving...';
-        statusEl.className = 'ml-4 text-sm text-slate-400';
+        statusEl.className = 'text-sm text-slate-400';
         
         // Get virtual keyboard settings (using correct IDs from HTML)
         const enableKeyboard = document.getElementById('setting-keyboard-enabled');

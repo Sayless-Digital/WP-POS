@@ -16,7 +16,7 @@ class SessionsManager {
         container.innerHTML = this.ui.getSkeletonLoaderHtml('list-rows', 20);
         
         try {
-            const response = await fetch('/jpos/api/sessions.php');
+            const response = await fetch('/wp-pos/api/sessions.php');
             if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
             
             const result = await response.json();

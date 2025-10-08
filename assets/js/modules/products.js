@@ -13,7 +13,7 @@ class ProductsManager {
      */
     async loadProducts(page = 1, perPage = 20) {
         try {
-            const url = new URL('/jpos/api/products.php', window.location.origin);
+            const url = new URL('/wp-pos/api/products.php', window.location.origin);
             url.searchParams.set('page', page);
             url.searchParams.set('per_page', perPage);
             

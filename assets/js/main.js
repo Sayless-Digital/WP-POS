@@ -140,6 +140,85 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
+    /**
+     * Apply RBAC restrictions to UI elements
+     */
+    function applyRBACRestrictions() {
+        // Get user roles - check if user is admin or shop manager first
+        const userRoles = window.authManager ? window.authManager.getUserRoles() : [];
+        
+        console.log('RBAC - User roles:', userRoles);
+        
+        // Convert roles object to array if needed (WordPress returns {role: true})
+        let rolesArray = [];
+        if (userRoles && typeof userRoles === 'object') {
+            if (Array.isArray(userRoles)) {
+                rolesArray = userRoles;
+            } else {
+                // Convert object keys to array
+                rolesArray = Object.keys(userRoles);
+            }
+        }
+        
+        console.log('RBAC - Roles array:', rolesArray);
+        
+        // If no roles loaded, don't apply any restrictions (safety fallback)
+        if (!rolesArray || rolesArray.length === 0) {
+            console.log('⚠️ No user roles loaded - RBAC restrictions disabled (safety fallback)');
+            return; // Don't restrict anything if we can't determine roles
+        }
+        
+        // Admins and shop managers see everything - no restrictions
+        if (rolesArray.includes('administrator') || rolesArray.includes('shop_manager')) {
+            console.log('✓ User is administrator or shop_manager - full access granted');
+            return; // Exit early - no restrictions for admins
+        }
+        
+        console.log('→ Applying capability-based restrictions for non-admin user');
+        
+        // Check if global userCan function is available
+        if (!window.userCan) {
+            console.warn('RBAC functions not initialized - skipping restrictions');
+            return; // Don't hide anything if capability checking isn't ready
+        }
+        
+        // Menu item restrictions based on capabilities
+        const menuRestrictions = {
+            'menu-button-reports': 'wppos_view_reports',
+            'menu-button-sessions': 'wppos_view_sessions',
+            'menu-button-settings': 'wppos_manage_settings',
+            'menu-button-products': 'wppos_view_products'
+        };
+        
+        Object.entries(menuRestrictions).forEach(([buttonId, capability]) => {
+            const btn = document.getElementById(buttonId);
+            if (btn && !window.userCan(capability)) {
+                btn.style.display = 'none';
+            }
+        });
+        
+        // Feature-level restrictions
+        // Hide drawer management buttons for cashiers
+        if (!window.userCan('wppos_manage_drawer')) {
+            const openDrawerBtn = document.getElementById('open-drawer-btn');
+            const closeDrawerBtn = document.getElementById('close-drawer-btn');
+            if (openDrawerBtn) openDrawerBtn.style.display = 'none';
+            if (closeDrawerBtn) closeDrawerBtn.style.display = 'none';
+        }
+        
+        // Hide product editing for cashiers
+        if (!window.userCan('wppos_manage_products')) {
+            // Product editing will be restricted when those buttons are clicked
+            console.log('Product editing restricted for this user');
+        }
+        
+        // Hide settings management
+        if (!window.userCan('wppos_manage_settings')) {
+            const settingsBtn = document.getElementById('menu-button-settings');
+            if (settingsBtn) settingsBtn.style.display = 'none';
+        }
+    }
+    
     // Setup all other event listeners
     function setupAllEventListeners() {
         // Menu toggle buttons (all pages)
@@ -429,7 +508,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
         
-        // Settings form submit
+        // Save settings button (in header)
+        const saveSettingsBtn = document.getElementById('save-settings-btn');
+        if (saveSettingsBtn) {
+            saveSettingsBtn.addEventListener('click', (e) => {
+                settingsManager.saveSettings(e);
+            });
+        }
+        
+        // Settings form submit (for form submit via enter key)
         const settingsForm = document.getElementById('settings-form');
         if (settingsForm) {
             settingsForm.addEventListener('submit', (e) => {
@@ -456,11 +543,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }, 300);
             });
         }
+        
+        // Apply RBAC restrictions after setting up listeners
+        applyRBACRestrictions();
     }
     
     // Expose setup functions
     window.setupCartEventListeners = setupCartEventListeners;
     window.setupAllEventListeners = setupAllEventListeners;
+    window.applyRBACRestrictions = applyRBACRestrictions;
     
     // Initialize authentication and load app
     // Event listeners will be set up by auth.js after successful login

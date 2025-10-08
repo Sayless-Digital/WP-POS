@@ -49,7 +49,7 @@ class DrawerManager {
      */
     async checkDrawerStatus() {
         try {
-            const response = await fetch(`/jpos/api/drawer.php?action=get_status`);
+            const response = await fetch(`/wp-pos/api/drawer.php?action=get_status`);
             if (!response.ok) throw new Error(`Server responded with ${response.status}`);
             const result = await response.json();
             
@@ -163,7 +163,7 @@ class DrawerManager {
         };
         
         try {
-            const response = await fetch('/jpos/api/drawer.php', {
+            const response = await fetch('/wp-pos/api/drawer.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
@@ -205,7 +205,7 @@ class DrawerManager {
         };
         
         try {
-            const response = await fetch('/jpos/api/drawer.php', {
+            const response = await fetch('/wp-pos/api/drawer.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)

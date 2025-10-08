@@ -342,7 +342,7 @@ class CheckoutManager {
             nonce: this.state.getState('nonces.refund')
         };
 
-        const response = await fetch('/jpos/api/refund.php', {
+        const response = await fetch('/wp-pos/api/refund.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -388,7 +388,7 @@ class CheckoutManager {
         
         payload.nonce = this.state.getState('nonces.checkout');
         
-        const response = await fetch('/jpos/api/checkout.php', {
+        const response = await fetch('/wp-pos/api/checkout.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)

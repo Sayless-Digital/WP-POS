@@ -92,7 +92,7 @@ class OrdersManager {
         const params = `date_filter=${filters.date}&status_filter=${filters.status}&source_filter=${filters.source}&customer_filter=${filters.customer}`;
         
         try {
-            const response = await fetch(`/jpos/api/orders.php?${params}`);
+            const response = await fetch(`/wp-pos/api/orders.php?${params}`);
             if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
             
             const result = await response.json();

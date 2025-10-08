@@ -166,20 +166,26 @@ class ReceiptsManager {
             `;
         }
         
+        // Get settings and handle API response wrapping
+        let settings = this.state.getState('settings') || {};
+        if (settings.data) {
+            settings = settings.data;
+        }
+        
         // Ensure logo URL is absolute
-        const logoUrl = this.state.settings.logo_url ? 
-            (this.state.settings.logo_url.startsWith('http') 
-                ? this.state.settings.logo_url 
-                : window.location.origin + this.state.settings.logo_url) : 
+        const logoUrl = settings.logo_url ?
+            (settings.logo_url.startsWith('http')
+                ? settings.logo_url
+                : window.location.origin + settings.logo_url) :
             '';
         
         container.innerHTML = `
             <div class="text-center space-y-1 mb-4">
                 ${logoUrl ? `<img src="${logoUrl}" alt="Logo" class="w-24 h-auto mx-auto" onerror="this.style.display='none';">` : ''}
-                <p class="font-bold text-lg">${this.state.settings.name || 'Your Store'}</p>
-                <p>${this.state.settings.email || ''}</p>
-                <p>Phone: ${this.state.settings.phone || ''}</p>
-                <p>${this.state.settings.address || ''}</p>
+                <p class="font-bold text-lg">${settings.name || 'Your Store'}</p>
+                <p>${settings.email || ''}</p>
+                <p>Phone: ${settings.phone || ''}</p>
+                <p>${settings.address || ''}</p>
             </div>
             <div class="space-y-1 border-t border-dashed border-gray-400 pt-2">
                 <p>Order No: #${data.order_number}</p>
@@ -201,8 +207,8 @@ class ReceiptsManager {
                 ${paymentHTML}
             </div>
             <div class="text-center mt-4 pt-2 border-t border-dashed border-gray-400 space-y-1">
-                <p>${this.state.settings.footer_message_1 || ''}</p>
-                <p class="text-xs">${this.state.settings.footer_message_2 || ''}</p>
+                <p>${settings.footer_message_1 || ''}</p>
+                <p class="text-xs">${settings.footer_message_2 || ''}</p>
             </div>
         `;
 

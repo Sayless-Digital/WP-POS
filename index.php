@@ -17,7 +17,7 @@ require_once __DIR__ . '/../wp-load.php';
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- Custom JSON syntax highlighting -->
     
-    <!-- WP POS v1.9.83 - 3D Depth Effect on Keyboard Keys -->
+    <!-- WP POS v1.9.99 - Fixed roles object handling in RBAC -->
     
     <!-- Core Modules - Load First -->
     <script src="assets/js/modules/state.js?v=1.9.72&t=<?php echo time(); ?>"></script>
@@ -25,7 +25,7 @@ require_once __DIR__ . '/../wp-load.php';
     <script src="assets/js/modules/core/ui-helpers.js?v=1.9.72&t=<?php echo time(); ?>"></script>
     
     <!-- Auth & UI Modules -->
-    <script src="assets/js/modules/auth.js?v=1.9.72&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/auth.js?v=1.9.99&t=<?php echo time(); ?>"></script>
     <script src="assets/js/modules/keyboard.js?v=1.9.83&t=<?php echo time(); ?>"></script>
     
     <!-- Products Modules -->
@@ -39,18 +39,18 @@ require_once __DIR__ . '/../wp-load.php';
     
     <!-- Orders & Receipts Modules -->
     <script src="assets/js/modules/orders/orders.js?v=1.9.72&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/orders/receipts.js?v=1.9.72&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/orders/receipts.js?v=1.9.89&t=<?php echo time(); ?>"></script>
     
     <!-- Financial Modules -->
     <script src="assets/js/modules/financial/drawer.js?v=1.9.72&t=<?php echo time(); ?>"></script>
     <script src="assets/js/modules/financial/reports.js?v=1.9.72&t=<?php echo time(); ?>"></script>
     
     <!-- Admin Modules -->
-    <script src="assets/js/modules/admin/settings.js?v=1.9.76&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/admin/settings.js?v=1.9.90&t=<?php echo time(); ?>"></script>
     <script src="assets/js/modules/admin/sessions.js?v=1.9.72&t=<?php echo time(); ?>"></script>
     
     <!-- Main Orchestrator - Load Last -->
-    <script src="assets/js/main.js?v=1.9.75&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/main.js?v=1.9.99&t=<?php echo time(); ?>"></script>
     <style>
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
@@ -259,16 +259,16 @@ require_once __DIR__ . '/../wp-load.php';
     </div>
 
     <!-- CSRF Nonces for API Security -->
-    <input type="hidden" id="jpos-login-nonce" value="<?php echo wp_create_nonce('jpos_login_nonce'); ?>">
-    <input type="hidden" id="jpos-logout-nonce" value="<?php echo wp_create_nonce('jpos_logout_nonce'); ?>">
-    <input type="hidden" id="jpos-checkout-nonce" value="<?php echo wp_create_nonce('jpos_checkout_nonce'); ?>">
-    <input type="hidden" id="jpos-settings-nonce" value="<?php echo wp_create_nonce('jpos_settings_nonce'); ?>">
-    <input type="hidden" id="jpos-drawer-nonce" value="<?php echo wp_create_nonce('jpos_drawer_nonce'); ?>">
-    <input type="hidden" id="jpos-stock-nonce" value="<?php echo wp_create_nonce('jpos_stock_nonce'); ?>">
-    <input type="hidden" id="jpos-refund-nonce" value="<?php echo wp_create_nonce('jpos_refund_nonce'); ?>">
-    <input type="hidden" id="jpos-product-edit-nonce" value="<?php echo wp_create_nonce('jpos_product_edit_nonce'); ?>">
-    <input type="hidden" id="jpos-reports-nonce" value="<?php echo wp_create_nonce('jpos_reports_nonce'); ?>">
-    <input type="hidden" id="jpos-barcode-nonce" value="<?php echo wp_create_nonce('jpos_barcode_nonce'); ?>">
+    <input type="hidden" id="jpos-login-nonce" value="<?php echo wp_create_nonce('wppos_login_nonce'); ?>">
+    <input type="hidden" id="jpos-logout-nonce" value="<?php echo wp_create_nonce('wppos_logout_nonce'); ?>">
+    <input type="hidden" id="jpos-checkout-nonce" value="<?php echo wp_create_nonce('wppos_checkout_nonce'); ?>">
+    <input type="hidden" id="jpos-settings-nonce" value="<?php echo wp_create_nonce('wppos_settings_nonce'); ?>">
+    <input type="hidden" id="jpos-drawer-nonce" value="<?php echo wp_create_nonce('wppos_drawer_nonce'); ?>">
+    <input type="hidden" id="jpos-stock-nonce" value="<?php echo wp_create_nonce('wppos_stock_nonce'); ?>">
+    <input type="hidden" id="jpos-refund-nonce" value="<?php echo wp_create_nonce('wppos_refund_nonce'); ?>">
+    <input type="hidden" id="jpos-product-edit-nonce" value="<?php echo wp_create_nonce('wppos_product_edit_nonce'); ?>">
+    <input type="hidden" id="jpos-reports-nonce" value="<?php echo wp_create_nonce('wppos_reports_nonce'); ?>">
+    <input type="hidden" id="jpos-barcode-nonce" value="<?php echo wp_create_nonce('wppos_barcode_nonce'); ?>">
 
     <!-- Login Screen -->
     <div id="login-screen" class="app-overlay hidden">
@@ -730,7 +730,11 @@ require_once __DIR__ . '/../wp-load.php';
                  <header class="flex items-center gap-4 p-2 bg-slate-800/80 backdrop-blur-sm border border-slate-700 rounded-xl shadow-lg flex-shrink-0">
                     <button class="menu-toggle p-2 rounded-lg hover:bg-slate-700 transition-colors"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg></button>
                     <h1 class="text-xl font-bold mr-auto">Settings</h1>
-                    <button id="refresh-settings-btn" class="ml-2 p-2 rounded-lg bg-slate-700 border border-slate-600 hover:bg-slate-600 transition-colors flex-shrink-0 flex items-center" title="Refresh Settings Data">
+                    <span id="settings-status" class="text-sm"></span>
+                    <button id="save-settings-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-500 transition-colors disabled:bg-slate-500">
+                        <i class="fas fa-save mr-2"></i>Save Settings
+                    </button>
+                    <button id="refresh-settings-btn" class="p-2 rounded-lg bg-slate-700 border border-slate-600 hover:bg-slate-600 transition-colors flex-shrink-0 flex items-center" title="Refresh Settings Data">
                         <i class="fa fa-refresh"></i>
                     </button>
                  </header>
@@ -740,11 +744,14 @@ require_once __DIR__ . '/../wp-load.php';
                         <button id="settings-tab-receipt" class="settings-tab px-6 py-3 text-sm font-medium border-b-2 border-indigo-500 text-indigo-400 bg-slate-700/50 rounded-t-lg transition-colors">
                             <i class="fas fa-receipt mr-2"></i>Receipt
                         </button>
-                        <button id="settings-tab-keyboard" class="settings-tab px-6 py-3 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-300 hover:border-slate-500 transition-colors">
+                        <button id="settings-tab-keyboard" class="settings-tab px-6 py-3 text-sm font-medium border-b-2 border-transparent text-slate-400 rounded-t-lg transition-colors hover:text-slate-300 hover:bg-slate-700/30">
                             <i class="fas fa-keyboard mr-2"></i>Keyboard
                         </button>
-                        <button id="settings-tab-general" class="settings-tab px-6 py-3 text-sm font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-300 hover:border-slate-500 transition-colors">
+                        <button id="settings-tab-general" class="settings-tab px-6 py-3 text-sm font-medium border-b-2 border-transparent text-slate-400 rounded-t-lg transition-colors hover:text-slate-300 hover:bg-slate-700/30">
                             <i class="fas fa-cog mr-2"></i>General
+                        </button>
+                        <button id="settings-tab-roles" class="settings-tab px-6 py-3 text-sm font-medium border-b-2 border-transparent text-slate-400 rounded-t-lg transition-colors hover:text-slate-300 hover:bg-slate-700/30">
+                            <i class="fas fa-user-shield mr-2"></i>Roles & Permissions
                         </button>
                     </div>
 
@@ -814,11 +821,78 @@ require_once __DIR__ . '/../wp-load.php';
                             </div>
                         </div>
 
-                        <div class="flex items-center pt-6 border-t border-slate-600 mt-6">
-                            <button type="submit" class="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-indigo-500 transition-colors disabled:bg-slate-500">
-                                Save Settings
-                            </button>
-                            <span id="settings-status" class="ml-4 text-sm"></span>
+                        <!-- Roles & Permissions Tab -->
+                        <div id="settings-panel-roles" class="settings-panel hidden space-y-6">
+                            <div class="bg-slate-700/30 p-6 rounded-lg border border-slate-600">
+                                <h3 class="text-lg font-semibold text-white mb-4 flex items-center">
+                                    <i class="fas fa-user-shield mr-2 text-indigo-400"></i>
+                                    POS Roles & Permissions
+                                </h3>
+                                
+                                <!-- Role Status Display -->
+                                <div id="roles-status-container" class="mb-6">
+                                    <div class="flex items-center justify-center py-8">
+                                        <i class="fas fa-spinner fa-spin text-3xl text-slate-400"></i>
+                                    </div>
+                                </div>
+                                
+                                <!-- Role Information (hidden by default) -->
+                                <div id="roles-info" class="hidden space-y-4">
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <!-- POS Manager Card -->
+                                        <div class="bg-slate-800/50 p-4 rounded-lg border border-slate-600">
+                                            <div class="flex items-center mb-2">
+                                                <i class="fas fa-user-tie text-indigo-400 mr-2"></i>
+                                                <h4 class="font-semibold text-white">POS Manager</h4>
+                                            </div>
+                                            <p class="text-sm text-slate-400">Full POS access except user management</p>
+                                            <div class="mt-2">
+                                                <span id="role-status-manager" class="text-xs px-2 py-1 rounded bg-green-900/30 text-green-400">
+                                                    <i class="fas fa-check-circle mr-1"></i>Active
+                                                </span>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- POS Cashier Card -->
+                                        <div class="bg-slate-800/50 p-4 rounded-lg border border-slate-600">
+                                            <div class="flex items-center mb-2">
+                                                <i class="fas fa-cash-register text-indigo-400 mr-2"></i>
+                                                <h4 class="font-semibold text-white">POS Cashier</h4>
+                                            </div>
+                                            <p class="text-sm text-slate-400">Basic POS operations only</p>
+                                            <div class="mt-2">
+                                                <span id="role-status-cashier" class="text-xs px-2 py-1 rounded bg-green-900/30 text-green-400">
+                                                    <i class="fas fa-check-circle mr-1"></i>Active
+                                                </span>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- POS Storekeeper Card -->
+                                        <div class="bg-slate-800/50 p-4 rounded-lg border border-slate-600">
+                                            <div class="flex items-center mb-2">
+                                                <i class="fas fa-boxes text-indigo-400 mr-2"></i>
+                                                <h4 class="font-semibold text-white">POS Storekeeper</h4>
+                                            </div>
+                                            <p class="text-sm text-slate-400">Inventory management only</p>
+                                            <div class="mt-2">
+                                                <span id="role-status-storekeeper" class="text-xs px-2 py-1 rounded bg-green-900/30 text-green-400">
+                                                    <i class="fas fa-check-circle mr-1"></i>Active
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="bg-blue-900/20 border border-blue-700/30 rounded-lg p-4 mt-4">
+                                        <div class="flex items-start">
+                                            <i class="fas fa-info-circle text-blue-400 mt-1 mr-3"></i>
+                                            <div class="text-sm text-slate-300">
+                                                <p class="font-semibold mb-2">How to assign roles:</p>
+                                                <p>Go to WordPress Admin → Users → Select User → Scroll to "Roles" section → Select a POS role</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </form>
                  </main>

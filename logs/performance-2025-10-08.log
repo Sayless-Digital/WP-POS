@@ -1,0 +1,2 @@
+{"timestamp":"2025-10-08 01:25:59","operation":"load_products","stats":{"execution_time":60.55,"memory_usage":0.76,"peak_memory":35.38,"query_count":0,"cache_hits":0,"cache_misses":0,"cache_hit_rate":0}}
+{"timestamp":"2025-10-08 01:28:01","operation":"load_products","stats":{"execution_time":21.04,"memory_usage":0.6,"peak_memory":35.3,"query_count":0,"cache_hits":0,"cache_misses":0,"cache_hit_rate":0}}
