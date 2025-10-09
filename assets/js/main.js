@@ -1,6 +1,6 @@
-// WP POS v1.9.119 - Added User Management System
+// WP POS v1.9.135 - Fixed Refund Details Modal
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('WP POS v1.9.119 loaded - Added complete user management with role assignment');
+    console.log('WP POS v1.9.133 loaded - Added refunds & exchanges reports page');
     
     // Initialize State Manager (already global from state.js)
     const state = window.stateManager;
@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Initialize Financial Managers
     const reportsManager = new ReportsManager(state, uiHelpers);
+    const refundReportsManager = new RefundReportsManager(state, uiHelpers);
     
     // Initialize Admin Managers
     const settingsManager = new SettingsManager(state, uiHelpers);
@@ -52,6 +53,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.ordersManager = ordersManager;
     window.receiptsManager = receiptsManager;
     window.reportsManager = reportsManager;
+    window.refundReportsManager = refundReportsManager;
     window.settingsManager = settingsManager;
     window.sessionsManager = sessionsManager;
     window.usersManager = usersManager;
@@ -59,6 +61,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Expose routing helper functions (called by routing.js)
     window.fetchOrders = () => ordersManager.fetchOrders();
     window.fetchReportsData = () => reportsManager.fetchReportsData();
+    window.fetchRefundReportsData = () => refundReportsManager.fetchRefundReportsData();
     window.fetchSessions = () => sessionsManager.fetchSessions();
     window.renderStockList = () => productsManager.renderStockList();
     window.populateSettingsForm = () => settingsManager.populateSettingsForm();
@@ -95,6 +98,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Expose users management functions for HTML onclick handlers
     window.editUser = (userId) => usersManager.showEditUserDialog(userId);
     window.deleteUser = (userId, username) => usersManager.deleteUser(userId, username);
+    
+    // Expose refund reports functions for HTML onclick handlers
+    window.showRefundDetails = (refundId) => refundReportsManager.showRefundDetails(refundId);
     
     // Expose menu toggle function (used by menu button)
     window.toggleMenu = function() {
@@ -260,6 +266,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             'menu-button-pos': 'pos-page',
             'menu-button-orders': 'orders-page',
             'menu-button-reports': 'reports-page',
+            'menu-button-refunds': 'refunds-exchange-reports-page',
             'menu-button-sessions': 'sessions-page',
             'menu-button-products': 'products-page',
             'menu-button-held-carts': 'held-carts-page',
@@ -383,6 +390,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             },
             'refresh-orders-btn': () => ordersManager.fetchOrders(),
             'refresh-reports-btn': () => reportsManager.fetchReportsData(),
+            'refresh-refunds-btn': () => refundReportsManager.fetchRefundReportsData(),
             'refresh-sessions-btn': () => sessionsManager.fetchSessions(),
             'refresh-products-btn': () => {
                 productsManager.fetchProducts().then(() => {
@@ -504,6 +512,42 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (printReportCloseBtn) {
             printReportCloseBtn.addEventListener('click', () => {
                 document.getElementById('print-report-modal').classList.add('hidden');
+            });
+        }
+        
+        // Refund Reports page controls
+        const refundsPeriodSelect = document.getElementById('refunds-period-select');
+        if (refundsPeriodSelect) {
+            refundsPeriodSelect.addEventListener('change', (e) => {
+                const customDateRange = document.getElementById('refund-custom-date-range');
+                if (e.target.value === 'custom') {
+                    customDateRange.classList.remove('hidden');
+                } else {
+                    customDateRange.classList.add('hidden');
+                    refundReportsManager.updateRefundPeriod(e.target.value);
+                }
+            });
+        }
+        
+        const refundCustomStartDate = document.getElementById('refund-custom-start-date');
+        const refundCustomEndDate = document.getElementById('refund-custom-end-date');
+        if (refundCustomStartDate && refundCustomEndDate) {
+            refundCustomStartDate.addEventListener('change', () => {
+                if (document.getElementById('refunds-period-select').value === 'custom') {
+                    refundReportsManager.updateRefundPeriod('custom');
+                }
+            });
+            refundCustomEndDate.addEventListener('change', () => {
+                if (document.getElementById('refunds-period-select').value === 'custom') {
+                    refundReportsManager.updateRefundPeriod('custom');
+                }
+            });
+        }
+        
+        const exportRefundsCsvBtn = document.getElementById('export-refunds-csv-btn');
+        if (exportRefundsCsvBtn) {
+            exportRefundsCsvBtn.addEventListener('click', () => {
+                refundReportsManager.exportToCSV();
             });
         }
         

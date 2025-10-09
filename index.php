@@ -17,11 +17,11 @@ require_once __DIR__ . '/../wp-load.php';
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- Custom JSON syntax highlighting -->
     
-    <!-- WP POS v1.9.132 - Users Tab: Removed User Type Filter, Kept Role Filter Only -->
+    <!-- WP POS v1.9.137 - Made Refund Details Modal Scrollable -->
     
     <!-- Core Modules - Load First -->
     <script src="assets/js/modules/state.js?v=1.9.72&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/routing.js?v=1.9.72&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/routing.js?v=1.9.135&t=<?php echo time(); ?>"></script>
     <script src="assets/js/modules/core/ui-helpers.js?v=1.9.72&t=<?php echo time(); ?>"></script>
     
     <!-- Auth & UI Modules -->
@@ -43,6 +43,7 @@ require_once __DIR__ . '/../wp-load.php';
     
     <!-- Financial Modules -->
     <script src="assets/js/modules/financial/drawer.js?v=1.9.72&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/financial/refund-reports.js?v=1.9.136&t=<?php echo time(); ?>"></script>
     <script src="assets/js/modules/financial/reports.js?v=1.9.72&t=<?php echo time(); ?>"></script>
     
     <!-- Admin Modules -->
@@ -51,7 +52,7 @@ require_once __DIR__ . '/../wp-load.php';
     <script src="assets/js/modules/admin/users.js?v=1.9.132&t=<?php echo time(); ?>"></script>
     
     <!-- Main Orchestrator - Load Last -->
-    <script src="assets/js/main.js?v=1.9.120&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/main.js?v=1.9.135&t=<?php echo time(); ?>"></script>
     <style>
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
@@ -361,6 +362,10 @@ require_once __DIR__ . '/../wp-load.php';
                     <li><button id="menu-button-reports" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
                         <span>Reports</span>
+                    </button></li>
+                    <li><button id="menu-button-refunds" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z"></path></svg>
+                        <span>Refunds</span>
                     </button></li>
                     <li><button id="menu-button-sessions" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
@@ -676,6 +681,87 @@ require_once __DIR__ . '/../wp-load.php';
                             </div>
                             <div id="reports-order-list" class="p-2 space-y-2">
                                 <!-- Orders will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                </main>
+            </section>
+
+            <!-- Refunds & Exchanges Page -->
+            <section id="refunds-exchange-reports-page" class="page-content w-full hidden flex flex-col p-3 gap-3">
+                <header class="flex items-center gap-4 p-2 bg-slate-800/80 backdrop-blur-sm border border-slate-700 rounded-xl shadow-lg flex-shrink-0">
+                    <button class="menu-toggle p-2 rounded-lg hover:bg-slate-700 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                    </button>
+                    <h1 class="text-xl font-bold mr-auto">Refunds & Exchanges</h1>
+                    
+                    <!-- Period Selection -->
+                    <div class="flex items-center gap-2">
+                        <select id="refunds-period-select" class="p-2 rounded-lg bg-slate-700 border border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="today">Today</option>
+                            <option value="yesterday">Yesterday</option>
+                            <option value="this_week">This Week</option>
+                            <option value="last_week">Last Week</option>
+                            <option value="this_month">This Month</option>
+                            <option value="this_year">This Year</option>
+                            <option value="custom">Custom Range</option>
+                        </select>
+                        
+                        <!-- Custom Date Range (hidden by default) -->
+                        <div id="refund-custom-date-range" class="hidden flex items-center gap-2">
+                            <input type="date" id="refund-custom-start-date" class="p-2 rounded-lg bg-slate-700 border border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <span class="text-slate-400">to</span>
+                            <input type="date" id="refund-custom-end-date" class="p-2 rounded-lg bg-slate-700 border border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        
+                        <button id="refresh-refunds-btn" class="p-2 rounded-lg bg-slate-700 border border-slate-600 hover:bg-slate-600 transition-colors flex-shrink-0 flex items-center" title="Refresh Refunds Data">
+                            <i class="fa fa-refresh"></i>
+                        </button>
+                        
+                        <button id="export-refunds-csv-btn" class="p-2 rounded-lg bg-green-600 border border-green-500 hover:bg-green-500 transition-colors flex-shrink-0 flex items-center text-white" title="Export to CSV">
+                            <i class="fa fa-download"></i>
+                        </button>
+                    </div>
+                </header>
+                
+                <main class="flex-grow flex flex-col overflow-y-auto gap-4">
+                    <!-- Summary Statistics -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 flex-shrink-0">
+                        <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                            <div class="text-2xl font-bold text-white" id="total-refunds-count">0</div>
+                            <div class="text-sm text-slate-400">Total Refunds</div>
+                        </div>
+                        <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                            <div class="text-2xl font-bold text-red-400" id="total-refunded-amount">$0.00</div>
+                            <div class="text-sm text-slate-400">Total Refunded</div>
+                        </div>
+                        <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                            <div class="text-2xl font-bold text-blue-400" id="total-exchanges-count">0</div>
+                            <div class="text-sm text-slate-400">Total Exchanges</div>
+                        </div>
+                        <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                            <div class="text-2xl font-bold text-white" id="avg-refund-amount">$0.00</div>
+                            <div class="text-sm text-slate-400">Avg Refund</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Refunds List -->
+                    <div class="bg-slate-800/50 rounded-xl border border-slate-700 flex-grow flex flex-col">
+                        <div class="p-4 border-b border-slate-700">
+                            <h3 class="text-lg font-semibold text-slate-200">Refund & Exchange Details</h3>
+                        </div>
+                        <div class="flex-grow overflow-y-auto">
+                            <div class="grid grid-cols-12 gap-4 sticky top-0 bg-slate-900 py-3 px-4 text-xs font-bold text-slate-400 uppercase border-b border-slate-700">
+                                <div class="col-span-2">Refund #</div>
+                                <div class="col-span-2">Date</div>
+                                <div class="col-span-1">Type</div>
+                                <div class="col-span-2">Original Order</div>
+                                <div class="col-span-2 text-right">Amount</div>
+                                <div class="col-span-2">Customer</div>
+                                <div class="col-span-1 text-center">Actions</div>
+                            </div>
+                            <div id="refunds-list" class="p-2 space-y-2">
+                                <!-- Refunds will be populated here -->
                             </div>
                         </div>
                     </div>
@@ -1417,6 +1503,25 @@ require_once __DIR__ . '/../wp-load.php';
   </div>
 </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <!-- Refund Details Modal -->
+    <div id="refund-details-modal" class="app-overlay hidden">
+        <div class="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col transform transition-all">
+            <div class="p-6 border-b border-slate-700 flex justify-between items-center flex-shrink-0">
+                <h2 class="text-2xl font-bold text-white">Refund Details</h2>
+                <button onclick="document.getElementById('refund-details-modal').classList.add('hidden')" class="text-slate-400 hover:text-white">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div id="refund-details-content" class="flex-1 overflow-y-auto p-6 text-slate-200">
+                <!-- Content populated by JavaScript -->
+            </div>
+            <div class="p-6 border-t border-slate-700 flex justify-end flex-shrink-0">
+                <button onclick="document.getElementById('refund-details-modal').classList.add('hidden')" class="px-6 py-2 bg-slate-600 rounded-lg hover:bg-slate-500 text-white">Close</button>
+            </div>
+        </div>
+    </div>
+    
     <!-- Print Report Modal -->
     <div id="print-report-modal" class="app-overlay hidden">
         <div class="bg-white text-black p-6 rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">

@@ -11,6 +11,7 @@ class RoutingManager {
             'pos-page',
             'orders-page',
             'reports-page',
+            'refunds-exchange-reports-page',
             'sessions-page',
             'products-page',
             'held-carts-page',
@@ -23,6 +24,7 @@ class RoutingManager {
             'pos-page': 'menu-button-pos',
             'orders-page': 'menu-button-orders',
             'reports-page': 'menu-button-reports',
+            'refunds-exchange-reports-page': 'menu-button-refunds',
             'sessions-page': 'menu-button-sessions',
             'products-page': 'menu-button-products',
             'held-carts-page': 'menu-button-held-carts',
@@ -159,6 +161,11 @@ class RoutingManager {
                 case 'reports-page':
                     if (typeof window.fetchReportsData === 'function') {
                         await window.fetchReportsData();
+                    }
+                    break;
+                case 'refunds-exchange-reports-page':
+                    if (typeof window.fetchRefundReportsData === 'function') {
+                        await window.fetchRefundReportsData();
                     }
                     break;
                 case 'sessions-page':

@@ -2,11 +2,160 @@
 
 ## Latest Updates
 
+### v1.9.137 - Made Refund Details Modal Scrollable (2025-10-09)
+
+**Issue**: Modal extended beyond viewport when displaying many refund items, making content inaccessible on smaller screens
+
+**Problem Details**:
+- On smaller screens or with many refund items, modal content extended below the viewport
+- No scroll functionality to access hidden content
+- Users couldn't see all refund details without resizing window
+- Fixed header and footer were not constrained
+
+**Root Cause**:
+- No viewport height constraints on modal wrapper
+- Single content block without scroll handling
+- Modal structure didn't differentiate between fixed and scrollable sections
+
+**Solution (v1.9.137)**:
+Implemented flex-column layout with viewport constraints at [`index.php:1507-1523`](../index.php:1507-1523):
+
+1. **Modal Wrapper**: `max-h-[90vh] overflow-hidden flex flex-col`
+   - Limits total height to 90% of viewport
+   - Uses flexbox for vertical section layout
+   - Prevents overflow from wrapper itself
+
+2. **Fixed Header**: `p-6 border-b border-slate-700 flex-shrink-0`
+   - Remains visible at top
+   - Won't shrink when content grows
+   - Contains order number and type badge
+
+3. **Scrollable Content**: `flex-1 overflow-y-auto p-6`
+   - Expands to fill available space
+   - Independently scrollable
+   - Contains all refund details
+
+4. **Fixed Footer**: `p-6 border-t border-slate-700 flex-shrink-0`
+   - Remains visible at bottom
+   - Contains close button
+   - Won't shrink when content grows
+
+**Code Example**:
+```html
+<div class="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+    <div class="p-6 border-b border-slate-700 flex-shrink-0">
+        <!-- Fixed header content -->
+    </div>
+    <div id="refund-details-content" class="flex-1 overflow-y-auto p-6">
+        <!-- Scrollable content -->
+    </div>
+    <div class="p-6 border-t border-slate-700 flex-shrink-0">
+        <!-- Fixed footer -->
+    </div>
+</div>
+```
+
+**Benefits**:
+- Modal stays within viewport on all screen sizes
+- Header and footer remain visible while scrolling
+- Content area scrolls independently
+- Modern design from v1.9.136 preserved
+- Better UX on tablets and small displays
+
+**Files Changed**:
+- [`index.php:1507-1523`](../index.php:1507-1523) - Modal structure with flex layout
+- [`index.php:20`](../index.php:20) - Version updated to v1.9.137
+
+**Testing**:
+1. Add many items to a refund order
+2. Open refund details modal
+3. Verify modal doesn't exceed 90% of viewport height
+4. Verify header and footer remain visible
+5. Verify content area scrolls independently
+6. Test on various screen sizes (desktop, tablet, mobile)
+
+### v1.9.136 - Redesigned Refund Details Modal (2025-10-09)
+
+**Design Enhancement**: Complete modal redesign to match platform's modern aesthetic
+
+**Previous Design Issues**:
+- Plain text labels with no visual hierarchy
+- Flat layout lacking emphasis on important information
+- No use of icons or color coding
+- Basic spacing and borders
+- Inconsistent with rest of platform's polished appearance
+
+**New Design Features**:
+1. **Gradient Header Card**: Shows refund number and type with colored badge (blue for exchanges, purple for refunds) and Font Awesome icons
+2. **Icon-Enhanced Information**: All data fields include relevant icons (calendar, receipt, user, etc.)
+3. **Card-Based Layout**: Each section in its own bordered card with proper spacing
+4. **Visual Hierarchy**: Important information emphasized with larger fonts, bold text, and gradient backgrounds
+5. **Color Coding**: 
+   - Blue gradients for exchange information
+   - Red gradients for refund amounts
+   - Amber for reasons
+   - Indigo for item quantities
+6. **Modern Components**: Rounded badges, icon circles, gradient overlays, and professional borders
+7. **Responsive Grid**: 3-column layout for key information with proper alignment
+
+**Files Changed**:
+- [`refund-reports.js:163-219`](../assets/js/modules/financial/refund-reports.js:163-219) - Redesigned modal content generation
+- [`index.php:20,46`](../index.php:20) - Updated cache-busting version to v1.9.136
+
+**Result**: Enterprise-grade modal appearance consistent with platform design language
+
+### v1.9.135 - Fixed Refund Details Modal (2025-10-09)
+
+**Issue**: Action button on refunds page did nothing when clicked
+
+**Symptoms**: 
+- Clicking the eye icon action button on refund rows showed no response
+- No modal appeared to display refund details
+- No JavaScript errors in console
+
+**Root Cause**: 
+- HTML structure error at [`index.php:1505-1526`](../index.php:1505-1526)
+- The `refund-details-modal` div was incorrectly nested inside the opening `<div id="print-report-modal">` tag
+- This broke the modal's DOM structure making it inaccessible
+
+**Solution**:
+- Moved `refund-details-modal` div to appear before `print-report-modal`
+- Each modal is now a separate, properly closed div element
+- Modal structure: opening tag → content → closing tag (no nesting)
+
+**Files Changed**:
+- [`index.php:1505-1526`](../index.php:1505-1526) - Corrected modal HTML structure
+- [`index.php:20,24,46,54`](../index.php:20) - Updated cache-busting versions to v1.9.135
+
+**Testing**: Click action button on any refund row - modal now displays with complete refund information
+
+## Latest Updates
+
+### v1.9.134 - Refund Reports Query Fix
+**Issue**: Refunds page displayed no data despite existing refund orders in WooCommerce
+**Symptoms**: Empty refunds list, "No refunds found" message, summary statistics showing 0
+**Root Cause**: SQL query in [`api/refund-reports.php`](../api/refund-reports.php:103) was filtering for `post_status = 'completed'`, but WooCommerce refund orders don't use that status - they typically have `post_status = 'publish'` or inherit from parent order
+**Solution**: Changed both [`getRefundsForPeriod()`](../api/refund-reports.php:96-167) and [`getRefundSummaryStats()`](../api/refund-reports.php:172-212) functions to use `post_status != 'trash'` instead, which retrieves all non-trashed refunds regardless of specific status
+**Impact**: Refunds now properly display on reports page with complete data including amounts, reasons, customer info, and exchange detection
+**Technical Details**:
+- Line 103: Changed `AND p.post_status = 'completed'` to `AND p.post_status != 'trash'`
+- Line 184: Changed `AND p.post_status = 'completed'` to `AND p.post_status != 'trash'`
+- This approach works because WooCommerce uses various statuses for refunds but consistently marks deleted ones as 'trash'
+
 ### v1.9.74 - Settings Page Loading Fix
 **Issue**: Settings page showed empty input fields instead of saved values
 **Root Cause**: Settings were never loaded into application state during initialization
 **Solution**: Added `await settingsManager.loadReceiptSettings()` in [`main.js:41`](../assets/js/main.js:41) immediately after SettingsManager initialization
 **Impact**: All settings inputs (store name, email, phone, address, receipt footer, keyboard settings) now properly populate when navigating to settings page
+
+### v1.9.133 - Refunds & Exchanges Reports Page
+**Feature**: Comprehensive refund and exchange tracking system
+**Implementation**: 
+- New API endpoint [`api/refund-reports.php`](../api/refund-reports.php:1) queries WooCommerce refund orders
+- Frontend module [`assets/js/modules/financial/refund-reports.js`](../assets/js/modules/financial/refund-reports.js:1) with RefundReportsManager class
+- Automatically distinguishes between simple refunds and exchanges (refunds that created new orders)
+- Period selection, summary statistics, detailed refunds list, and CSV export functionality
+**Impact**: Complete audit trail of all refunds and exchanges processed through POS with automatic WordPress integration
 
 ---
 
@@ -1506,6 +1655,83 @@ Retrieve comprehensive sales reports with intelligent time granularity.
                 "number": "1001",
                 "date": "Jan 2, 2025, 9:15 am",
                 "status": "completed",
+
+#### GET /api/refund-reports.php
+Retrieve comprehensive refund and exchange reports.
+
+**Query Parameters:**
+- `period`: (required) Time period - `today`, `yesterday`, `this_week`, `last_week`, `this_month`, `this_year`, or `custom`
+- `custom_start`: (optional) Start date for custom period (YYYY-MM-DD format)
+- `custom_end`: (optional) End date for custom period (YYYY-MM-DD format)
+
+**Response:**
+```json
+{
+    "success": true,
+    "data": {
+        "period": {
+            "type": "today",
+            "start": "2025-10-08 00:00:00",
+            "end": "2025-10-08 23:59:59"
+        },
+        "summary": {
+            "total_refunds": 5,
+            "total_refunded": 125.50,
+            "avg_refund_amount": 25.10,
+            "min_refund_amount": 10.00,
+            "max_refund_amount": 50.00,
+            "total_exchanges": 2,
+            "total_exchange_value": 45.00,
+            "refunds_only": 3
+        },
+        "refunds": [
+            {
+                "id": 12345,
+                "refund_number": 12345,
+                "date": "Oct 8, 2025, 3:45 pm",
+                "date_raw": "2025-10-08 15:45:30",
+                "amount": 25.50,
+                "reason": "POS Return/Exchange",
+                "parent_order_id": 12340,
+                "parent_order_number": "12340",
+                "is_exchange": true,
+                "exchange_order_id": "12346",
+                "customer": "John Doe",
+                "items": [
+                    {
+                        "name": "Product Name",
+                        "quantity": 1,
+                        "total": 25.50
+                    }
+                ]
+            }
+        ]
+    }
+}
+```
+
+**Features:**
+- Automatically distinguishes between simple refunds and exchanges
+- Exchange detection via order note analysis
+- Complete item breakdown for each refund
+- Customer information and original order references
+- Summary statistics for quick insights
+
+**Example Usage:**
+```javascript
+// Fetch today's refunds
+const response = await fetch('api/refund-reports.php?period=today');
+const data = await response.json();
+
+// Fetch custom date range
+const customResponse = await fetch('api/refund-reports.php?period=custom&custom_start=2025-10-01&custom_end=2025-10-08');
+```
+
+**Related Functions:**
+- Implemented in [`api/refund-reports.php`](../api/refund-reports.php:1)
+- Frontend manager [`RefundReportsManager`](../assets/js/modules/financial/refund-reports.js:7)
+- Routing integration [`RoutingManager.loadPageData()`](../assets/js/modules/routing.js:165-168)
+
                 "source": "POS",
                 "total": 25.99,
                 "item_count": 3,

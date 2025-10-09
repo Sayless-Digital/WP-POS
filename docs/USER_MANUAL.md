@@ -1,3 +1,10 @@
+## Latest Updates
+
+### v1.9.133 - Refunds & Exchanges Reports
+Track all refunds and exchanges processed through your POS system with comprehensive reporting and filtering options.
+
+---
+
 ## Version 1.9.34 - Smart Fee/Discount Tab Switching (2025-10-07)
 
 ### What's New
@@ -449,6 +456,164 @@ You can filter the order list to show only orders from a specific customer using
    - **Real-time Search**: Search updates as you type (300ms delay for performance)
    - **Works with Filters**: Combine with date, status, and source filters
    - **Filter Persistence**: Selection remains when refreshing order data
+
+
+## Refunds & Exchanges Reports
+
+### Overview
+The Refunds & Exchanges page provides comprehensive tracking of all refunds and exchanges processed through your POS system. This feature automatically integrates with WordPress/WooCommerce, keeping complete records of all return transactions.
+
+### Accessing Refund Reports
+
+1. Click **Refunds & Exchanges** in the side menu
+2. The reports page will load showing today's refunds by default
+
+### Viewing Refund Data
+
+#### Summary Statistics
+At the top of the page, you'll see four summary cards:
+- **Total Refunds**: Total number of refund transactions
+- **Total Refunded**: Total dollar amount refunded
+- **Total Exchanges**: Number of exchange transactions (refund + new order)
+- **Avg Refund**: Average refund amount
+
+#### Refund List
+The main table shows all refund transactions with:
+- **Refund #**: Unique refund ID number
+- **Date**: When the refund was processed
+- **Type**: Badge showing "Refund" or "Exchange"
+- **Original Order**: The order number that was refunded
+- **Amount**: Refund amount (shown in red as negative)
+- **Customer**: Customer name or "Guest"
+- **Actions**: Eye icon to view detailed information
+
+### Filtering Refunds
+
+#### Period Selection
+Use the dropdown menu to filter refunds by time period:
+- **Today**: Refunds processed today
+- **Yesterday**: Yesterday's refunds
+- **This Week**: Current week (Monday to today)
+- **Last Week**: Previous week (Monday to Sunday)
+- **This Month**: Current month to date
+- **This Year**: Year to date
+- **Custom Range**: Choose specific start and end dates
+
+#### Custom Date Range
+1. Select **Custom Range** from the period dropdown
+2. Two date picker fields will appear
+3. Select your start date
+4. Select your end date
+5. Report will automatically update
+
+### Viewing Refund Details
+
+To see complete information about a specific refund:
+
+1. Click the **eye icon** (👁️) in the Actions column
+2. A modal will open showing:
+   - **Refund Number**: Unique ID
+   - **Type**: Refund or Exchange
+   - **Original Order**: The order that was refunded
+   - **Customer**: Customer name
+   - **Date**: When processed
+   - **Reason**: Refund reason (if provided)
+   - **Refunded Items**: List of items and quantities returned
+   - **Exchange Information**: If an exchange, shows the new order number
+   - **Total Refunded**: Final refund amount
+
+3. Click **Close** to return to the reports list
+
+### Understanding Refund Types
+
+#### Simple Refund
+- Customer returns items for money back
+- Inventory automatically restored to WordPress
+- Shows purple "Refund" badge
+- No new order created
+
+#### Exchange
+- Customer returns items AND purchases new items
+- Shows blue "Exchange" badge
+- Links to both the refund and the new order
+- Inventory updated for both transactions
+- Exchange information shows new order number
+
+### Exporting Refund Data
+
+To export your refund data to CSV:
+
+1. Click the **green download icon** in the header
+2. A CSV file will download automatically
+3. The file includes:
+   - Refund number
+   - Date and time
+   - Type (Refund/Exchange)
+   - Original order number
+   - Refund amount
+   - Customer name
+   - Refund reason
+
+4. Open the file in Excel, Google Sheets, or any spreadsheet software
+
+### Refreshing Data
+
+Click the **refresh icon** (🔄) in the header to reload the current report with the latest data.
+
+### Common Use Cases
+
+#### End-of-Day Reconciliation
+1. Select **Today** from the period dropdown
+2. Review total refunded amount
+3. Compare with cash drawer closing
+4. Export to CSV for records
+
+#### Monthly Reporting
+1. Select **This Month** to see month-to-date refunds
+2. Check total exchanges vs. simple refunds
+3. Review average refund amount trends
+4. Export for accounting records
+
+#### Customer Service Analysis
+1. Use custom date range for specific periods
+2. Click refund details to review reasons
+3. Identify frequent returners
+4. Track exchange patterns
+
+### WordPress Integration
+
+All refund data is automatically synchronized with WordPress/WooCommerce:
+- Refunds are stored as `shop_order_refund` post types
+- Inventory levels are automatically updated
+- Original orders are linked to their refunds
+- Exchange orders are created as new orders
+- All transactions maintain full audit trail
+
+### Tips
+
+- **Exchange Detection**: System automatically identifies exchanges by analyzing order notes
+- **Real-Time Data**: Reports update instantly when refunds are processed
+- **Historical Records**: All refunds remain in the system indefinitely
+- **Customer Tracking**: Customer information preserved for all refunds
+- **Audit Trail**: Complete record of who processed each refund and when
+
+### Troubleshooting
+
+**Problem**: No refunds showing
+- **Check**: Verify you have refunds in the selected time period
+- **Solution**: Try selecting a different date range or "This Year"
+
+**Problem**: Exchange not showing exchange order
+- **Check**: Exchange order may not have been created during refund process
+- **Solution**: Review original order notes in WordPress admin
+
+**Problem**: CSV export is empty
+- **Check**: Ensure there is data in the current view before exporting
+- **Solution**: Adjust filters to show refunds, then export
+
+**Problem**: Wrong customer showing
+- **Check**: Verify customer was attached to original order
+- **Solution**: Customer data comes from original order - update there if needed
 
 **Search Tips:**
 - Type customer's first or last name
