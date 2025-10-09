@@ -17,7 +17,7 @@ require_once __DIR__ . '/../wp-load.php';
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- Custom JSON syntax highlighting -->
     
-    <!-- WP POS v1.9.143 - Removed Spinner Loaders from User Page -->
+    <!-- WP POS v1.9.151 - Enhanced Attribute Name Selection with Searchable Dropdowns -->
     
     <!-- Core Modules - Load First -->
     <script src="assets/js/modules/state.js?v=1.9.72&t=<?php echo time(); ?>"></script>
@@ -30,7 +30,7 @@ require_once __DIR__ . '/../wp-load.php';
     
     <!-- Products Modules -->
     <script src="assets/js/modules/products/products.js?v=1.9.72&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/products/product-editor.js?v=1.9.72&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/products/product-editor.js?v=1.9.151&t=<?php echo time(); ?>"></script>
     
     <!-- Cart Modules -->
     <script src="assets/js/modules/cart/cart.js?v=1.9.72&t=<?php echo time(); ?>"></script>
@@ -47,12 +47,12 @@ require_once __DIR__ . '/../wp-load.php';
     <script src="assets/js/modules/financial/reports.js?v=1.9.142&t=<?php echo time(); ?>"></script>
     
     <!-- Admin Modules -->
-    <script src="assets/js/modules/admin/settings.js?v=1.9.118&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/admin/settings.js?v=1.9.147&t=<?php echo time(); ?>"></script>
     <script src="assets/js/modules/admin/sessions.js?v=1.9.72&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/admin/users.js?v=1.9.143&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/admin/users.js?v=1.9.144&t=<?php echo time(); ?>"></script>
     
     <!-- Main Orchestrator - Load Last -->
-    <script src="assets/js/main.js?v=1.9.142&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/main.js?v=1.9.145&t=<?php echo time(); ?>"></script>
     <style>
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
@@ -257,11 +257,12 @@ require_once __DIR__ . '/../wp-load.php';
     <input type="hidden" id="jpos-login-nonce" value="<?php echo wp_create_nonce('wppos_login_nonce'); ?>">
     <input type="hidden" id="jpos-logout-nonce" value="<?php echo wp_create_nonce('wppos_logout_nonce'); ?>">
     <input type="hidden" id="jpos-checkout-nonce" value="<?php echo wp_create_nonce('wppos_checkout_nonce'); ?>">
-    <input type="hidden" id="jpos-settings-nonce" value="<?php echo wp_create_nonce('wppos_settings_nonce'); ?>">
+    <input type="hidden" id="jpos-settings-nonce" value="<?php echo wp_create_nonce('jpos_settings_nonce'); ?>">
     <input type="hidden" id="jpos-drawer-nonce" value="<?php echo wp_create_nonce('wppos_drawer_nonce'); ?>">
     <input type="hidden" id="jpos-stock-nonce" value="<?php echo wp_create_nonce('wppos_stock_nonce'); ?>">
     <input type="hidden" id="jpos-refund-nonce" value="<?php echo wp_create_nonce('wppos_refund_nonce'); ?>">
     <input type="hidden" id="jpos-product-edit-nonce" value="<?php echo wp_create_nonce('wppos_product_edit_nonce'); ?>">
+    <input type="hidden" id="jpos-product-create-nonce" value="<?php echo wp_create_nonce('wppos_product_create_nonce'); ?>">
     <input type="hidden" id="jpos-reports-nonce" value="<?php echo wp_create_nonce('wppos_reports_nonce'); ?>">
     <input type="hidden" id="jpos-barcode-nonce" value="<?php echo wp_create_nonce('wppos_barcode_nonce'); ?>">
     <input type="hidden" id="jpos-customer-search-nonce" value="<?php echo wp_create_nonce('jpos_customer_search_nonce'); ?>">
@@ -797,6 +798,9 @@ require_once __DIR__ . '/../wp-load.php';
                         <button data-value="outofstock" data-state="inactive" class="px-3 py-1 text-sm rounded-md transition-colors">Out of Stock</button>
                         <button data-value="private" data-state="inactive" class="px-3 py-1 text-sm rounded-md transition-colors">Private</button>
                     </div>
+                    <button id="create-product-btn" class="px-4 py-2 bg-green-600 hover:bg-green-500 text-white text-sm rounded-lg transition-colors font-semibold">
+                        <i class="fas fa-plus mr-2"></i>Create Product
+                    </button>
                     <button id="refresh-products-btn" class="ml-2 p-2 rounded-lg bg-slate-700 border border-slate-600 hover:bg-slate-600 transition-colors flex-shrink-0 flex items-center" title="Refresh Products Data">
                         <i class="fa fa-refresh"></i>
                     </button>
@@ -906,8 +910,44 @@ require_once __DIR__ . '/../wp-load.php';
                         <!-- General Settings Tab -->
                         <div id="settings-panel-general" class="settings-panel hidden space-y-6">
                             <div class="bg-slate-700/30 p-4 rounded-lg border border-slate-600">
-                                <h3 class="text-lg font-semibold mb-4 text-slate-200">System Settings</h3>
-                                <p class="text-slate-400 text-sm">Additional system settings coming soon...</p>
+                                <h3 class="text-lg font-semibold mb-4 text-slate-200">Display Settings</h3>
+                                <div class="space-y-4">
+                                    <div>
+                                        <label for="setting-ui-scale" class="form-label">Interface Scale</label>
+                                        <div class="flex items-center gap-3">
+                                            <button type="button" id="ui-scale-decrease" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors border border-slate-600">
+                                                <i class="fas fa-minus"></i>
+                                            </button>
+                                            <input type="range"
+                                                   id="setting-ui-scale"
+                                                   min="50"
+                                                   max="150"
+                                                   step="5"
+                                                   value="100"
+                                                   class="flex-1 h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                                            <button type="button" id="ui-scale-increase" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors border border-slate-600">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                            <span id="ui-scale-value" class="text-white font-semibold w-16 text-right">100%</span>
+                                        </div>
+                                        <p class="text-xs text-slate-400 mt-2">Adjust the size of the interface (50% - 150%)</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-indigo-900/20 border border-indigo-800 p-4 rounded-lg">
+                                <div class="flex items-start gap-3">
+                                    <i class="fas fa-info-circle text-indigo-400 mt-1"></i>
+                                    <div>
+                                        <h4 class="font-semibold text-indigo-300 mb-1">Scale Tips</h4>
+                                        <ul class="text-sm text-slate-300 space-y-1">
+                                            <li>• Default: 100% - Standard interface size</li>
+                                            <li>• Larger: 110%-150% - Better for touch devices and large screens</li>
+                                            <li>• Smaller: 50%-90% - More content visible on smaller screens</li>
+                                            <li>• Changes apply immediately as you adjust</li>
+                                        </ul>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 

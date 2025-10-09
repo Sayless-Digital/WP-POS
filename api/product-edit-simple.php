@@ -355,6 +355,81 @@ try {
                 $debug['skipped'][] = 'stock_status (auto-calculated by WooCommerce)';
             }
             
+            // Handle new custom attributes
+            if (isset($data['new_attributes']) && is_array($data['new_attributes'])) {
+                $debug['updating'][] = 'new_attributes';
+                $debug['new_attributes_count'] = count($data['new_attributes']);
+                
+                $existing_attributes = $product->get_attributes();
+                
+                foreach ($data['new_attributes'] as $new_attr) {
+                    if (empty($new_attr['name']) || empty($new_attr['options'])) {
+                        continue;
+                    }
+                    
+                    // Convert name to lowercase with underscores
+                    $attr_name = strtolower(trim($new_attr['name']));
+                    $attr_name = preg_replace('/[^a-z0-9_]/', '_', $attr_name);
+                    $attr_name = preg_replace('/_+/', '_', $attr_name);
+                    
+                    // Create new custom attribute
+                    $attribute = new WC_Product_Attribute();
+                    $attribute->set_name($attr_name);
+                    $attribute->set_options($new_attr['options']);
+                    $attribute->set_visible($new_attr['visible'] ?? true);
+                    $attribute->set_variation($new_attr['variation'] ?? false);
+                    
+                    $existing_attributes[$attr_name] = $attribute;
+                    $debug['added_attribute'][] = $attr_name;
+                }
+                
+                $product->set_attributes($existing_attributes);
+            }
+            
+            // Handle new variations for variable products
+            if (isset($data['new_variations']) && is_array($data['new_variations']) && $product->get_type() === 'variable') {
+                $debug['updating'][] = 'new_variations';
+                $debug['new_variations_count'] = count($data['new_variations']);
+                
+                foreach ($data['new_variations'] as $new_var) {
+                    if (empty($new_var['attributes']) || empty($new_var['regular_price'])) {
+                        $debug['skipped_variation'][] = 'Missing required fields';
+                        continue;
+                    }
+                    
+                    // Create new variation
+                    $variation = new WC_Product_Variation();
+                    $variation->set_parent_id($product_id);
+                    
+                    // Set attributes
+                    $variation->set_attributes($new_var['attributes']);
+                    
+                    // Set pricing
+                    $variation->set_regular_price(sanitize_text_field($new_var['regular_price']));
+                    if (!empty($new_var['sale_price'])) {
+                        $variation->set_sale_price(sanitize_text_field($new_var['sale_price']));
+                    }
+                    
+                    // Set SKU if provided
+                    if (!empty($new_var['sku'])) {
+                        $variation->set_sku(sanitize_text_field($new_var['sku']));
+                    }
+                    
+                    // Set stock
+                    if (isset($new_var['stock_quantity']) && $new_var['stock_quantity'] !== '') {
+                        $variation->set_manage_stock(true);
+                        $variation->set_stock_quantity(absint($new_var['stock_quantity']));
+                    }
+                    
+                    // Set status (enabled/disabled)
+                    $variation->set_status(isset($new_var['enabled']) && $new_var['enabled'] ? 'publish' : 'private');
+                    
+                    // Save variation
+                    $variation_id = $variation->save();
+                    $debug['created_variation'][] = $variation_id;
+                }
+            }
+            
             $debug['step'] = 'Saving product';
             
             // Save the product

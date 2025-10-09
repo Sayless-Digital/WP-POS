@@ -37,7 +37,8 @@ class SettingsManager {
                 footer_message_1: "Thank you!",
                 footer_message_2: "",
                 virtual_keyboard_enabled: true,
-                virtual_keyboard_auto_show: false
+                virtual_keyboard_auto_show: false,
+                ui_scale: 100
             });
             alert('Warning: Could not load store settings. Receipts may display default info.');
             
@@ -93,6 +94,50 @@ class SettingsManager {
         }
         if (autoShowKeyboard) {
             autoShowKeyboard.checked = currentSettings.virtual_keyboard_auto_show === true;
+        }
+        
+        // UI scale setting
+        const uiScaleSlider = document.getElementById('setting-ui-scale');
+        const uiScaleValue = document.getElementById('ui-scale-value');
+        const uiScaleDecrease = document.getElementById('ui-scale-decrease');
+        const uiScaleIncrease = document.getElementById('ui-scale-increase');
+        
+        if (uiScaleSlider && uiScaleValue) {
+            const scale = currentSettings.ui_scale || 100;
+            uiScaleSlider.value = scale;
+            uiScaleValue.textContent = `${scale}%`;
+            
+            // Apply scale immediately
+            this.applyUIScale(scale);
+            
+            // Update value display and apply scale as slider moves
+            uiScaleSlider.addEventListener('input', (e) => {
+                const newScale = parseInt(e.target.value);
+                uiScaleValue.textContent = `${newScale}%`;
+                this.applyUIScale(newScale);
+            });
+            
+            // Decrease button - reduce by 5%
+            if (uiScaleDecrease) {
+                uiScaleDecrease.addEventListener('click', () => {
+                    const currentValue = parseInt(uiScaleSlider.value);
+                    const newValue = Math.max(50, currentValue - 5);
+                    uiScaleSlider.value = newValue;
+                    uiScaleValue.textContent = `${newValue}%`;
+                    this.applyUIScale(newValue);
+                });
+            }
+            
+            // Increase button - increase by 5%
+            if (uiScaleIncrease) {
+                uiScaleIncrease.addEventListener('click', () => {
+                    const currentValue = parseInt(uiScaleSlider.value);
+                    const newValue = Math.min(150, currentValue + 5);
+                    uiScaleSlider.value = newValue;
+                    uiScaleValue.textContent = `${newValue}%`;
+                    this.applyUIScale(newValue);
+                });
+            }
         }
         
         // Initialize keyboard auto-show based on settings
@@ -802,6 +847,7 @@ class SettingsManager {
         // Get virtual keyboard settings (using correct IDs from HTML)
         const enableKeyboard = document.getElementById('setting-keyboard-enabled');
         const autoShowKeyboard = document.getElementById('setting-keyboard-auto-show');
+        const uiScaleSlider = document.getElementById('setting-ui-scale');
         
         const data = {
             name: document.getElementById('setting-name').value,
@@ -813,6 +859,7 @@ class SettingsManager {
             footer_message_2: document.getElementById('setting-footer2').value,
             virtual_keyboard_enabled: enableKeyboard ? enableKeyboard.checked : true,
             virtual_keyboard_auto_show: autoShowKeyboard ? autoShowKeyboard.checked : false,
+            ui_scale: uiScaleSlider ? parseInt(uiScaleSlider.value) : 100,
             nonce: this.state.getState('nonces.settings')
         };
         
@@ -855,6 +902,18 @@ class SettingsManager {
             saveBtn.disabled = false;
             setTimeout(() => { statusEl.textContent = ''; }, 5000);
         }
+    }
+    
+    /**
+     * Apply UI scale to the interface
+     * @param {number} scale - Scale percentage (50-150)
+     */
+    applyUIScale(scale) {
+        // Apply zoom to the body element
+        document.body.style.zoom = `${scale}%`;
+        
+        // Store in localStorage for immediate access on next page load
+        localStorage.setItem('jpos_ui_scale', scale);
     }
 }
 

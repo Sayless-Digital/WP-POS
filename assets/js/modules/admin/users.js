@@ -27,6 +27,13 @@ class UsersManager {
         if (!append) {
             container.innerHTML = this.ui.getSkeletonLoaderHtml('list-rows', 10);
             this.currentOffset = 0;
+        } else {
+            // Show loading indicator at bottom when appending
+            const loadingDiv = document.createElement('div');
+            loadingDiv.id = 'users-loading-more';
+            loadingDiv.className = 'col-span-12 text-center py-4';
+            loadingDiv.innerHTML = '<div class="text-slate-400 text-sm"><i class="fas fa-circle-notch fa-spin mr-2"></i>Loading more users...</div>';
+            container.appendChild(loadingDiv);
         }
         
         this.isLoading = true;
@@ -79,6 +86,11 @@ class UsersManager {
             return [];
         } finally {
             this.isLoading = false;
+            // Remove loading indicator if it exists
+            const loadingDiv = document.getElementById('users-loading-more');
+            if (loadingDiv) {
+                loadingDiv.remove();
+            }
         }
     }
 

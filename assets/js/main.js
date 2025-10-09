@@ -1,6 +1,12 @@
-// WP POS v1.9.142 - Fixed Print Reports to Open New Window
+// WP POS v1.9.145 - Product Creation & UI Scale Feature
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('WP POS v1.9.142 loaded - Print reports open in new window');
+    console.log('WP POS v1.9.145 loaded - Product creation restored & UI scale feature added');
+    
+    // Apply saved UI scale immediately on page load (before anything else renders)
+    const savedScale = localStorage.getItem('jpos_ui_scale');
+    if (savedScale) {
+        document.body.style.zoom = `${savedScale}%`;
+    }
     
     // Initialize State Manager (already global from state.js)
     const state = window.stateManager;
@@ -397,6 +403,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     productsManager.renderStockList();
                     uiHelpers.showToast('Products refreshed');
                 });
+            },
+            'create-product-btn': () => {
+                productEditorManager.openProductEditor(); // No productId = create mode
             },
             'refresh-settings-btn': () => settingsManager.populateSettingsForm(),
             'refresh-held-carts-btn': () => heldCartsManager.renderHeldCarts(),

@@ -947,10 +947,11 @@ Retrieve product catalog with filtering options.
 ### Product Management
 - **GET** `/api/products.php` - Retrieve product catalog with filtering
 - **GET** `/api/product-edit-simple.php?action=get_product_details&id={id}` - Get product details for editing
-- **POST** `/api/product-edit-simple.php` - Update existing product data (product creation removed in v1.8.52, image upload removed in v1.8.52)
+- **POST** `/api/product-edit-simple.php` - Update existing product data
+- **POST** `/api/product-create.php` - Create new products (v1.9.145)
 - **GET** `/api/product-edit-simple.php?action=get_tax_classes` - Get tax classes
 - **GET** `/api/stock.php` - Stock management operations
-- **Note**: Product creation and image upload must be done through WooCommerce admin - these features have been removed from the POS interface
+- **Note**: Image upload must be done through WooCommerce admin for consistency with WordPress architecture
 
 ### Order Processing
 - **GET** `/api/orders.php` - Fetch orders with filters (date, status, source, customer, order ID)
@@ -1281,9 +1282,266 @@ await usersManager.deleteUser(123, 1); // Delete user 123, reassign to user 1
 
 ### System Management
 - **GET** `/api/settings.php` - Retrieve settings
-- **POST** `/api/settings.php` - Update settings
+- **POST** `/api/settings.php` - Update settings (includes UI scale)
 - **GET** `/api/sessions.php` - Session management
 - **POST** `/api/drawer.php` - Cash drawer operations
+
+### UI Scale Settings (v1.9.145)
+
+#### Overview
+The UI Scale feature allows users to adjust the entire interface size from 50% to 150% in 5% increments, providing optimal viewing experience across different devices and display sizes.
+
+#### API Integration
+
+**Endpoint**: `POST /api/settings.php`
+
+**UI Scale Parameter:**
+```json
+{
+    "ui_scale": 100,
+    "nonce": "wp_nonce_value"
+}
+```
+
+**Range Validation:**
+- Minimum: 50 (half size)
+- Maximum: 150 (1.5x larger)
+- Default: 100 (standard size)
+- Increment: 5% steps
+
+**Server-Side Validation** ([`api/settings.php:74-79`](../api/settings.php:74-79)):
+```php
+if (isset($data['ui_scale'])) {
+    $scale = (int)$data['ui_scale'];
+    if ($scale >= 50 && $scale <= 150) {
+        $current_settings['ui_scale'] = $scale;
+    }
+}
+```
+
+#### Frontend Implementation
+
+**HTML Component** ([`index.php:910-944`](../index.php:910-944)):
+```html
+<div class="mb-6">
+    <label class="block text-sm font-medium text-slate-300 mb-2">
+        UI Scale
+    </label>
+    <div class="flex items-center gap-4">
+        <input type="range"
+               id="setting-ui-scale"
+               min="50"
+               max="150"
+               step="5"
+               value="100"
+               class="flex-1">
+        <span id="ui-scale-value" class="text-slate-300 font-mono">100%</span>
+    </div>
+    <p class="text-xs text-slate-400 mt-1">
+        Adjust interface size (50% - 150%)
+    </p>
+</div>
+```
+
+**JavaScript Manager** ([`assets/js/modules/admin/settings.js:95-125`](../assets/js/modules/admin/settings.js:95-125)):
+
+**Initialization:**
+```javascript
+const uiScaleSlider = document.getElementById('setting-ui-scale');
+const uiScaleValue = document.getElementById('ui-scale-value');
+
+if (uiScaleSlider && uiScaleValue) {
+    const scale = currentSettings.ui_scale || 100;
+    uiScaleSlider.value = scale;
+    uiScaleValue.textContent = `${scale}%`;
+    
+    // Apply scale immediately
+    this.applyUIScale(scale);
+    
+    // Update value display and apply scale as slider moves
+    uiScaleSlider.addEventListener('input', (e) => {
+        const newScale = parseInt(e.target.value);
+        uiScaleValue.textContent = `${newScale}%`;
+        this.applyUIScale(newScale);
+    });
+}
+```
+
+**Scale Application** ([`assets/js/modules/admin/settings.js:861-869`](../assets/js/modules/admin/settings.js:861-869)):
+```javascript
+applyUIScale(scale) {
+    // Apply zoom to the body element
+    document.body.style.zoom = `${scale}%`;
+    
+    // Store in localStorage for immediate access on next page load
+    localStorage.setItem('jpos_ui_scale', scale);
+}
+```
+
+**Page Load Initialization** ([`assets/js/main.js:7-11`](../assets/js/main.js:7-11)):
+```javascript
+// Apply saved UI scale immediately on page load (before anything else renders)
+const savedScale = localStorage.getItem('jpos_ui_scale');
+if (savedScale) {
+    document.body.style.zoom = `${savedScale}%`;
+}
+```
+
+#### Technical Implementation Details
+
+**CSS Zoom Property:**
+- Uses CSS `zoom` property for simplicity and browser support
+- Scales all content proportionally including images, text, and UI elements
+- Maintains layout integrity at all scale levels
+- Supported in all modern browsers (Chrome, Firefox, Safari, Edge)
+
+**Dual Persistence Strategy:**
+1. **localStorage**: Immediate application on page load (no flicker)
+2. **WordPress Options**: Persistent across devices/sessions
+
+**Load Sequence:**
+```
+1. Page loads → Apply localStorage scale (instant)
+2. Settings load → Apply server scale (override if different)
+3. User adjusts → Update both localStorage and server
+4. Page reload → Start from step 1
+```
+
+**Performance Considerations:**
+- Scale applied before DOM render (no visual flicker)
+- Single CSS property change (minimal reflow)
+- No JavaScript calculations for individual elements
+- Browser handles all scaling efficiently
+
+#### Use Cases by Device Type
+
+**Desktop (Large Displays)**:
+- 50-80%: More content visible, compact layout
+- 100%: Standard size (default)
+
+**Tablets/Touch Devices**:
+- 110-130%: Larger touch targets, easier reading
+- Optimal for POS terminals
+
+**High-DPI Displays (4K, Retina)**:
+- 120-150%: Compensates for small physical pixels
+- Maintains readable text size
+
+#### Error Handling
+
+**Out of Range Values:**
+Server-side validation prevents invalid values:
+```php
+// Values outside 50-150 are rejected
+if ($scale >= 50 && $scale <= 150) {
+    $current_settings['ui_scale'] = $scale;
+}
+// Invalid values ignored, defaults to 100
+```
+
+**Missing localStorage:**
+```javascript
+const savedScale = localStorage.getItem('jpos_ui_scale');
+if (savedScale) {
+    // Apply if exists
+    document.body.style.zoom = `${savedScale}%`;
+}
+// No error if missing, defaults to 100%
+```
+
+#### Browser Compatibility
+
+**Supported Browsers:**
+- Chrome 1+ (full support)
+- Firefox 1+ (full support)
+- Safari 3.1+ (full support)
+- Edge 12+ (full support)
+
+**Fallback Behavior:**
+- Unsupported browsers ignore `zoom` property
+- Interface displays at 100% (no errors)
+- Feature degrades gracefully
+
+#### Security Considerations
+
+**Input Sanitization:**
+```php
+$scale = (int)$data['ui_scale']; // Type cast to integer
+if ($scale >= 50 && $scale <= 150) { // Range validation
+    $current_settings['ui_scale'] = $scale;
+}
+```
+
+**No XSS Risk:**
+- Value applied as CSS property (not HTML)
+- Integer-only values (no string injection)
+- Server-side validation before storage
+
+#### Testing Checklist
+
+**Functional Testing:**
+- [ ] Slider moves smoothly from 50% to 150%
+- [ ] Value display updates in real-time
+- [ ] Interface scales correctly as slider moves
+- [ ] Save button persists scale setting
+- [ ] Scale persists across page reloads
+- [ ] Scale persists across browser sessions
+
+**Edge Cases:**
+- [ ] Test at minimum scale (50%)
+- [ ] Test at maximum scale (150%)
+- [ ] Test with very long text strings
+- [ ] Test with many UI elements visible
+- [ ] Test browser zoom conflicts (set to 100%)
+- [ ] Test localStorage disabled
+
+**Cross-Browser:**
+- [ ] Chrome/Chromium
+- [ ] Firefox
+- [ ] Safari (macOS/iOS)
+- [ ] Edge
+
+#### Troubleshooting
+
+**Problem**: Scale doesn't apply after save
+- **Cause**: Browser cache serving old JavaScript
+- **Solution**: Hard refresh (Ctrl+F5), verify version v1.9.145+
+
+**Problem**: Interface looks distorted
+- **Cause**: Browser zoom conflicts with CSS zoom
+- **Solution**: Set browser zoom to 100% (Ctrl+0)
+
+**Problem**: Scale resets to 100% on login
+- **Cause**: localStorage cleared or settings not saved
+- **Solution**: Save settings, check localStorage persistence
+
+**Problem**: Slider doesn't move
+- **Cause**: JavaScript error preventing event handler
+- **Solution**: Check console for errors, verify settings.js loaded
+
+#### Future Enhancements
+
+**Potential Improvements:**
+1. Per-device scale preferences (desktop vs mobile)
+2. Accessibility presets (visually impaired, low vision)
+3. Component-specific scaling (scale UI but not products)
+4. Touch target size validation at scale
+5. Automatic scale detection based on screen resolution
+
+#### Related Files
+
+**Backend:**
+- API endpoint: [`api/settings.php:74-79`](../api/settings.php:74-79)
+- Default settings: [`api/settings.php:23`](../api/settings.php:23)
+
+**Frontend:**
+- Settings manager: [`assets/js/modules/admin/settings.js:95-125,861-869`](../assets/js/modules/admin/settings.js:95-125)
+- Page initialization: [`assets/js/main.js:7-11`](../assets/js/main.js:7-11)
+- HTML control: [`index.php:910-944`](../index.php:910-944)
+
+**Documentation:**
+- User guide: [`docs/USER_MANUAL.md:1079-1168`](../docs/USER_MANUAL.md:1079-1168)
+- Version history: [`agents.md`](../agents.md:1) (search for "UI Scale")
 
 ### Barcode Generation Endpoints
 
@@ -1430,32 +1688,788 @@ if (data.success) {
 - UI Component: [`customer-search-modal`](../index.php:1034)
 - State Management: [`appState.cart.customer`](../assets/js/modules/state.js:33)
 
-### Product Image Upload System (REMOVED in v1.8.52)
+### Product Creation Endpoint (v1.9.145)
 
-**IMPORTANT: Product image upload functionality has been completely removed from the WP POS interface.**
+#### POST /api/product-create.php
 
-**Reason for Removal:**
-- Image management must be done through WooCommerce admin interface
-- This ensures consistency with WordPress/WooCommerce architecture
+Create new WooCommerce products with comprehensive validation and error handling.
+
+**Request Body:**
+```json
+{
+    "action": "create_product",
+    "nonce": "wp_nonce_value",
+    "name": "Product Name",
+    "sku": "PROD-SKU-123",
+    "barcode": "1234567890",
+    "regular_price": "29.99",
+    "sale_price": "24.99",
+    "status": "publish",
+    "featured": false,
+    "tax_class": "",
+    "tax_status": "taxable",
+    "stock_quantity": 50,
+    "manage_stock": true,
+    "stock_status": "instock",
+    "description": "Product description",
+    "short_description": "Brief description",
+    "meta_data": [
+        {"key": "custom_field", "value": "custom_value"}
+    ]
+}
+```
+
+**Required Fields:**
+- `name` - Product name (required)
+- `regular_price` - Regular price (required)
+- `nonce` - WordPress nonce for CSRF protection (required)
+
+**Optional Fields:**
+- `sku` - Stock keeping unit (must be unique)
+- `barcode` - Product barcode
+- `sale_price` - Sale price (must be less than regular price)
+- `status` - Product status: "publish", "draft", "pending", "private" (default: "publish")
+- `featured` - Featured product flag (boolean)
+- `tax_class` - Tax class slug
+- `tax_status` - Tax status: "taxable", "shipping", "none" (default: "taxable")
+- `stock_quantity` - Stock quantity (integer)
+- `manage_stock` - Enable stock management (boolean, default: false)
+- `stock_status` - Stock status: "instock", "outofstock", "onbackorder" (default: "instock")
+- `description` - Full product description
+- `short_description` - Short description
+- `meta_data` - Array of custom meta fields
+
+**Success Response (201):**
+```json
+{
+    "success": true,
+    "message": "Product created successfully",
+    "data": {
+        "product_id": 12345,
+        "name": "Product Name",
+        "sku": "PROD-SKU-123",
+        "regular_price": "29.99",
+        "permalink": "https://example.com/product/product-name"
+    }
+}
+```
+
+**Error Responses:**
+
+**Validation Error (400):**
+```json
+{
+    "success": false,
+    "message": "Product name is required"
+}
+```
+
+```json
+{
+    "success": false,
+    "message": "Regular price is required"
+}
+```
+
+**SKU Conflict (400):**
+```json
+{
+    "success": false,
+    "message": "SKU already exists: PROD-SKU-123"
+}
+```
+
+**Price Validation Error (400):**
+```json
+{
+    "success": false,
+    "message": "Regular price must be a positive number"
+}
+```
+
+```json
+{
+    "success": false,
+    "message": "Sale price must be less than regular price"
+}
+```
+
+**Authentication Error (403):**
+```json
+{
+    "success": false,
+    "message": "Authentication required"
+}
+```
+
+```json
+{
+    "success": false,
+    "message": "Invalid security token"
+}
+```
+
+**Server Error (500):**
+```json
+{
+    "success": false,
+    "message": "Failed to create product: [error details]"
+}
+```
+
+**Validation Rules:**
+- Product name: Required, non-empty string
+- Regular price: Required, positive number
+- Sale price: Optional, must be less than regular price if provided
+- SKU: Optional, must be unique across all products
+- Stock quantity: Optional, must be non-negative integer
+- Tax status: Must be one of: "taxable", "shipping", "none"
+- Product status: Must be one of: "publish", "draft", "pending", "private"
+
+**Security Features:**
+- WordPress nonce verification for CSRF protection
+- User capability check (`edit_products` required)
+- Input sanitization on all fields
+- Price validation to prevent negative values
+- SKU uniqueness check via `wc_get_product_id_by_sku()`
+- Prepared statements for database queries
+
+**Example Usage:**
+```javascript
+// Create a new product
+const response = await fetch('/api/product-create.php', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+        action: 'create_product',
+        nonce: document.getElementById('jpos-product-create-nonce').value,
+        name: 'New Product',
+        regular_price: '29.99',
+        sku: 'PROD-001',
+        stock_quantity: 100,
+        manage_stock: true
+    })
+});
+
+const result = await response.json();
+if (result.success) {
+    console.log(`Product created with ID: ${result.data.product_id}`);
+}
+```
+
+**Integration with Product Editor:**
+The product creation workflow uses a two-step process:
+1. Create product with all text-based fields using this endpoint
+2. Product editor modal automatically switches to edit mode with new product ID
+3. Images can then be uploaded via WooCommerce admin (image upload disabled in POS)
+
+**Why Images are Disabled:**
+Product creation in POS was restored in v1.9.145, but image uploads remain disabled due to:
+- Historical issues with featured and gallery image uploads (v1.8.37-v1.8.51)
+- Multiple failed fix attempts documented in version history
+- Decision to use WooCommerce admin for image management ensures consistency
+- Simplifies POS interface and reduces maintenance complexity
+
+**Image Upload Alternative:**
+To add images to newly created products:
+1. Product is created successfully via POS
+2. Navigate to WooCommerce admin (Products → All Products)
+3. Find and edit the newly created product
+4. Use WooCommerce product editor to upload featured and gallery images
+5. Images will automatically appear in POS product grid
+
+**Related Files:**
+- API Endpoint: [`api/product-create.php`](../api/product-create.php:1)
+- Frontend Manager: [`assets/js/modules/products/product-editor.js`](../assets/js/modules/products/product-editor.js:1)
+- CSRF Nonce: [`index.php:265`](../index.php:265) - `jpos-product-create-nonce`
+- Create Button: [`index.php:791-793`](../index.php:791-793)
+
+**Version History:**
+- v1.9.148: Restored "Add Attribute" button with full attribute creation functionality
+- v1.9.145: Product creation restored with improved implementation
+- v1.8.52: Product creation removed due to persistent image upload issues
+- v1.8.37-v1.8.51: Multiple failed attempts to fix image uploads
+
+### Product Attribute Creation (v1.9.148)
+
+#### POST /api/product-edit-simple.php (Update with New Attributes)
+
+When editing products, you can now create new custom attributes directly from the POS product editor.
+
+**New Attributes in Request:**
+```json
+{
+    "action": "update_product",
+    "product_id": 123,
+    "nonce": "wp_nonce_value",
+    "new_attributes": [
+        {
+            "name": "Color",
+            "options": ["Red", "Blue", "Green"],
+            "visible": true,
+            "variation": false
+        },
+        {
+            "name": "Size",
+            "options": ["Small", "Medium", "Large"],
+            "visible": true,
+            "variation": true
+        }
+    ]
+}
+```
+
+**Attribute Field Requirements:**
+- `name` (Required): Attribute name (will be converted to slug: lowercase, underscores, no special chars)
+- `options` (Required): Array of option values
+- `visible` (Optional): Show on product page (default: true)
+- `variation` (Optional): Use for variations (default: false)
+
+**Backend Processing** ([`api/product-edit-simple.php:356-387`](../api/product-edit-simple.php:356-387)):
+```php
+if (isset($data['new_attributes']) && is_array($data['new_attributes'])) {
+    $existing_attributes = $product->get_attributes();
+    
+    foreach ($data['new_attributes'] as $new_attr) {
+        // Sanitize attribute name
+        $attr_name = strtolower(trim($new_attr['name']));
+        $attr_name = preg_replace('/[^a-z0-9_]/', '_', $attr_name);
+        
+        // Create WC_Product_Attribute instance
+        $attribute = new WC_Product_Attribute();
+        $attribute->set_name($attr_name);
+        $attribute->set_options($new_attr['options']);
+        $attribute->set_visible($new_attr['visible']);
+        $attribute->set_variation($new_attr['variation']);
+        
+        $existing_attributes[$attr_name] = $attribute;
+    }
+    
+    $product->set_attributes($existing_attributes);
+}
+```
+
+**Frontend Integration** ([`assets/js/modules/products/product-editor.js:409-494`](../assets/js/modules/products/product-editor.js:409-494)):
+
+The "Add Attribute" button now creates fully functional attribute forms:
+
+```javascript
+// Add new attribute row
+addAttributeRow() {
+    const row = document.createElement('div');
+    row.className = 'border border-slate-600 rounded-lg p-4 mb-4';
+    row.setAttribute('data-new-attribute', 'true');
+    
+    row.innerHTML = `
+        <div class="mb-3">
+            <label class="block text-sm font-medium text-slate-300 mb-1">
+                Attribute Name
+            </label>
+            <input type="text"
+                   class="new-attribute-name w-full px-3 py-2 bg-slate-700..."
+                   placeholder="e.g., Color, Size, Material">
+        </div>
+        
+        <div class="mb-3">
+            <label class="block text-sm font-medium text-slate-300 mb-1">
+                Options (press Enter or comma to separate)
+            </label>
+            <div class="attribute-options-container flex flex-wrap gap-2 mb-2"></div>
+            <input type="text"
+                   class="attribute-option-input w-full px-3 py-2 bg-slate-700..."
+                   placeholder="Type option and press Enter">
+        </div>
+        
+        <div class="flex items-center gap-4 mb-3">
+            <label class="flex items-center">
+                <input type="checkbox" class="attribute-visible" checked>
+                <span class="ml-2 text-sm text-slate-300">Visible on product page</span>
+            </label>
+            <label class="flex items-center">
+                <input type="checkbox" class="attribute-variation">
+                <span class="ml-2 text-sm text-slate-300">Used for variations</span>
+            </label>
+        </div>
+    `;
+    
+    // Setup event listeners for Enter/comma key
+    const optionInput = row.querySelector('.attribute-option-input');
+    const optionsContainer = row.querySelector('.attribute-options-container');
+    
+    optionInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ',') {
+            e.preventDefault();
+            this.addNewAttributeOption(optionsContainer, optionInput);
+        }
+    });
+}
+
+// Add option to attribute
+addNewAttributeOption(optionsContainer, inputElement) {
+    const value = inputElement.value.trim();
+    if (!value) return;
+    
+    // Check for duplicates
+    const existingOptions = Array.from(optionsContainer.querySelectorAll('.attribute-option-tag'))
+        .map(tag => tag.dataset.value);
+    if (existingOptions.includes(value)) {
+        inputElement.value = '';
+        return;
+    }
+    
+    // Create tag element
+    const tag = document.createElement('span');
+    tag.className = 'attribute-option-tag inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-600 text-white';
+    tag.dataset.value = value;
+    tag.innerHTML = `
+        ${value}
+        <button type="button" class="ml-2 text-white hover:text-gray-200">×</button>
+    `;
+    
+    // Remove button handler
+    tag.querySelector('button').addEventListener('click', () => {
+        tag.remove();
+    });
+    
+    optionsContainer.appendChild(tag);
+    inputElement.value = '';
+}
+```
+
+**Data Collection** ([`assets/js/modules/products/product-editor.js:687-761`](../assets/js/modules/products/product-editor.js:687-761)):
+```javascript
+// In getProductEditorFormData()
+if (this.mode === 'edit') {
+    const newAttributeRows = editorContent.querySelectorAll('[data-new-attribute="true"]');
+    if (newAttributeRows.length > 0) {
+        formData.new_attributes = [];
+        newAttributeRows.forEach(row => {
+            const nameInput = row.querySelector('.new-attribute-name');
+            const optionTags = row.querySelectorAll('.attribute-option-tag');
+            const options = Array.from(optionTags).map(tag => tag.dataset.value);
+            
+            if (nameInput.value.trim() && options.length > 0) {
+                formData.new_attributes.push({
+                    name: nameInput.value.trim(),
+                    options: options,
+                    visible: row.querySelector('.attribute-visible').checked,
+                    variation: row.querySelector('.attribute-variation').checked
+                });
+            }
+        });
+    }
+}
+```
+
+**WooCommerce Integration:**
+- Uses official `WC_Product_Attribute` class for compatibility
+- Attributes display correctly in WooCommerce admin
+- Properly integrated with variation system
+- Front-end visibility settings respected
+
+**Example Usage:**
+```javascript
+// User flow in product editor:
+1. Click "Add Attribute" button
+2. Enter attribute name (e.g., "Color")
+3. Type option value and press Enter (e.g., "Red")
+4. Add more options (e.g., "Blue", "Green")
+5. Check/uncheck visibility and variation options
+6. Click "Save Product"
+7. Attribute created and attached to product
+```
+
+**Related Files:**
+- Frontend: [`assets/js/modules/products/product-editor.js:409-519`](../assets/js/modules/products/product-editor.js:409-519)
+- Backend: [`api/product-edit-simple.php:356-387`](../api/product-edit-simple.php:356-387)
+- Backend (Create): [`api/product-create.php:130-165`](../api/product-create.php:130-165)
+
+### Variation Creation (v1.9.149)
+
+#### POST /api/product-edit-simple.php (Create Variations for Variable Products)
+
+Create new product variations directly from the POS product editor for variable products.
+
+**Request Body:**
+```json
+{
+    "action": "update_product",
+    "product_id": 123,
+    "nonce": "wp_nonce_value",
+    "new_variations": [
+        {
+            "attributes": {
+                "size": "Large",
+                "color": "Red"
+            },
+            "regular_price": "29.99",
+            "sale_price": "24.99",
+            "sku": "VAR-SKU-LRG-RED",
+            "stock_quantity": 50,
+            "enabled": true
+        },
+        {
+            "attributes": {
+                "size": "Medium",
+                "color": "Blue"
+            },
+            "regular_price": "27.99",
+            "sku": "VAR-SKU-MED-BLU",
+            "stock_quantity": 30,
+            "enabled": true
+        }
+    ]
+}
+```
+
+**Required Fields for Each Variation:**
+- `attributes` (object): Key-value pairs of attribute names and selected values
+  - Must match attributes marked as "Used for variations" on the parent product
+  - All variation-enabled attributes must be provided
+- `regular_price` (string): Regular price for the variation (required)
+
+**Optional Fields for Each Variation:**
+- `sale_price` (string): Sale price (must be less than regular price if provided)
+- `sku` (string): Stock Keeping Unit (must be unique)
+- `stock_quantity` (integer): Stock quantity (default: null)
+- `enabled` (boolean): Whether variation is enabled (default: true, creates as "publish" status)
+
+**Backend Processing** ([`api/product-edit-simple.php:386-427`](../api/product-edit-simple.php:386-427)):
+```php
+// Validate product type
+if (isset($data['new_variations']) && is_array($data['new_variations'])) {
+    $product_type = $product->get_type();
+    if ($product_type !== 'variable') {
+        JPOS_Error_Handler::send_error('Variations can only be added to variable products', 400);
+        exit;
+    }
+    
+    $created_variation_ids = [];
+    
+    foreach ($data['new_variations'] as $new_var) {
+        // Create WC_Product_Variation
+        $variation = new WC_Product_Variation();
+        $variation->set_parent_id($product_id);
+        
+        // Set attributes (required)
+        if (isset($new_var['attributes'])) {
+            $variation->set_attributes($new_var['attributes']);
+        }
+        
+        // Set pricing
+        if (isset($new_var['regular_price'])) {
+            $variation->set_regular_price($new_var['regular_price']);
+        }
+        if (isset($new_var['sale_price'])) {
+            $variation->set_sale_price($new_var['sale_price']);
+        }
+        
+        // Set SKU (optional)
+        if (isset($new_var['sku']) && !empty($new_var['sku'])) {
+            $variation->set_sku($new_var['sku']);
+        }
+        
+        // Set stock management
+        if (isset($new_var['stock_quantity'])) {
+            $variation->set_manage_stock(true);
+            $variation->set_stock_quantity((int)$new_var['stock_quantity']);
+        }
+        
+        // Set status based on enabled flag
+        $enabled = isset($new_var['enabled']) ? (bool)$new_var['enabled'] : true;
+        $variation->set_status($enabled ? 'publish' : 'private');
+        
+        // Save variation
+        $variation_id = $variation->save();
+        $created_variation_ids[] = $variation_id;
+    }
+    
+    error_log("JPOS: Created " . count($created_variation_ids) . " new variations for product {$product_id}");
+}
+```
+
+**Frontend Integration** ([`assets/js/modules/products/product-editor.js`](../assets/js/modules/products/product-editor.js:1)):
+
+**Add Variation Button** ([`lines 516-611`](../assets/js/modules/products/product-editor.js:516-611)):
+```javascript
+addVariationRow() {
+    // Validate product type
+    if (this.currentEditingProduct.type !== 'variable') {
+        this.uiHelpers.showToast('Variations can only be added to variable products', 'error');
+        return;
+    }
+    
+    // Get variation-enabled attributes
+    const variationAttributes = this.currentEditingProduct.attributes.filter(
+        attr => attr.variation === true
+    );
+    
+    if (variationAttributes.length === 0) {
+        this.uiHelpers.showToast(
+            'Please add attributes and mark them "Used for variations" first',
+            'error'
+        );
+        return;
+    }
+    
+    // Build attribute selection dropdowns
+    const attributeSelects = variationAttributes.map(attr => {
+        const optionsHtml = attr.options.map(opt =>
+            `<option value="${opt}">${opt}</option>`
+        ).join('');
+        
+        return `
+            <div class="mb-2">
+                <label class="block text-sm font-medium text-slate-300 mb-1">
+                    ${attr.name}
+                </label>
+                <select class="variation-attribute-select w-full px-3 py-2
+                    bg-slate-700 border border-slate-600 rounded-lg"
+                    data-attribute="${attr.name.toLowerCase()}">
+                    <option value="">Select ${attr.name}</option>
+                    ${optionsHtml}
+                </select>
+            </div>
+        `;
+    }).join('');
+    
+    // Create variation row HTML
+    const row = document.createElement('div');
+    row.className = 'border border-slate-600 rounded-lg p-4 mb-4';
+    row.setAttribute('data-new-variation', 'true');
+    row.innerHTML = `
+        <div class="mb-4">
+            <h4 class="text-sm font-semibold text-slate-200 mb-3">
+                Attribute Selections
+            </h4>
+            ${attributeSelects}
+        </div>
+        <!-- SKU, pricing, stock, and enabled fields -->
+    `;
+    
+    // Append and setup event handlers
+    variationsContainer.appendChild(row);
+}
+```
+
+**Form Data Collection** ([`lines 846-901`](../assets/js/modules/products/product-editor.js:846-901)):
+```javascript
+// Extract new variation data
+const newVariationRows = editorContent.querySelectorAll('[data-new-variation="true"]');
+if (newVariationRows.length > 0) {
+    formData.new_variations = [];
+    
+    newVariationRows.forEach(row => {
+        // Extract attribute selections
+        const attributes = {};
+        const attrSelects = row.querySelectorAll('.variation-attribute-select');
+        let allAttributesSelected = true;
+        
+        attrSelects.forEach(select => {
+            const attrName = select.dataset.attribute;
+            const value = select.value;
+            if (!value) {
+                allAttributesSelected = false;
+            } else {
+                attributes[attrName] = value;
+            }
+        });
+        
+        // Skip if not all attributes selected
+        if (!allAttributesSelected) {
+            return;
+        }
+        
+        // Extract pricing and stock data
+        const regularPrice = row.querySelector('.variation-regular-price')?.value;
+        const salePrice = row.querySelector('.variation-sale-price')?.value;
+        const sku = row.querySelector('.variation-sku')?.value;
+        const stockQty = row.querySelector('.variation-stock')?.value;
+        const enabled = row.querySelector('.variation-enabled')?.checked ?? true;
+        
+        // Validate required fields
+        if (!regularPrice) {
+            this.uiHelpers.showToast(
+                'Regular price is required for all variations',
+                'error'
+            );
+            return;
+        }
+        
+        // Add to new variations array
+        formData.new_variations.push({
+            attributes,
+            regular_price: regularPrice,
+            sale_price: salePrice || '',
+            sku: sku || '',
+            stock_quantity: stockQty ? parseInt(stockQty) : null,
+            enabled
+        });
+    });
+}
+```
+
+**Success Response:**
+```json
+{
+    "success": true,
+    "message": "Product updated successfully with 2 new variations",
+    "data": {
+        "product_id": 123,
+        "created_variations": [456, 457]
+    }
+}
+```
+
+**Error Responses:**
+
+**Not a Variable Product (400):**
+```json
+{
+    "success": false,
+    "message": "Variations can only be added to variable products"
+}
+```
+
+**Missing Attributes (400):**
+```json
+{
+    "success": false,
+    "message": "All variation attributes must be provided"
+}
+```
+
+**Missing Required Price (400):**
+```json
+{
+    "success": false,
+    "message": "Regular price is required for all variations"
+}
+```
+
+**Workflow:**
+
+1. **Open Variable Product**: Open product editor for a variable product
+2. **Verify Attributes**: Ensure product has attributes marked "Used for variations"
+3. **Click "Add Variation"**: Button appears in Variations section
+4. **Select Attributes**: Choose values for each variation-enabled attribute (e.g., Size: Large, Color: Red)
+5. **Enter Pricing**: Provide regular price (required), optional sale price
+6. **Optional Fields**: Enter SKU, stock quantity, toggle enabled status
+7. **Save Product**: Variation is created and linked to parent product
+
+**Validation Rules:**
+
+- Product type must be 'variable'
+- All variation-enabled attributes must have selected values
+- Regular price is mandatory for each variation
+- Sale price must be less than regular price if provided
+- SKU must be unique if provided
+- Stock quantity must be non-negative integer if provided
+- Attributes must match those marked "Used for variations" on parent product
+
+**WooCommerce Integration:**
+
+- Uses official `WC_Product_Variation` class
+- Properly links variations to parent via `set_parent_id()`
+- Attributes stored in WooCommerce format
+- Status control: "publish" for enabled, "private" for disabled
+- Variations appear correctly in WooCommerce admin
+- Front-end display respects variation settings
+
+**Example Usage:**
+
+```javascript
+// User creates variations for a t-shirt product with Size and Color attributes
+// Variation 1: Size=Large, Color=Red, $29.99, 50 in stock
+// Variation 2: Size=Medium, Color=Blue, $27.99, 30 in stock
+
+const formData = {
+    action: 'update_product',
+    product_id: 123,
+    nonce: appState.nonces.productEdit,
+    new_variations: [
+        {
+            attributes: { size: 'Large', color: 'Red' },
+            regular_price: '29.99',
+            sku: 'TSHIRT-LRG-RED',
+            stock_quantity: 50,
+            enabled: true
+        },
+        {
+            attributes: { size: 'Medium', color: 'Blue' },
+            regular_price: '27.99',
+            sku: 'TSHIRT-MED-BLU',
+            stock_quantity: 30,
+            enabled: true
+        }
+    ]
+};
+
+const response = await fetch('api/product-edit-simple.php', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(formData)
+});
+
+const result = await response.json();
+if (result.success) {
+    console.log(`Created ${result.data.created_variations.length} variations`);
+}
+```
+
+**Related Files:**
+- Frontend UI: [`assets/js/modules/products/product-editor.js:516-611`](../assets/js/modules/products/product-editor.js:516-611) - Add variation button and form
+- Frontend Data: [`assets/js/modules/products/product-editor.js:846-901`](../assets/js/modules/products/product-editor.js:846-901) - Extract variation data
+- Backend API: [`api/product-edit-simple.php:386-427`](../api/product-edit-simple.php:386-427) - Create variations
+
+**Testing Checklist:**
+
+- [ ] Create variation with single attribute (Size only)
+- [ ] Create variation with multiple attributes (Size + Color)
+- [ ] Verify all attribute dropdowns populate correctly
+- [ ] Test with different attribute option counts
+- [ ] Verify variations save to WooCommerce correctly
+- [ ] Check variations display in product editor when reopened
+- [ ] Test pricing validation (sale < regular)
+- [ ] Test SKU uniqueness validation
+- [ ] Verify stock management works correctly
+- [ ] Test enabled/disabled status toggle
+- [ ] Verify variations appear on WooCommerce front-end
+- [ ] Check variations display correctly in WooCommerce admin
+
+**Version History:**
+- v1.9.149: Variation creation functionality implemented
+- v1.9.148: Product attribute creation added
+- v1.9.145: Product creation restored
+
+### Product Image Upload System (DISABLED in v1.9.145)
+
+**IMPORTANT: Product image upload functionality is disabled in the WP POS interface.**
+
+**Reason for Disabling:**
+- Persistent issues with featured and gallery image uploads (v1.8.37-v1.8.51)
+- Multiple failed fix attempts documented in agents.md version history
+- Image management via WooCommerce admin ensures consistency with WordPress architecture
 - Simplifies POS interface and reduces complexity
 
 **Alternative Method:**
 To upload product images:
-1. Open WordPress Admin dashboard
-2. Navigate to Products → All Products
-3. Click on the product you want to edit
-4. Use the WooCommerce product editor to upload images
+1. Create product in POS (text fields only)
+2. Navigate to WordPress Admin → Products → All Products
+3. Find and edit the newly created product
+4. Use WooCommerce product editor to upload images
 5. Images will automatically appear in the POS system
 
-**What Was Removed:**
-- All image upload functions from [`assets/js/main.js`](../assets/js/main.js:1) (lines 1700-2310)
-- Image upload UI from [`index.php`](../index.php:786-858)
-- File validation and upload handlers
-- Drag-and-drop functionality
-- Featured and gallery image management
+**What Was Changed in v1.9.145:**
+- Product creation functionality restored with text-based fields only
+- Image upload sections show informational message directing to WooCommerce
+- Clear user guidance: "Image upload functionality has been disabled. Please use WooCommerce to manage product images."
+- All other product fields (pricing, inventory, tax, meta data) fully functional
 
 **For Developers:**
-If you need to re-implement image uploads, refer to version 1.8.51 or earlier for the complete implementation. However, it's recommended to keep image management in WooCommerce for consistency.
+If you need to re-implement image uploads, refer to versions 1.8.37-v1.8.51 for the attempted implementations. However, it's strongly recommended to keep image management in WooCommerce admin for consistency and reliability.
 
 ### Product Editor Endpoints
 

@@ -233,31 +233,75 @@ You can still manually type barcodes if you prefer. The generate button is optio
 
 **Note**: Generated barcodes are permanent once saved. You can regenerate if needed, but the old barcode will be replaced.
 
-### Creating Products (Removed in v1.8.52)
+### Creating Products (Restored in v1.9.145)
 
-**IMPORTANT: Product creation has been removed from the WP POS interface.**
+**Product creation has been restored to the WP POS interface!**
 
-To create new products, you must use the WooCommerce admin interface:
+You can now create new products directly from the POS system with all text-based product information. For the best experience, images should still be managed through WooCommerce.
 
-1. **Access WooCommerce Admin**
-   - Log in to your WordPress admin dashboard
-   - Navigate to **Products → Add New**
+#### How to Create a New Product
+
+1. **Access Product Creation**
+   - Navigate to the **Products** page
+   - Click the **Create Product** button (green button in the top-right corner)
+   - The product editor modal will open in "create mode"
 
 2. **Fill in Product Details**
-   - Enter all product information (name, price, SKU, etc.)
-   - Upload product images (featured and gallery)
-   - Set inventory, tax, and other settings
-   - Click **Publish** to create the product
+   - **Product Name** (Required): Enter the product name
+   - **Regular Price** (Required): Enter the base price
+   - **SKU** (Optional): Enter a unique stock keeping unit
+   - **Barcode** (Optional): Enter barcode or click "Generate" for automatic barcode
+   - **Sale Price** (Optional): Enter discounted price if applicable
+   - **Product Status**: Choose from Publish, Draft, Pending, or Private
+   - **Tax Settings**: Select tax class and tax status
+   - **Inventory**: Set stock quantity and stock management options
+   - **Description**: Add product description and short description
+   - **Meta Data**: Add custom fields if needed
 
-3. **Product Appears in POS**
-   - The product will automatically appear in the WP POS system
-   - You can immediately use it for sales transactions
+3. **Save the Product**
+   - Review all entered information
+   - Click **Create Product** button at the bottom
+   - System will create the product and show success message
+   - Modal automatically switches to edit mode with the new product ID
 
-**Why This Change?**
-- Product creation is now managed through WooCommerce for consistency
-- Ensures proper integration with WordPress/WooCommerce architecture
-- Simplifies the POS interface for its primary purpose: sales
-- All product management features available in WooCommerce admin
+4. **Add Product Images** (Via WooCommerce)
+   - After creating the product, you'll see a message: "Image upload functionality has been disabled. Please use WooCommerce to manage product images."
+   - To add images:
+     - Open WordPress Admin dashboard
+     - Navigate to **Products → All Products**
+     - Find and edit your newly created product
+     - Upload featured image and gallery images using WooCommerce editor
+     - Click **Update** to save
+   - Images will automatically appear in the POS system
+
+#### Important Notes About Product Creation
+
+**What Works in POS:**
+- ✅ Create products with all text-based fields
+- ✅ Set pricing, SKU, and barcode
+- ✅ Configure inventory and stock management
+- ✅ Set tax settings and product status
+- ✅ Add descriptions and meta data
+- ✅ Generate unique barcodes automatically
+
+**What Requires WooCommerce:**
+- 📷 **Featured image upload** - Must use WooCommerce admin
+- 📷 **Gallery image upload** - Must use WooCommerce admin
+- ℹ️ Clear instructions provided in the product editor
+
+**Why Image Uploads are Disabled:**
+- Previous implementations (v1.8.37-v1.8.51) had persistent issues with image uploads
+- Multiple fix attempts were unsuccessful
+- Managing images through WooCommerce ensures consistency and reliability
+- This approach follows WordPress/WooCommerce best practices
+
+#### Tips for Efficient Product Creation
+
+1. **Batch Create Products**: Create multiple products with all text information first
+2. **Add Images Later**: Upload all images in one session via WooCommerce admin
+3. **Use Barcode Generator**: Let the system create unique barcodes automatically
+4. **Check SKU Uniqueness**: System will alert you if SKU already exists
+5. **Set Stock Management**: Enable stock tracking during creation to avoid issues later
 
 ### Product Editing
 WP POS includes a comprehensive product editor that allows you to edit all text-based fields for both simple and variable products.
@@ -269,16 +313,19 @@ WP POS includes a comprehensive product editor that allows you to edit all text-
 
 #### Managing Product Images (Use WooCommerce Admin)
 
-**IMPORTANT: Image upload functionality has been removed from the WP POS interface in v1.8.52.**
+**IMPORTANT: Image upload functionality is disabled in the WP POS interface (v1.9.145).**
 
-To manage product images, use the WooCommerce admin interface:
+Product creation is now available in POS for all text-based fields, but image management should be done through WooCommerce admin for reliability.
+
+**To manage product images:**
 
 1. **Access WordPress Admin**
    - Log in to your WordPress admin dashboard
    - Navigate to **Products → All Products**
 
 2. **Edit Product**
-   - Click on the product you want to edit
+   - Find the product you want to add images to
+   - Click to edit the product
    - Scroll to the **Product Image** section (featured image)
    - Scroll to the **Product Gallery** section (gallery images)
 
@@ -291,11 +338,13 @@ To manage product images, use the WooCommerce admin interface:
 4. **Images Appear in POS**
    - Images will automatically display in the POS system
    - No additional steps needed
+   - Product grid will show updated images immediately
 
-**Why This Change?**
+**Why Images are Managed in WooCommerce:**
 - Ensures consistency with WordPress/WooCommerce standards
+- Previous POS image upload implementations had persistent issues (v1.8.37-v1.8.51)
 - Prevents upload complications and errors
-- Simplifies POS interface for sales operations
+- Simplifies POS interface for its primary purpose: sales operations
 - All image management features available in WooCommerce admin
 
 #### Tabbed Interface
@@ -310,8 +359,305 @@ The editor features two main views:
 - **Tax Settings**: Tax class and tax status
 - **Inventory**: Stock quantity, stock management settings
 - **Meta Data**: Custom fields and additional product information (collapsible accordion)
-- **Attributes**: Product attributes with WordPress-style tag-based options management
+- **Attributes**: Product attributes with WordPress-style tag-based options management (see below)
 - **Variations**: For variable products, edit individual variation details
+
+### Creating Product Attributes (New in v1.9.148)
+
+You can now create custom product attributes directly from the POS product editor!
+
+#### How to Add Attributes
+
+1. **Open Product Editor**
+   - Navigate to Products page
+   - Click on an existing product or create a new one
+   - The product editor modal opens
+
+2. **Find Attributes Section**
+   - Scroll down to the "Attributes" section
+   - Click **"Add Attribute"** button (green button)
+   - A new attribute form appears
+
+3. **Enter Attribute Name**
+   - Type the attribute name (e.g., "Color", "Size", "Material")
+   - The system will automatically format it properly
+   - Names are converted to lowercase with underscores
+
+4. **Add Attribute Options**
+   - Click in the "Options" input field
+   - Type an option value (e.g., "Red" for Color attribute)
+   - **Press Enter or comma** to add the option
+   - The option appears as a blue tag with an × button
+   - Repeat to add more options (e.g., "Blue", "Green", "Yellow")
+
+5. **Set Attribute Properties**
+   - **Visible on product page**: Check to show this attribute on the product page
+   - **Used for variations**: Check if this attribute creates product variations
+   - Both options are useful for different purposes
+
+6. **Save the Attribute**
+   - Click **"Save Product"** at the bottom
+   - The attribute is now attached to the product
+   - You can add multiple attributes by clicking "Add Attribute" again
+
+#### Managing Attribute Options
+
+**Adding Options:**
+- Type the option name in the input field
+- Press **Enter** or type a **comma** to add it
+- The option appears as a colored tag
+- Continue adding as many options as needed
+
+**Removing Options:**
+- Click the **×** button on any blue tag
+- The option is removed from the attribute
+- You can add it back if needed
+
+**Removing Entire Attribute:**
+- Click the **trash icon** (🗑️) at the top-right of the attribute form
+- The entire attribute form is removed
+- Changes only take effect when you save the product
+
+#### Attribute Examples
+
+**Example 1: Color Attribute**
+- **Name**: Color
+- **Options**: Red, Blue, Green, Black, White
+- **Visible**: ✅ Checked (show colors on product page)
+- **Variation**: ✅ Checked (customers can choose color)
+
+**Example 2: Material Attribute**
+- **Name**: Material
+- **Options**: Cotton, Polyester, Silk, Wool
+- **Visible**: ✅ Checked (display material info)
+- **Variation**: ❌ Unchecked (informational only)
+
+**Example 3: Size Attribute**
+- **Name**: Size
+- **Options**: Small, Medium, Large, X-Large
+- **Visible**: ✅ Checked
+- **Variation**: ✅ Checked (customers select size)
+
+#### Tips for Using Attributes
+
+1. **Attribute Names**: Use clear, simple names like "Color", "Size", "Style"
+2. **Multiple Attributes**: You can add many attributes to one product
+3. **Variations**: Check "Used for variations" only for attributes that create product variations
+4. **Option Order**: Add options in the order you want them displayed
+5. **Duplicate Check**: The system prevents adding the same option twice
+6. **Case Insensitive**: "Red" and "red" are treated as the same option
+
+#### Troubleshooting Attributes
+
+**Problem**: Can't add attribute option
+- **Solution**: Make sure you pressed Enter or comma after typing
+- **Check**: Verify the option isn't already added (duplicates are prevented)
+
+**Problem**: Attribute doesn't save
+- **Solution**: Ensure you clicked "Save Product" at the bottom
+- **Check**: Verify attribute has both a name and at least one option
+
+**Problem**: Attribute name looks different than I typed
+- **Solution**: This is normal - names are formatted to lowercase with underscores
+- **Example**: "Product Color" becomes "product_color"
+
+**Problem**: Can't see attribute on product page
+- **Solution**: Check the "Visible on product page" checkbox
+- **Save**: Don't forget to save the product after changing
+
+**Problem**: Variations not working
+- **Solution**: Check the "Used for variations" checkbox
+- **Note**: You can now create variations directly in the POS editor (see below)
+
+### Creating Product Variations (New in v1.9.149)
+
+You can now create product variations directly from the POS product editor! This allows you to add new size, color, or other variations without leaving the POS system.
+
+#### What are Variations?
+
+Variations are different versions of the same product. For example:
+- **T-Shirt Product**: Has variations for Size (Small, Medium, Large) and Color (Red, Blue, Green)
+- **Coffee Product**: Has variations for Size (8oz, 12oz, 16oz) and Type (Regular, Decaf)
+- Each variation can have its own price, SKU, and stock quantity
+
+#### Prerequisites
+
+Before you can create variations, your product must:
+1. **Be a Variable Product**: Product type must be set to "variable"
+2. **Have Attributes**: Product needs attributes marked "Used for variations"
+
+**If you don't have attributes yet:**
+- Follow the "Creating Product Attributes" instructions above
+- Make sure to check "Used for variations" when creating attributes
+- You need at least one attribute with options to create variations
+
+#### How to Create Variations
+
+**Step 1: Open Product Editor**
+1. Navigate to Products page
+2. Click on a variable product (or create one)
+3. The product editor modal opens
+
+**Step 2: Verify Attributes**
+1. Scroll to the "Attributes" section
+2. Confirm you have at least one attribute with "Used for variations" checked
+3. Example: "Size" attribute with options: Small, Medium, Large
+
+**Step 3: Navigate to Variations Section**
+1. Scroll down to the "Variations" section
+2. You'll see any existing variations listed
+3. Look for the **"Add Variation"** button (green button)
+
+**Step 4: Click "Add Variation"**
+1. Click the **"Add Variation"** button
+2. A new variation form appears below existing variations
+3. The form shows dropdowns for each variation-enabled attribute
+
+**Step 5: Select Attribute Values**
+1. **Choose Options**: Select a value for each attribute dropdown
+   - Example: Size = "Large", Color = "Red"
+   - All attributes must have a selection
+2. **Combination**: Each variation must have a unique combination
+   - Can't create two variations with the same Size + Color combination
+
+**Step 6: Enter Variation Details**
+
+**Required Field:**
+- **Regular Price**: Enter the base price for this variation (e.g., 29.99)
+
+**Optional Fields:**
+- **SKU**: Enter a unique identifier (e.g., TSHIRT-LRG-RED)
+- **Sale Price**: Enter a discounted price if applicable
+- **Stock Quantity**: Enter available stock for this variation
+- **Enabled**: Check to make variation available (checked by default)
+
+**Step 7: Add More Variations (Optional)**
+1. Click "Add Variation" again to create another variation
+2. Select different attribute combinations
+3. Enter pricing and stock for each
+4. You can add as many variations as needed
+
+**Step 8: Save the Product**
+1. Review all variation details
+2. Scroll to the bottom
+3. Click **"Save Product"** button
+4. Success message appears when variations are created
+5. Variations are now available for sale in POS
+
+#### Example: Creating T-Shirt Variations
+
+**Product Setup:**
+- Product Type: Variable
+- Attributes: Size (Small, Medium, Large), Color (Red, Blue)
+- Both marked "Used for variations"
+
+**Creating Variations:**
+
+**Variation 1:**
+- Size: Large
+- Color: Red
+- Regular Price: $29.99
+- SKU: TSHIRT-LRG-RED
+- Stock: 50 units
+- Enabled: ✅ Checked
+
+**Variation 2:**
+- Size: Medium
+- Color: Blue
+- Regular Price: $27.99
+- SKU: TSHIRT-MED-BLU
+- Stock: 30 units
+- Enabled: ✅ Checked
+
+**Result**: Two variations created! Customers can now choose between:
+- Large Red T-Shirt ($29.99)
+- Medium Blue T-Shirt ($27.99)
+
+#### Managing Variations
+
+**Viewing Variations:**
+- All variations appear in the Variations section
+- Shows attribute combinations, price, SKU, and stock
+- Can edit existing variations (click to expand)
+
+**Editing Variations:**
+- Click on an existing variation to edit it
+- Change price, stock, or other details
+- Click "Save Product" to update
+
+**Removing Variations:**
+- Click the remove button on unwanted variation
+- Changes take effect when you save the product
+
+**Enabling/Disabling:**
+- Use the "Enabled" checkbox on each variation
+- Disabled variations won't appear in POS but remain in the database
+- Useful for seasonal products or temporary stock issues
+
+#### Tips for Success
+
+1. **Plan Your Attributes**: Set up all attributes before creating variations
+2. **Unique SKUs**: Use descriptive SKUs that include attribute values
+3. **Price Strategy**: Variations can have different prices based on size/options
+4. **Stock Management**: Track stock separately for each variation
+5. **Test First**: Create one variation, save, then verify it works before adding many
+
+#### Common Questions
+
+**Q: Why can't I click "Add Variation"?**
+A: Your product must be type "variable" and have at least one attribute marked "Used for variations"
+
+**Q: What if I don't select all attributes?**
+A: The variation won't be created. All variation-enabled attributes must have values selected.
+
+**Q: Can I change attribute values after creating a variation?**
+A: No, but you can delete the variation and create a new one with different values.
+
+**Q: How many variations can I create?**
+A: There's no hard limit, but consider usability. Most products have 2-20 variations.
+
+**Q: Do variations appear in WooCommerce?**
+A: Yes! Variations created in POS appear correctly in WooCommerce admin.
+
+**Q: Can I upload images for variations?**
+A: Not in POS. Use WooCommerce admin to upload variation-specific images.
+
+**Q: What happens if I don't provide a SKU?**
+A: The variation is created without a SKU. You can add one later by editing.
+
+**Q: Can variations have different stock quantities?**
+A: Yes! Each variation has independent stock management.
+
+#### Troubleshooting Variations
+
+**Problem: "Add Variation" button missing**
+- **Solution**: Check that product type is "variable"
+- **Check**: Verify you have attributes marked "Used for variations"
+
+**Problem: Can't select attribute values**
+- **Solution**: Add options to the attribute first
+- **Check**: Ensure attribute has "Used for variations" enabled
+
+**Problem: "Regular price is required" error**
+- **Solution**: Enter a price in the Regular Price field
+- **Note**: This is the only required field for variations
+
+**Problem: Variation not saving**
+- **Solution**: Ensure all attribute dropdowns have selections
+- **Check**: Verify you clicked "Save Product" at the bottom
+
+**Problem: Can't create duplicate combination**
+- **Solution**: Each variation must have unique attribute values
+- **Example**: Can't create two "Large + Red" variations
+
+**Problem: Variation doesn't show in POS**
+- **Solution**: Check the "Enabled" checkbox is checked
+- **Check**: Save the product after enabling
+- **Refresh**: Reload the products page
+
+**Problem: Stock not updating**
+- **Solution**: Enter stock quantity when creating variation
+- **Check**: Ensure the variation has stock management enabled
 
 #### Advanced Attribute Management (v1.8.3)
 - **Intelligent Search**: Type to search through available attributes with real-time suggestions
@@ -1029,6 +1375,109 @@ While there are no dedicated keyboard shortcuts for user management, you can use
 
 ## Settings and Configuration
 
+### UI Scale (New in v1.9.145)
+
+The UI Scale feature allows you to adjust the size of the entire POS interface to match your device and viewing preferences.
+
+#### Accessing UI Scale Settings
+
+1. Click the menu button (☰) in the top-left corner
+2. Select **Settings** from the menu
+3. Click the **General** tab
+4. Find the **UI Scale** slider
+
+#### How to Adjust UI Scale
+
+**Using the Slider:**
+1. Locate the UI Scale slider in General settings
+2. Drag the slider left to decrease size (50% minimum)
+3. Drag the slider right to increase size (150% maximum)
+4. The percentage updates as you move the slider
+5. Changes apply immediately as a live preview
+6. Click **Save Settings** to persist your preference
+
+**Scale Range:**
+- **Minimum**: 50% (Half size - useful for very large displays)
+- **Default**: 100% (Standard size)
+- **Maximum**: 150% (1.5x larger - useful for tablets or high-DPI displays)
+- **Increment**: 5% steps for fine-tuned control
+
+#### When to Use UI Scale
+
+**Decrease Scale (50-95%):**
+- When using large desktop monitors or TV displays
+- To see more content at once
+- For users who prefer compact layouts
+- When training multiple people around one screen
+
+**Standard Scale (100%):**
+- Default setting for most devices
+- Balanced between readability and content density
+- Recommended for standard laptop screens
+
+**Increase Scale (105-150%):**
+- For tablets and touch-based POS terminals
+- High-resolution displays (4K, Retina)
+- Users who prefer larger text and buttons
+- Accessibility needs for improved readability
+- Outdoor kiosks with bright sunlight
+
+#### Features
+
+**Live Preview:**
+- See changes immediately as you adjust the slider
+- No need to save to test different scales
+- Smooth transitions between scale levels
+
+**Persistent Settings:**
+- Scale preference saves across browser sessions
+- Loads automatically when you log in
+- Syncs with WordPress user preferences
+
+**Device Compatibility:**
+- Works on all modern browsers
+- Optimized for both desktop and touch devices
+- Scales all interface elements proportionally
+- Maintains layout integrity at all scale levels
+
+#### Tips for Best Results
+
+1. **Find Your Ideal Scale**: Start at 100% and adjust until comfortable
+2. **Consider Your Device**: Tablets often work best at 110-130%
+3. **Test Touch Targets**: At higher scales, ensure buttons aren't too large
+4. **Check Content Fit**: Make sure important information stays visible
+5. **Save Your Setting**: Don't forget to click "Save Settings"
+
+#### Troubleshooting
+
+**Problem**: Scale doesn't apply after saving
+- **Solution**: Hard refresh browser (Ctrl+F5 or Cmd+Shift+R)
+- **Check**: Verify settings were saved successfully
+- **Check**: Look for success message after clicking Save
+
+**Problem**: Interface looks distorted at certain scales
+- **Solution**: Try a different scale percentage (usually multiples of 10% work best)
+- **Check**: Ensure browser zoom is set to 100% (browser zoom conflicts with UI scale)
+
+**Problem**: Can't see all content at high scale
+- **Solution**: Reduce scale percentage or scroll to see hidden content
+- **Check**: Some elements may wrap differently at extreme scales
+
+**Problem**: Scale resets after logout
+- **Solution**: Ensure you clicked "Save Settings" before logging out
+- **Check**: Scale should persist in localStorage even without saving
+
+**Problem**: Buttons too small at 50% scale
+- **Solution**: Increase scale or use default 100%
+- **Note**: Very low scales (50-70%) are intended for large displays only
+
+#### Keyboard Shortcuts
+
+While there are no dedicated shortcuts for adjusting UI scale:
+- Use **Tab** to navigate to the slider
+- Use **Arrow Keys** (← →) to adjust scale when slider is focused
+- Use **Enter** to save settings when Save button is focused
+
 ### Receipt Settings
 Configure receipt appearance and content:
 - Company information
@@ -1250,21 +1699,67 @@ Customize the interface:
 
 ## Troubleshooting
 
-### Product Creation (Removed in v1.8.52)
+### Product Creation (Restored in v1.9.145)
 
-**Product creation has been removed from the WP POS interface.**
+Product creation is now available directly in the POS interface! Here are solutions to common issues:
 
-To create new products:
-1. Use the WooCommerce admin interface (WordPress Admin → Products → Add New)
-2. Fill in all product details
-3. Upload images through WooCommerce
-4. Publish the product
-5. It will automatically appear in POS
+#### Cannot Create Product
 
-**Need Help?**
-- Refer to WooCommerce documentation for product creation
+**Problem**: Error when trying to create new product
+
+**Common Solutions:**
+- **"Product name is required"**: Fill in the product name field (required)
+- **"Regular price is required"**: Fill in the regular price field (required)
+- **"SKU already exists"**: Change the SKU to a unique value or leave blank for auto-generation
+- **"Sale price must be less than regular price"**: Ensure sale price is lower than regular price
+- **"Invalid security token"**: Refresh the page to get a new security token
+
+#### Create Product Button Not Working
+
+**Problem**: Clicking "Create Product" button does nothing
+
+**Solutions:**
+1. Hard refresh browser (Ctrl+F5 or Cmd+Shift+R) to clear cache
+2. Check browser console for JavaScript errors
+3. Verify you have edit_products capability
+4. Try logging out and back in
+
+#### Product Created But Not Showing Images
+
+**Problem**: Product created successfully but no images
+
+**Solution**: This is expected behavior! Image uploads are disabled in POS.
+
+**To add images:**
+1. Go to WordPress Admin → Products → All Products
+2. Find your newly created product
+3. Edit the product
+4. Upload images using WooCommerce image upload
+5. Images will appear in POS automatically
+
+#### Modal Doesn't Switch to Edit Mode
+
+**Problem**: After creating product, modal stays in create mode
+
+**Solutions:**
+1. Check browser console for errors
+2. Verify API returned product ID in response
+3. Refresh page and edit product manually if needed
+4. Report issue if persists
+
+#### Required Fields Not Highlighted
+
+**Problem**: Can't tell which fields are required
+
+**Solution**: Only two fields are required:
+- Product Name (marked with *)
+- Regular Price (marked with *)
+- All other fields are optional
+
+**Need More Help?**
+- Check DEVELOPER_GUIDE.md for API documentation
 - Contact your site administrator
-- Use WordPress support resources
+- Review browser console for detailed error messages
 
 ### Product Editor Issues
 
@@ -1301,20 +1796,32 @@ To create new products:
 #### JSON View Not Highlighting
 - **Problem**: JSON preview shows plain text without colors
 - **Solution**: Refresh the page to reload the custom syntax highlighting
-### Image Upload (Removed in v1.8.52)
+### Image Upload (Disabled in v1.9.145)
 
-**Image upload functionality has been removed from the WP POS interface.**
+**Image upload functionality is disabled in the WP POS interface.**
 
-To upload or manage product images:
-1. Use the WooCommerce admin interface (WordPress Admin → Products)
-2. Edit the product you want to update
-3. Use the WordPress media library to upload images
-4. Images will automatically display in POS
+Product creation is available in POS, but image management should be done through WooCommerce for reliability.
 
-**Why This Change?**
-- Simplifies POS interface for sales operations
-- Ensures consistency with WordPress/WooCommerce
+**To upload or manage product images:**
+1. Open WordPress Admin → Products → All Products
+2. Find and edit the product you want to update
+3. Use the WordPress media library to upload featured and gallery images
+4. Click Update to save
+5. Images will automatically display in POS
+
+**Why Images are Managed in WooCommerce:**
+- Previous POS implementations had persistent upload issues (v1.8.37-v1.8.51)
+- Ensures consistency with WordPress/WooCommerce standards
 - Prevents upload errors and complications
+- Simplifies POS interface for its primary purpose: sales operations
+
+**What You Can Do in POS:**
+- ✅ Create products with all text information
+- ✅ Edit all product fields except images
+- ✅ Generate barcodes automatically
+- ✅ Manage inventory and pricing
+- ❌ Upload featured images (use WooCommerce)
+- ❌ Upload gallery images (use WooCommerce)
 
 ### General Issues
 
@@ -1387,9 +1894,10 @@ Each held cart shows:
 
 ## Version Information
 
-- Current Version: 1.9.119
-- Last Updated: October 8, 2025
-- Latest Update: WP POS v1.9.119 - Added comprehensive User Management system - administrators can now create, edit, and delete WordPress users directly from the POS interface with role assignment, search/filter capabilities, and safety guards against accidental administrator deletion
+- Current Version: 1.9.145
+- Last Updated: October 9, 2025
+- Latest Update: WP POS v1.9.145 - Restored product creation functionality - users can now create new products directly from POS with all text-based fields (pricing, inventory, tax, SKU, barcode, meta data). Image uploads remain disabled and should be managed through WooCommerce admin for reliability. Product editor supports both create and edit modes with automatic mode switching after creation.
+- Previous Update: WP POS v1.9.119 - Added comprehensive User Management system - administrators can now create, edit, and delete WordPress users directly from the POS interface with role assignment, search/filter capabilities, and safety guards against accidental administrator deletion
 - Previous Updates:
   - v1.9.27 - Fixed customer search functionality - search now properly displays results when typing customer names or emails in the "Attach Customer" dialog, with full API integration and error handling
   - v1.8.67 - Enhanced virtual keyboard system with comprehensive settings and auto-show functionality
@@ -1401,7 +1909,8 @@ Each held cart shows:
   - v1.8.55 - Fixed held cart customer functionality - customer data now properly saved, displayed in held carts table, and restored when retrieving cart
   - v1.8.54 - Implemented customer attachment functionality for POS orders with search, on-screen keyboard, and held cart persistence
   - v1.8.53 - Improved POS cart UI layout by moving Clear Cart button to directly below cart items for better visual hierarchy and easier access
-  - v1.8.52 - Removed product creation and image upload functionality - these features must now be managed through WooCommerce admin interface
+  - v1.9.145 - Restored product creation with improved implementation - text-based fields fully functional, images managed via WooCommerce admin
+  - v1.8.52 - Product creation temporarily removed due to image upload issues (restored in v1.9.145)
   - v1.8.51 - Fixed product image upload file picker (functionality now removed in v1.8.52)
   - v1.8.17 - Removed reporting functionality completely and corrected application branding
   - v1.8.3 - Advanced Attribute Management System

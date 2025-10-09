@@ -20,6 +20,7 @@ function get_jpos_default_settings() {
         'footer_message_2' => 'No Exchanges After 7 Days Or Without Original Packaging.',
         'virtual_keyboard_enabled' => true,
         'virtual_keyboard_auto_show' => false,
+        'ui_scale' => 100,
     ];
 }
 
@@ -68,6 +69,15 @@ if ($request_method === 'GET') {
     }
     if (isset($data['virtual_keyboard_auto_show'])) {
         $current_settings['virtual_keyboard_auto_show'] = (bool)$data['virtual_keyboard_auto_show'];
+    }
+    
+    // Handle UI scale setting (integer value between 50 and 150)
+    if (isset($data['ui_scale'])) {
+        $scale = (int)$data['ui_scale'];
+        // Validate range
+        if ($scale >= 50 && $scale <= 150) {
+            $current_settings['ui_scale'] = $scale;
+        }
     }
     
     // Check if anything actually changed by comparing old and new settings

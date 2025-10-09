@@ -128,12 +128,6 @@ class ProductEditorManager {
     }
 
     async openProductEditor(productId = null) {
-        // Only allow editing existing products
-        if (!productId) {
-            this.ui.showToast('Product ID is required. Product creation is disabled.');
-            return;
-        }
-
         this.currentEditingProduct = null;
         const modal = document.getElementById('product-editor-modal');
         modal.classList.remove('hidden');
@@ -147,32 +141,46 @@ class ProductEditorManager {
         // Start with form view by default
         this.switchToFormView();
 
-        // EDIT MODE ONLY
-        titleEl.textContent = 'Loading Product...';
-        saveBtn.textContent = 'Save Changes';
-        saveBtn.setAttribute('data-mode', 'edit');
-
-        try {
-            // Get product details
-            const response = await fetch(`api/product-edit-simple.php?action=get_product_details&id=${productId}`);
-            if (!response.ok) throw new Error(`Server responded with ${response.status}`);
-            const result = await response.json();
-            if (!result.success) throw new Error(result.data.message);
-
-            this.currentEditingProduct = result.data;
-            titleEl.textContent = `Edit: ${result.data.name}`;
-
-            // Populate form
-            this.populateProductEditorForm(result.data);
-
-            // Load tax classes
+        if (!productId) {
+            // CREATE MODE
+            titleEl.textContent = 'Create New Product';
+            saveBtn.textContent = 'Create Product';
+            saveBtn.setAttribute('data-mode', 'create');
+            
+            // Load tax classes for new product
             await this.loadTaxClasses();
+            
+            // Show info message about images
+            document.getElementById('product-editor-status').textContent = 'Note: Images must be added through WooCommerce after creating the product';
+            document.getElementById('product-editor-status').className = 'text-sm text-right h-5 mt-2 text-blue-400';
+        } else {
+            // EDIT MODE
+            titleEl.textContent = 'Loading Product...';
+            saveBtn.textContent = 'Save Changes';
+            saveBtn.setAttribute('data-mode', 'edit');
 
-        } catch (error) {
-            console.error("Error loading product details:", error);
-            titleEl.textContent = 'Error Loading Product';
-            document.getElementById('product-editor-status').textContent = `Error: ${error.message}`;
-            document.getElementById('product-editor-status').className = 'text-sm text-right h-5 mt-2 text-red-400';
+            try {
+                // Get product details
+                const response = await fetch(`api/product-edit-simple.php?action=get_product_details&id=${productId}`);
+                if (!response.ok) throw new Error(`Server responded with ${response.status}`);
+                const result = await response.json();
+                if (!result.success) throw new Error(result.data.message);
+
+                this.currentEditingProduct = result.data;
+                titleEl.textContent = `Edit: ${result.data.name}`;
+
+                // Populate form
+                this.populateProductEditorForm(result.data);
+
+                // Load tax classes
+                await this.loadTaxClasses();
+
+            } catch (error) {
+                console.error("Error loading product details:", error);
+                titleEl.textContent = 'Error Loading Product';
+                document.getElementById('product-editor-status').textContent = `Error: ${error.message}`;
+                document.getElementById('product-editor-status').className = 'text-sm text-right h-5 mt-2 text-red-400';
+            }
         }
     }
 
@@ -400,32 +408,485 @@ class ProductEditorManager {
 
     async addAttributeRow() {
         const container = document.getElementById('product-attributes');
+        const existingAttributes = container.querySelectorAll('.bg-slate-600').length;
+        const newIndex = existingAttributes;
+        
+        // Fetch available attributes from API
+        let availableAttributes = [];
+        try {
+            const response = await fetch('api/product-edit-simple.php?action=get_available_attributes');
+            if (response.ok) {
+                const result = await response.json();
+                if (result.success && result.attributes) {
+                    availableAttributes = result.attributes;
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching available attributes:', error);
+        }
+        
         const attributeRow = document.createElement('div');
         attributeRow.className = 'bg-slate-600 p-3 rounded border border-slate-500';
+        attributeRow.setAttribute('data-new-attribute', 'true');
         attributeRow.innerHTML = `
-            <div class="text-center text-slate-400 py-4">
-                Adding new attributes is not yet supported. Please use WooCommerce admin.
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
+                <div>
+                    <label class="block text-xs text-slate-300 mb-1">Attribute Name *</label>
+                    <div class="relative">
+                        <input type="text"
+                               class="w-full px-2 py-1 bg-slate-700 text-slate-200 rounded border border-slate-500 text-sm focus:border-blue-500 focus:outline-none"
+                               placeholder="Type to search or create new..."
+                               data-attribute-name-input="true"
+                               data-attribute-index="${newIndex}"
+                               data-available-attributes='${JSON.stringify(availableAttributes)}'
+                               autocomplete="off">
+                        <div class="absolute top-full left-0 right-0 bg-slate-700 border border-slate-500 rounded mt-1 max-h-48 overflow-y-auto hidden z-20"
+                             data-attribute-name-suggestions="${newIndex}">
+                            <!-- Suggestions will be populated here -->
+                        </div>
+                    </div>
+                    <div class="text-xs text-slate-500 mt-1">Type to search existing or create new attribute</div>
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-300 mb-1">Type</label>
+                    <input type="text" value="Custom" class="w-full px-2 py-1 bg-slate-700 text-slate-200 rounded border border-slate-500 text-sm" readonly data-attribute-type="custom">
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
+                <div>
+                    <label class="block text-xs text-slate-300 mb-1">Options</label>
+                    <div class="bg-slate-600 border border-slate-500 rounded p-2 min-h-[40px]">
+                        <div id="new-attribute-options-${newIndex}" class="flex flex-wrap gap-1 mb-2" data-attribute-index="${newIndex}">
+                            <!-- Options will be added here -->
+                        </div>
+                        <div class="relative">
+                            <input type="text"
+                                   id="new-attribute-option-input-${newIndex}"
+                                   placeholder="Type option and press Enter..."
+                                   class="w-full px-2 py-1 bg-slate-700 text-slate-200 rounded border border-slate-500 text-sm focus:border-blue-500 focus:outline-none"
+                                   data-new-attribute-input="${newIndex}">
+                            <div class="text-xs text-slate-500 mt-1">Press Enter or comma to add each option</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex flex-col justify-center space-y-2">
+                    <label class="flex items-center">
+                        <input type="checkbox" checked class="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500" data-visible-checkbox="true">
+                        <span class="ml-2 text-xs text-slate-300">Visible on product page</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" class="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500" data-variation-checkbox="true">
+                        <span class="ml-2 text-xs text-slate-300">Used for variations</span>
+                    </label>
+                </div>
             </div>
             <div class="flex justify-end mt-2">
-                <button type="button" onclick="this.parentElement.parentElement.remove()" class="px-2 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-500">Remove</button>
+                <button type="button" onclick="this.closest('.bg-slate-600').remove()" class="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-500">
+                    <i class="fas fa-trash mr-1"></i>Remove Attribute
+                </button>
             </div>
         `;
         container.appendChild(attributeRow);
+        
+        // Setup event listener for new attribute option input
+        const optionInput = attributeRow.querySelector(`#new-attribute-option-input-${newIndex}`);
+        if (optionInput) {
+            optionInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' || e.key === ',') {
+                    e.preventDefault();
+                    this.addNewAttributeOption(newIndex, optionInput.value.trim());
+                    optionInput.value = '';
+                }
+            });
+        }
+        
+        // Setup searchable attribute name input
+        this.setupAttributeNameSearchHandler(attributeRow, newIndex, availableAttributes);
+        
+        // Show success message
+        this.ui.showToast('New attribute added. Type to search attributes or create new.');
+    }
+    
+    setupAttributeNameSearchHandler(attributeRow, attributeIndex, availableAttributes) {
+        const input = attributeRow.querySelector(`[data-attribute-index="${attributeIndex}"]`);
+        const suggestionsDiv = attributeRow.querySelector(`[data-attribute-name-suggestions="${attributeIndex}"]`);
+        const typeInput = attributeRow.querySelector('[data-attribute-type]');
+        
+        if (!input || !suggestionsDiv) return;
+        
+        // Filter and display attribute suggestions
+        const filterAttributes = (query) => {
+            const filtered = query.trim() === ''
+                ? availableAttributes
+                : availableAttributes.filter(attr => 
+                    attr.label.toLowerCase().includes(query.toLowerCase()) ||
+                    attr.name.toLowerCase().includes(query.toLowerCase())
+                );
+            
+            if (filtered.length > 0) {
+                suggestionsDiv.innerHTML = filtered.map(attr => `
+                    <div class="px-3 py-2 text-sm text-slate-200 hover:bg-slate-600 cursor-pointer"
+                         data-attr-name="${attr.name}"
+                         data-attr-label="${attr.label}"
+                         data-attr-type="${attr.type}">
+                        <div class="font-medium">${attr.label}</div>
+                        <div class="text-xs text-slate-400">${attr.type === 'taxonomy' ? 'Global attribute' : 'Custom attribute'}</div>
+                    </div>
+                `).join('');
+                suggestionsDiv.classList.remove('hidden');
+                
+                // Re-attach click handlers to new elements
+                suggestionsDiv.querySelectorAll('[data-attr-name]').forEach(attrDiv => {
+                    attrDiv.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const name = attrDiv.getAttribute('data-attr-name');
+                        const label = attrDiv.getAttribute('data-attr-label');
+                        const type = attrDiv.getAttribute('data-attr-type');
+                        
+                        // Set the selected value
+                        input.value = label;
+                        input.setAttribute('data-selected-name', name);
+                        input.setAttribute('data-selected-label', label);
+                        
+                        // Update type display
+                        if (typeInput) {
+                            typeInput.value = type === 'taxonomy' ? 'Global' : 'Custom';
+                        }
+                        
+                        // Hide dropdown
+                        suggestionsDiv.classList.add('hidden');
+                        
+                        // Visual feedback
+                        input.classList.add('border-green-500');
+                        setTimeout(() => input.classList.remove('border-green-500'), 1000);
+                    });
+                });
+            } else if (query.trim()) {
+                // Show "Create new" option
+                suggestionsDiv.innerHTML = `
+                    <div class="px-3 py-2 text-sm text-blue-400 hover:bg-slate-600 cursor-pointer"
+                         data-create-new="${query.trim()}">
+                        <div class="font-medium">+ Create "${query.trim()}" as new attribute</div>
+                        <div class="text-xs text-slate-400">Will be created as custom attribute</div>
+                    </div>
+                `;
+                suggestionsDiv.classList.remove('hidden');
+                
+                // Attach click handler for creating new
+                const createDiv = suggestionsDiv.querySelector('[data-create-new]');
+                if (createDiv) {
+                    createDiv.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const newName = createDiv.getAttribute('data-create-new');
+                        
+                        input.value = newName;
+                        input.setAttribute('data-selected-name', newName.toLowerCase().replace(/\s+/g, '_'));
+                        input.setAttribute('data-selected-label', newName);
+                        
+                        // Update type display
+                        if (typeInput) {
+                            typeInput.value = 'Custom';
+                        }
+                        
+                        suggestionsDiv.classList.add('hidden');
+                        
+                        // Visual feedback
+                        input.classList.add('border-green-500');
+                        setTimeout(() => input.classList.remove('border-green-500'), 1000);
+                    });
+                }
+            } else {
+                suggestionsDiv.classList.add('hidden');
+            }
+        };
+        
+        // Show dropdown and filter on focus
+        input.addEventListener('focus', (e) => {
+            e.stopPropagation();
+            // Hide all other dropdowns first
+            document.querySelectorAll('[data-attribute-name-suggestions]').forEach(div => {
+                if (div !== suggestionsDiv) div.classList.add('hidden');
+            });
+            filterAttributes(input.value);
+        });
+        
+        // Filter as user types
+        input.addEventListener('input', (e) => {
+            filterAttributes(e.target.value);
+        });
+        
+        // Show dropdown on click
+        input.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (suggestionsDiv.classList.contains('hidden')) {
+                filterAttributes(input.value);
+            }
+        });
+        
+        // Handle keyboard navigation
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                suggestionsDiv.classList.add('hidden');
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                const firstOption = suggestionsDiv.querySelector('[data-attr-name], [data-create-new]');
+                if (firstOption) {
+                    firstOption.click();
+                }
+            }
+        });
+        
+        // Click outside to close dropdown
+        const closeHandler = (e) => {
+            if (!e.target.closest(`[data-attribute-index="${attributeIndex}"]`) &&
+                !e.target.closest(`[data-attribute-name-suggestions="${attributeIndex}"]`)) {
+                suggestionsDiv.classList.add('hidden');
+            }
+        };
+        document.addEventListener('click', closeHandler);
+    }
+    
+    addNewAttributeOption(attributeIndex, optionValue) {
+        if (!optionValue) return;
+        
+        const optionsContainer = document.getElementById(`new-attribute-options-${attributeIndex}`);
+        if (!optionsContainer) return;
+        
+        // Check if option already exists
+        const existingOptions = Array.from(optionsContainer.querySelectorAll('span[data-option]'));
+        const optionExists = existingOptions.some(span =>
+            span.getAttribute('data-option').toLowerCase() === optionValue.toLowerCase()
+        );
+        
+        if (optionExists) {
+            this.ui.showToast('Option already exists');
+            return;
+        }
+        
+        // Create option tag
+        const optionTag = document.createElement('span');
+        optionTag.className = 'inline-flex items-center px-2 py-1 bg-blue-600 text-white text-xs rounded';
+        optionTag.setAttribute('data-option', optionValue);
+        optionTag.innerHTML = `
+            ${optionValue}
+            <button type="button" class="ml-1 text-blue-200 hover:text-white" onclick="this.parentElement.remove()">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        `;
+        optionsContainer.appendChild(optionTag);
     }
 
     addVariationRow() {
+        if (!this.currentEditingProduct || this.currentEditingProduct.type !== 'variable') {
+            this.ui.showToast('Product must be a variable product to add variations');
+            return;
+        }
+        
         const container = document.getElementById('product-variations');
+        const existingVariations = container.querySelectorAll('[data-new-variation="true"]').length;
+        const newIndex = existingVariations;
+        
+        // Get attributes that are marked for variations
+        const variationAttributes = [];
+        this.currentEditingProduct.attributes.forEach(attr => {
+            if (attr.variation) {
+                variationAttributes.push({
+                    name: attr.name,
+                    friendly_name: attr.friendly_name || attr.name,
+                    options: attr.friendly_options || attr.options || []
+                });
+            }
+        });
+        
+        if (variationAttributes.length === 0) {
+            this.ui.showToast('Please add attributes with "Used for variations" enabled first');
+            return;
+        }
+        
+        // Build attribute selection HTML with searchable dropdowns
+        const attributeSelectsHtml = variationAttributes.map((attr, attrIndex) => `
+            <div>
+                <label class="block text-xs text-slate-300 mb-1">${attr.friendly_name}</label>
+                <div class="relative">
+                    <input type="text"
+                           class="w-full px-2 py-1 bg-slate-700 text-slate-200 rounded border border-slate-500 text-sm focus:border-blue-500 focus:outline-none"
+                           placeholder="Type to search ${attr.friendly_name}..."
+                           data-variation-attribute="${attr.name}"
+                           data-variation-attr-index="${attrIndex}"
+                           data-selected-value=""
+                           data-all-options='${JSON.stringify(attr.options)}'
+                           autocomplete="off">
+                    <div class="absolute top-full left-0 right-0 bg-slate-700 border border-slate-500 rounded mt-1 max-h-48 overflow-y-auto hidden z-20"
+                         data-variation-suggestions="${attrIndex}">
+                        ${attr.options.map(opt => `
+                            <div class="px-3 py-2 text-sm text-slate-200 hover:bg-slate-600 cursor-pointer"
+                                 data-option-value="${opt}">
+                                ${opt}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        `).join('');
+        
         const variationRow = document.createElement('div');
         variationRow.className = 'bg-slate-600 p-3 rounded border border-slate-500';
+        variationRow.setAttribute('data-new-variation', 'true');
+        variationRow.setAttribute('data-variation-index', newIndex);
         variationRow.innerHTML = `
-            <div class="text-center text-slate-400 py-4">
-                Adding new variations is not yet supported. Please use WooCommerce admin.
+            <div class="flex justify-between items-start mb-3">
+                <h4 class="font-semibold text-slate-200 text-sm">New Variation #${newIndex + 1}</h4>
+                <button type="button" onclick="this.closest('[data-new-variation]').remove()"
+                        class="px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-500">
+                    <i class="fas fa-trash"></i> Remove
+                </button>
             </div>
-            <div class="flex justify-end mt-2">
-                <button type="button" onclick="this.parentElement.parentElement.remove()" class="px-2 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-500">Remove</button>
+            
+            <div class="grid grid-cols-1 md:grid-cols-${Math.min(3, variationAttributes.length)} gap-3 mb-3">
+                ${attributeSelectsHtml}
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <div>
+                    <label class="block text-xs text-slate-300 mb-1">SKU</label>
+                    <input type="text" placeholder="Optional"
+                           class="w-full px-2 py-1 bg-slate-700 text-slate-200 rounded border border-slate-500 text-sm"
+                           data-variation-field="sku">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-300 mb-1">Regular Price *</label>
+                    <input type="number" step="0.01" placeholder="0.00"
+                           class="w-full px-2 py-1 bg-slate-700 text-slate-200 rounded border border-slate-500 text-sm"
+                           data-variation-field="regular_price" required>
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-300 mb-1">Sale Price</label>
+                    <input type="number" step="0.01" placeholder="Optional"
+                           class="w-full px-2 py-1 bg-slate-700 text-slate-200 rounded border border-slate-500 text-sm"
+                           data-variation-field="sale_price">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-300 mb-1">Stock Quantity</label>
+                    <input type="number" placeholder="0"
+                           class="w-full px-2 py-1 bg-slate-700 text-slate-200 rounded border border-slate-500 text-sm"
+                           data-variation-field="stock_quantity">
+                </div>
+            </div>
+            
+            <div class="mt-2">
+                <label class="flex items-center">
+                    <input type="checkbox" checked
+                           class="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500"
+                           data-variation-field="enabled">
+                    <span class="ml-2 text-xs text-slate-300">Enabled (published)</span>
+                </label>
             </div>
         `;
+        
         container.appendChild(variationRow);
+        
+        // Setup searchable dropdown event handlers
+        this.setupVariationAttributeHandlers(variationRow, variationAttributes);
+        
+        this.ui.showToast('New variation added. Select attributes and set pricing.');
+    }
+    
+    setupVariationAttributeHandlers(variationRow, variationAttributes) {
+        // Handle input typing and filtering
+        variationRow.querySelectorAll('input[data-variation-attribute]').forEach((input, index) => {
+            const suggestionsDiv = variationRow.querySelector(`[data-variation-suggestions="${index}"]`);
+            if (!suggestionsDiv) return;
+            
+            const allOptions = JSON.parse(input.getAttribute('data-all-options') || '[]');
+            
+            // Filter and display options based on input
+            const filterOptions = (query) => {
+                const filtered = query.trim() === ''
+                    ? allOptions
+                    : allOptions.filter(opt => opt.toLowerCase().includes(query.toLowerCase()));
+                
+                if (filtered.length > 0) {
+                    suggestionsDiv.innerHTML = filtered.map(opt => `
+                        <div class="px-3 py-2 text-sm text-slate-200 hover:bg-slate-600 cursor-pointer"
+                             data-option-value="${opt}">
+                            ${opt}
+                        </div>
+                    `).join('');
+                    suggestionsDiv.classList.remove('hidden');
+                    
+                    // Re-attach click handlers to new elements
+                    suggestionsDiv.querySelectorAll('[data-option-value]').forEach(optionDiv => {
+                        optionDiv.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            const value = optionDiv.getAttribute('data-option-value');
+                            
+                            // Set the selected value
+                            input.value = value;
+                            input.setAttribute('data-selected-value', value);
+                            
+                            // Hide dropdown
+                            suggestionsDiv.classList.add('hidden');
+                            
+                            // Visual feedback
+                            input.classList.add('border-green-500');
+                            setTimeout(() => input.classList.remove('border-green-500'), 1000);
+                        });
+                    });
+                } else {
+                    suggestionsDiv.innerHTML = '<div class="px-3 py-2 text-sm text-slate-400">No matches found</div>';
+                    suggestionsDiv.classList.remove('hidden');
+                }
+            };
+            
+            // Show dropdown and filter on focus
+            input.addEventListener('focus', (e) => {
+                e.stopPropagation();
+                // Hide all other dropdowns first
+                document.querySelectorAll('[data-variation-suggestions]').forEach(div => {
+                    if (div !== suggestionsDiv) div.classList.add('hidden');
+                });
+                filterOptions(input.value);
+            });
+            
+            // Filter as user types
+            input.addEventListener('input', (e) => {
+                filterOptions(e.target.value);
+            });
+            
+            // Show dropdown on click
+            input.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (suggestionsDiv.classList.contains('hidden')) {
+                    filterOptions(input.value);
+                }
+            });
+            
+            // Handle keyboard navigation
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    suggestionsDiv.classList.add('hidden');
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const firstOption = suggestionsDiv.querySelector('[data-option-value]');
+                    if (firstOption) {
+                        firstOption.click();
+                    }
+                }
+            });
+        });
+        
+        // Click outside to close all dropdowns
+        const closeHandler = (e) => {
+            if (!e.target.closest('[data-variation-attribute]') &&
+                !e.target.closest('[data-variation-suggestions]')) {
+                variationRow.querySelectorAll('[data-variation-suggestions]').forEach(div => {
+                    div.classList.add('hidden');
+                });
+            }
+        };
+        document.addEventListener('click', closeHandler);
     }
 
     addAttributeOption(attributeIndex, option) {
@@ -632,10 +1093,80 @@ class ProductEditorManager {
             }
         });
 
-        // Get variations data if it's a variable product
+        // Collect new attributes
+        const newAttributes = [];
+        document.querySelectorAll('#product-attributes [data-new-attribute="true"]').forEach(attrRow => {
+            const nameInput = attrRow.querySelector('[data-attribute-name-input="true"]');
+            const visibleCheckbox = attrRow.querySelector('[data-visible-checkbox="true"]');
+            const variationCheckbox = attrRow.querySelector('[data-variation-checkbox="true"]');
+            
+            if (!nameInput || !nameInput.value.trim()) return;
+            
+            // Get options from the options container
+            const optionsContainer = attrRow.querySelector('[id^="new-attribute-options-"]');
+            const options = [];
+            if (optionsContainer) {
+                optionsContainer.querySelectorAll('span[data-option]').forEach(span => {
+                    const option = span.getAttribute('data-option');
+                    if (option) options.push(option);
+                });
+            }
+            
+            if (options.length > 0) {
+                newAttributes.push({
+                    name: nameInput.value.trim(),
+                    options: options,
+                    visible: visibleCheckbox ? visibleCheckbox.checked : true,
+                    variation: variationCheckbox ? variationCheckbox.checked : false
+                });
+            }
+        });
+
+        // Collect new variations for variable products
+        const newVariations = [];
+        if (this.currentEditingProduct?.type === 'variable') {
+            document.querySelectorAll('#product-variations [data-new-variation="true"]').forEach(variationRow => {
+                // Collect attribute selections from searchable inputs
+                const attributes = {};
+                variationRow.querySelectorAll('input[data-variation-attribute]').forEach(input => {
+                    const attrName = input.getAttribute('data-variation-attribute');
+                    const attrValue = input.getAttribute('data-selected-value') || input.value;
+                    if (attrValue) {
+                        attributes[attrName] = attrValue;
+                    }
+                });
+                
+                // Only include variation if all required attributes are selected
+                const requiredAttributesCount = variationRow.querySelectorAll('input[data-variation-attribute]').length;
+                const selectedAttributesCount = Object.keys(attributes).length;
+                
+                if (selectedAttributesCount !== requiredAttributesCount) {
+                    return; // Skip incomplete variations
+                }
+                
+                // Get pricing and stock data
+                const regularPrice = variationRow.querySelector('[data-variation-field="regular_price"]').value;
+                if (!regularPrice || parseFloat(regularPrice) <= 0) {
+                    return; // Skip variations without valid pricing
+                }
+                
+                const variationData = {
+                    attributes: attributes,
+                    sku: variationRow.querySelector('[data-variation-field="sku"]').value || '',
+                    regular_price: regularPrice,
+                    sale_price: variationRow.querySelector('[data-variation-field="sale_price"]').value || '',
+                    stock_quantity: variationRow.querySelector('[data-variation-field="stock_quantity"]').value || '',
+                    enabled: variationRow.querySelector('[data-variation-field="enabled"]').checked
+                };
+                
+                newVariations.push(variationData);
+            });
+        }
+
+        // Get existing variations data if it's a variable product (for editing)
         const variations = [];
         if (this.currentEditingProduct?.type === 'variable') {
-            document.querySelectorAll('#variations-list > div[data-variation-id]').forEach(variationDiv => {
+            document.querySelectorAll('#product-variations > div[data-variation-id]').forEach(variationDiv => {
                 const variationId = variationDiv.getAttribute('data-variation-id');
                 const variationData = {
                     id: parseInt(variationId),
@@ -663,6 +1194,8 @@ class ProductEditorManager {
             stock_quantity: document.getElementById('product-stock-quantity').value,
             manage_stock: document.getElementById('product-manage-stock').checked,
             meta_data: metaData,
+            new_attributes: newAttributes,
+            new_variations: newVariations,
             variations: variations
         };
     }
@@ -683,16 +1216,15 @@ class ProductEditorManager {
             const mode = saveBtn.getAttribute('data-mode');
 
             if (mode === 'create') {
-                // CREATE MODE - create new product
+                // CREATE MODE - create new product using dedicated API
                 const payload = {
-                    action: 'create_product',
                     ...formData
                 };
 
                 // Remove id field for creation
                 delete payload.id;
 
-                const response = await fetch('api/product-edit-simple.php', {
+                const response = await fetch('api/product-create.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -700,23 +1232,35 @@ class ProductEditorManager {
 
                 if (!response.ok) throw new Error(`Server responded with ${response.status}`);
                 const result = await response.json();
-                if (!result.success) throw new Error(result.data?.message || result.message);
+                
+                if (!result.success) {
+                    throw new Error(result.error || 'Failed to create product');
+                }
 
                 // SUCCESS - Product created
-                const newProductId = result.data?.product_id || result.product_id;
+                const newProductId = result.product_id;
 
-                statusEl.textContent = 'Product created successfully!';
+                statusEl.textContent = 'Product created successfully! You can now add images in WooCommerce.';
                 statusEl.className = 'text-sm text-right h-5 mt-2 text-green-400';
 
                 // Update to edit mode with new product
                 this.currentEditingProduct = {
                     id: newProductId,
-                    ...formData
+                    ...formData,
+                    ...result.data
                 };
 
                 titleEl.textContent = `Edit: ${formData.name}`;
                 saveBtn.textContent = 'Save Changes';
                 saveBtn.setAttribute('data-mode', 'edit');
+                
+                // Show success toast
+                this.ui.showToast(`Product "${formData.name}" created successfully!`);
+                
+                // Refresh products list to show new product
+                if (window.productsManager && typeof window.productsManager.fetchProducts === 'function') {
+                    await window.productsManager.fetchProducts();
+                }
 
             } else {
                 // EDIT MODE - update existing product
