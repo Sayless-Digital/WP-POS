@@ -1,6 +1,6 @@
-// WP POS v1.9.135 - Fixed Refund Details Modal
+// WP POS v1.9.142 - Fixed Print Reports to Open New Window
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('WP POS v1.9.133 loaded - Added refunds & exchanges reports page');
+    console.log('WP POS v1.9.142 loaded - Print reports open in new window');
     
     // Initialize State Manager (already global from state.js)
     const state = window.stateManager;
@@ -505,7 +505,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         const printReportPrintBtn = document.getElementById('print-report-print-btn');
         if (printReportPrintBtn) {
-            printReportPrintBtn.addEventListener('click', () => window.print());
+            printReportPrintBtn.addEventListener('click', () => {
+                const modalTitle = document.querySelector('#print-report-modal h2').textContent;
+                if (modalTitle.includes('Refunds')) {
+                    refundReportsManager.printReport();
+                } else {
+                    reportsManager.printReport();
+                }
+            });
         }
         
         const printReportCloseBtn = document.getElementById('print-report-close-btn');
@@ -544,10 +551,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
         
-        const exportRefundsCsvBtn = document.getElementById('export-refunds-csv-btn');
-        if (exportRefundsCsvBtn) {
-            exportRefundsCsvBtn.addEventListener('click', () => {
-                refundReportsManager.exportToCSV();
+        const printRefundsBtn = document.getElementById('print-refunds-btn');
+        if (printRefundsBtn) {
+            printRefundsBtn.addEventListener('click', () => {
+                refundReportsManager.generatePrintReport();
+                document.getElementById('print-report-modal').classList.remove('hidden');
             });
         }
         

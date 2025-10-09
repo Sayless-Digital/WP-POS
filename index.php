@@ -17,7 +17,7 @@ require_once __DIR__ . '/../wp-load.php';
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- Custom JSON syntax highlighting -->
     
-    <!-- WP POS v1.9.137 - Made Refund Details Modal Scrollable -->
+    <!-- WP POS v1.9.143 - Removed Spinner Loaders from User Page -->
     
     <!-- Core Modules - Load First -->
     <script src="assets/js/modules/state.js?v=1.9.72&t=<?php echo time(); ?>"></script>
@@ -43,16 +43,16 @@ require_once __DIR__ . '/../wp-load.php';
     
     <!-- Financial Modules -->
     <script src="assets/js/modules/financial/drawer.js?v=1.9.72&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/financial/refund-reports.js?v=1.9.136&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/financial/reports.js?v=1.9.72&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/financial/refund-reports.js?v=1.9.142&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/financial/reports.js?v=1.9.142&t=<?php echo time(); ?>"></script>
     
     <!-- Admin Modules -->
     <script src="assets/js/modules/admin/settings.js?v=1.9.118&t=<?php echo time(); ?>"></script>
     <script src="assets/js/modules/admin/sessions.js?v=1.9.72&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/admin/users.js?v=1.9.132&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/admin/users.js?v=1.9.143&t=<?php echo time(); ?>"></script>
     
     <!-- Main Orchestrator - Load Last -->
-    <script src="assets/js/main.js?v=1.9.135&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/main.js?v=1.9.142&t=<?php echo time(); ?>"></script>
     <style>
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
@@ -244,13 +244,6 @@ require_once __DIR__ . '/../wp-load.php';
             100% { transform: rotate(360deg); }
         }
         
-        /* Print Styles - Clean report printing */
-        @media print {
-            /* Reset page margins */
-            @page {
-                margin: 0.75in;
-            }
-        }
     </style>
 </head>
 <body class="bg-slate-900 text-slate-200 font-sans antialiased overflow-hidden">
@@ -718,8 +711,8 @@ require_once __DIR__ . '/../wp-load.php';
                             <i class="fa fa-refresh"></i>
                         </button>
                         
-                        <button id="export-refunds-csv-btn" class="p-2 rounded-lg bg-green-600 border border-green-500 hover:bg-green-500 transition-colors flex-shrink-0 flex items-center text-white" title="Export to CSV">
-                            <i class="fa fa-download"></i>
+                        <button id="print-refunds-btn" class="p-2 rounded-lg bg-indigo-600 border border-indigo-500 hover:bg-indigo-500 transition-colors flex-shrink-0 flex items-center text-white" title="Print Report">
+                            <i class="fa fa-print"></i>
                         </button>
                     </div>
                 </header>
@@ -1524,20 +1517,20 @@ require_once __DIR__ . '/../wp-load.php';
     
     <!-- Print Report Modal -->
     <div id="print-report-modal" class="app-overlay hidden">
-        <div class="bg-white text-black p-6 rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-4">
+        <div class="bg-white text-black rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div class="p-6 border-b border-slate-300 flex justify-between items-center flex-shrink-0">
                 <h2 class="text-2xl font-bold">Sales Report</h2>
-                <div class="flex gap-2">
-                    <button id="print-report-print-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                        <i class="fa fa-print mr-2"></i>Print
-                    </button>
-                    <button id="print-report-close-btn" class="px-4 py-2 bg-slate-200 text-slate-800 rounded-lg hover:bg-slate-300 transition-colors">
-                        <i class="fa fa-times mr-2"></i>Close
-                    </button>
-                </div>
+                <button id="print-report-close-btn" class="text-slate-600 hover:text-slate-900">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
             </div>
-            <div id="print-report-content" class="font-mono text-sm space-y-4">
+            <div id="print-report-content" class="flex-1 overflow-y-auto p-6 font-mono text-sm space-y-4">
                 <!-- Report content will be populated here -->
+            </div>
+            <div class="p-6 border-t border-slate-300 flex justify-end flex-shrink-0">
+                <button id="print-report-print-btn" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    <i class="fa fa-print mr-2"></i>Print
+                </button>
             </div>
         </div>
     </div>

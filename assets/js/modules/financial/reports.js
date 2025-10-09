@@ -1,4 +1,4 @@
-// WP POS v1.9.0 - Reports Manager Module
+// WP POS v1.9.142 - Reports Manager Module with New Window Print
 // Handles reports data fetching, chart rendering, and analytics
 
 class ReportsManager {
@@ -485,17 +485,37 @@ class ReportsManager {
         `;
         
         orders.forEach(order => {
+            // Status colors
+            const statusColors = {
+                'completed': { bg: '#dcfce7', color: '#166534', border: '#86efac' },
+                'processing': { bg: '#dbeafe', color: '#1e40af', border: '#93c5fd' },
+                'on-hold': { bg: '#fef3c7', color: '#92400e', border: '#fcd34d' },
+                'cancelled': { bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' },
+                'refunded': { bg: '#f3e8ff', color: '#6b21a8', border: '#d8b4fe' },
+                'failed': { bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' }
+            };
+            const statusStyle = statusColors[order.status] || { bg: '#f5f5f5', color: '#333333', border: '#cccccc' };
+            
+            // Source colors
+            const sourceStyle = order.source === 'POS'
+                ? { bg: '#dbeafe', color: '#1e40af', border: '#93c5fd' }
+                : { bg: '#dcfce7', color: '#166534', border: '#86efac' };
+            
             reportContent += `
                 <div style="margin-bottom: 12px; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0; page-break-inside: avoid;">
-                    <div style="padding: 10px 12px; background: #f8f8f8;">
+                    <div style="padding: 10px 12px; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);">
                         <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                             <div>
-                                <div style="font-size: 16px; font-weight: bold; margin-bottom: 2px; color: #000000;">Order #${order.number}</div>
-                                <div style="font-size: 12px; color: #666666;">${order.date} • ${order.customer || 'Guest'}</div>
+                                <div style="font-size: 16px; font-weight: bold; margin-bottom: 4px; color: #000000;">Order #${order.number}</div>
+                                <div style="font-size: 12px; color: #666666; margin-bottom: 4px;">${order.date}</div>
+                                <div style="font-size: 12px; color: #475569;">
+                                    <span style="display: inline-block; padding: 2px 6px; background: ${sourceStyle.bg}; border: 1px solid ${sourceStyle.border}; border-radius: 4px; font-weight: 600; color: ${sourceStyle.color}; margin-right: 6px;">${order.source}</span>
+                                    <span style="font-weight: 500;">Customer: ${order.customer || 'Guest'}</span>
+                                </div>
                             </div>
                             <div style="text-align: right;">
-                                <div style="display: inline-block; padding: 3px 8px; background: #f0f0f0; border-radius: 4px; font-size: 11px; font-weight: 600; color: #333333; margin-bottom: 3px;">${order.payment_method}</div>
-                                <div style="display: inline-block; padding: 3px 8px; background: #f5f5f5; border: 1px solid #cccccc; border-radius: 4px; font-size: 11px; font-weight: 600; color: #333333; text-transform: capitalize;">${order.status}</div>
+                                <div style="display: inline-block; padding: 4px 10px; background: #6366f1; border-radius: 6px; font-size: 11px; font-weight: 600; color: white; margin-bottom: 6px;">${order.payment_method}</div>
+                                <div style="display: inline-block; padding: 4px 10px; background: ${statusStyle.bg}; border: 1px solid ${statusStyle.border}; border-radius: 6px; font-size: 11px; font-weight: 600; color: ${statusStyle.color}; text-transform: capitalize;">${order.status}</div>
                             </div>
                         </div>
                     </div>
@@ -530,10 +550,10 @@ class ReportsManager {
                             </tbody>
                         </table>
                         
-                        <div style="padding: 8px; background: #f8f8f8; border-radius: 6px; margin-top: 8px;">
+                        <div style="padding: 8px; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-radius: 6px; margin-top: 8px; border: 1px solid #86efac;">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <span style="font-size: 14px; font-weight: 600; color: #333333;">Total:</span>
-                                <span style="font-size: 18px; font-weight: bold; color: #000000;">$${(order.total || 0).toFixed(2)}</span>
+                                <span style="font-size: 14px; font-weight: 600; color: #166534;">Total:</span>
+                                <span style="font-size: 18px; font-weight: bold; color: #16a34a;">$${(order.total || 0).toFixed(2)}</span>
                             </div>
                         </div>
                     </div>
@@ -545,6 +565,45 @@ class ReportsManager {
         if (printContent) {
             printContent.innerHTML = reportContent;
         }
+    }
+
+    /**
+     * Print report in new window (like receipts)
+     */
+    printReport() {
+        const content = document.getElementById('print-report-content').innerHTML;
+        const printWindow = window.open('', '', 'height=800,width=900');
+        
+        printWindow.document.write('<html><head><title>Print Report</title>');
+        printWindow.document.write(`
+            <style>
+                body {
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                    font-size: 12px;
+                    margin: 20px;
+                    color: #000;
+                }
+                * { box-sizing: border-box; }
+                h1, h2, h3 { color: #000; margin: 0; }
+                table { border-collapse: collapse; width: 100%; }
+                th, td { padding: 8px; text-align: left; }
+                .text-center { text-align: center; }
+                .text-right { text-align: right; }
+                @media print {
+                    body { margin: 0.5in; }
+                }
+            </style>
+        `);
+        printWindow.document.write('</head><body>');
+        printWindow.document.write(content);
+        printWindow.document.write('</body></html>');
+        printWindow.document.close();
+        printWindow.focus();
+        
+        setTimeout(() => {
+            printWindow.print();
+            printWindow.close();
+        }, 500);
     }
 
     /**

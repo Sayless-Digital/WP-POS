@@ -27,13 +27,6 @@ class UsersManager {
         if (!append) {
             container.innerHTML = this.ui.getSkeletonLoaderHtml('list-rows', 10);
             this.currentOffset = 0;
-        } else {
-            // Show loading indicator at bottom when appending
-            const loadingDiv = document.createElement('div');
-            loadingDiv.id = 'users-loading-more';
-            loadingDiv.className = 'col-span-12 text-center py-4';
-            loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin text-slate-400"></i>';
-            container.appendChild(loadingDiv);
         }
         
         this.isLoading = true;
@@ -86,11 +79,6 @@ class UsersManager {
             return [];
         } finally {
             this.isLoading = false;
-            // Remove loading indicator if it exists
-            const loadingDiv = document.getElementById('users-loading-more');
-            if (loadingDiv) {
-                loadingDiv.remove();
-            }
         }
     }
 
@@ -114,8 +102,8 @@ class UsersManager {
         }
 
         const userHtml = users.map(user => {
-            const rolesList = user.role_names && user.role_names.length > 0 
-                ? user.role_names.join(', ') 
+            const rolesList = user.role_names && user.role_names.length > 0
+                ? user.role_names.join(', ')
                 : 'No role';
             
             const registeredDate = new Date(user.registered).toLocaleDateString();
@@ -130,12 +118,12 @@ class UsersManager {
                     <div class="col-span-2 text-sm text-slate-400">${rolesList}</div>
                     <div class="col-span-2 text-sm text-slate-400">${registeredDate}</div>
                     <div class="col-span-2 flex gap-2 justify-end">
-                        <button onclick="window.editUser(${user.id})" 
+                        <button onclick="window.editUser(${user.id})"
                                 class="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded transition-colors"
                                 title="Edit User">
                             <i class="fas fa-edit"></i>
                         </button>
-                        <button onclick="window.deleteUser(${user.id}, '${this.ui.escapeHtml(user.username)}')" 
+                        <button onclick="window.deleteUser(${user.id}, '${this.ui.escapeHtml(user.username)}')"
                                 class="px-3 py-1 bg-red-600 hover:bg-red-500 text-white text-sm rounded transition-colors"
                                 title="Delete User">
                             <i class="fas fa-trash"></i>
@@ -149,29 +137,6 @@ class UsersManager {
             container.insertAdjacentHTML('beforeend', userHtml);
         } else {
             container.innerHTML = userHtml;
-        }
-        
-        // Add "Load More" button if there are more users
-        if (this.hasMore) {
-            const loadMoreBtn = document.createElement('div');
-            loadMoreBtn.className = 'col-span-12 text-center py-4';
-            loadMoreBtn.innerHTML = `
-                <button id="load-more-users-btn" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm rounded-lg transition-colors">
-                    <i class="fas fa-chevron-down mr-2"></i>Load More
-                </button>
-            `;
-            container.appendChild(loadMoreBtn);
-            
-            // Attach event listener to load more button
-            const btn = document.getElementById('load-more-users-btn');
-            if (btn) {
-                btn.addEventListener('click', async () => {
-                    const searchTerm = document.getElementById('users-search')?.value || '';
-                    const roleFilter = document.getElementById('users-role-filter')?.value || 'all';
-                    const newUsers = await this.loadUsers(searchTerm, roleFilter, true);
-                    this.renderUsersList(newUsers, true);
-                });
-            }
         }
     }
     
@@ -335,10 +300,9 @@ class UsersManager {
         const originalText = saveBtn ? saveBtn.innerHTML : '';
         
         try {
-            // Show loading indicator
+            // Disable button during save
             if (saveBtn) {
                 saveBtn.disabled = true;
-                saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Saving...';
             }
             
             const form = document.getElementById('user-form');
@@ -426,10 +390,9 @@ class UsersManager {
         const originalHTML = deleteBtn ? deleteBtn.innerHTML : '';
         
         try {
-            // Show loading state on button
+            // Disable button during delete
             if (deleteBtn) {
                 deleteBtn.disabled = true;
-                deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
             }
             
             const response = await fetch(this.apiUrl, {
@@ -470,6 +433,31 @@ class UsersManager {
                 deleteBtn.innerHTML = originalHTML;
             }
         }
+    }
+
+    /**
+     * Setup infinite scroll for users list
+     */
+    setupInfiniteScroll() {
+        const container = document.getElementById('users-list');
+        if (!container) return;
+        
+        const parentContainer = container.parentElement;
+        if (!parentContainer) return;
+        
+        parentContainer.addEventListener('scroll', async () => {
+            // Check if we're near the bottom (within 200px)
+            const scrollTop = parentContainer.scrollTop;
+            const scrollHeight = parentContainer.scrollHeight;
+            const clientHeight = parentContainer.clientHeight;
+            
+            if (scrollHeight - scrollTop - clientHeight < 200 && this.hasMore && !this.isLoading) {
+                const searchTerm = document.getElementById('users-search')?.value || '';
+                const roleFilter = document.getElementById('users-role-filter')?.value || 'all';
+                const newUsers = await this.loadUsers(searchTerm, roleFilter, true);
+                this.renderUsersList(newUsers, true);
+            }
+        });
     }
 
     /**
@@ -529,6 +517,8 @@ class UsersManager {
             });
         }
         
+        // Setup infinite scroll
+        this.setupInfiniteScroll();
     }
 }
 

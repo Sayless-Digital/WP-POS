@@ -1,4 +1,4 @@
-// WP POS v1.9.133 - Refund & Exchange Reports Manager Module
+// WP POS v1.9.142 - Refund & Exchange Reports Manager Module with New Window Print
 // Handles refund/exchange reports data fetching and display
 
 class RefundReportsManager {
@@ -176,24 +176,44 @@ class RefundReportsManager {
                             </span>
                         </div>
                     </div>
-                    <div class="grid grid-cols-3 gap-4 pt-4 border-t border-slate-500/50">
-                        <div>
-                            <div class="text-xs text-slate-400 mb-1">
-                                <i class="fas fa-calendar mr-1"></i>Date
+                    <div class="grid grid-cols-3 gap-3 pt-4 border-t border-slate-500/50">
+                        <!-- Date Info Card -->
+                        <div class="bg-slate-700/40 rounded-lg p-3 border border-slate-600/50">
+                            <div class="flex items-center gap-2">
+                                <div class="flex-shrink-0 w-8 h-8 rounded-lg bg-blue-900/30 flex items-center justify-center border border-blue-700/50">
+                                    <i class="fas fa-calendar text-blue-400 text-xs"></i>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="text-xs text-slate-400 mb-0.5">Date</div>
+                                    <div class="text-sm font-semibold text-white truncate">${refund.date}</div>
+                                </div>
                             </div>
-                            <div class="text-sm font-medium text-white">${refund.date}</div>
                         </div>
-                        <div>
-                            <div class="text-xs text-slate-400 mb-1">
-                                <i class="fas fa-receipt mr-1"></i>Original Order
+                        
+                        <!-- Original Order Info Card -->
+                        <div class="bg-slate-700/40 rounded-lg p-3 border border-slate-600/50">
+                            <div class="flex items-center gap-2">
+                                <div class="flex-shrink-0 w-8 h-8 rounded-lg bg-indigo-900/30 flex items-center justify-center border border-indigo-700/50">
+                                    <i class="fas fa-receipt text-indigo-400 text-xs"></i>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="text-xs text-slate-400 mb-0.5">Original Order</div>
+                                    <div class="text-sm font-semibold text-white truncate">#${refund.parent_order_number}</div>
+                                </div>
                             </div>
-                            <div class="text-sm font-medium text-white">#${refund.parent_order_number}</div>
                         </div>
-                        <div>
-                            <div class="text-xs text-slate-400 mb-1">
-                                <i class="fas fa-user mr-1"></i>Customer
+                        
+                        <!-- Customer Info Card -->
+                        <div class="bg-slate-700/40 rounded-lg p-3 border border-slate-600/50">
+                            <div class="flex items-center gap-2">
+                                <div class="flex-shrink-0 w-8 h-8 rounded-lg bg-emerald-900/30 flex items-center justify-center border border-emerald-700/50">
+                                    <i class="fas fa-user text-emerald-400 text-xs"></i>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="text-xs text-slate-400 mb-0.5">Customer</div>
+                                    <div class="text-sm font-semibold text-white truncate">${refund.customer || 'Guest'}</div>
+                                </div>
                             </div>
-                            <div class="text-sm font-medium text-white">${refund.customer || 'Guest'}</div>
                         </div>
                     </div>
                 </div>
@@ -299,6 +319,186 @@ class RefundReportsManager {
         }
         
         this.fetchRefundReportsData();
+    }
+
+    /**
+     * Generate print report for refunds
+     */
+    generatePrintReport() {
+        const summary = this.state.getState('refundReports.summary');
+        const refunds = this.state.getState('refundReports.refunds');
+        const reportData = this.state.getState('refundReports.data');
+        const periodData = reportData?.period;
+        
+        if (!summary || !refunds) return;
+        
+        const settings = this.state.getState('settings');
+        const storeName = settings?.name || 'Store';
+        const currentDate = new Date().toLocaleDateString();
+        
+        // Format period display
+        let periodDisplay = '';
+        if (periodData) {
+            const startDate = new Date(periodData.start);
+            const endDate = new Date(periodData.end);
+            
+            if (startDate.toDateString() === endDate.toDateString()) {
+                periodDisplay = startDate.toLocaleDateString();
+            } else {
+                periodDisplay = `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`;
+            }
+        }
+        
+        let reportContent = `
+            <div style="text-align: center; margin-bottom: 16px; padding: 12px; background: white; border-radius: 8px; border: 2px solid #e2e8f0;">
+                <h1 style="font-size: 24px; font-weight: bold; margin-bottom: 4px; color: #000000;">${storeName}</h1>
+                <h2 style="font-size: 18px; font-weight: 600; margin-bottom: 8px; color: #333333;">Refunds & Exchanges Report</h2>
+                <div style="font-size: 13px; color: #666666; background: #f8f8f8; padding: 6px 12px; border-radius: 6px; display: inline-block;">
+                    <span style="margin-right: 12px;"><strong>Period:</strong> ${periodDisplay}</span>
+                    <span><strong>Generated:</strong> ${currentDate}</span>
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 16px;">
+                <div style="padding: 10px; background: white; border-radius: 8px; border-left: 4px solid #9333ea; border: 1px solid #e2e8f0;">
+                    <div style="font-size: 12px; color: #666666; margin-bottom: 4px;">Total Refunds</div>
+                    <div style="font-size: 20px; font-weight: bold; color: #000000;">${summary.total_refunds || 0}</div>
+                    <div style="font-size: 12px; color: #666666; margin-top: 6px;">Total Amount</div>
+                    <div style="font-size: 18px; font-weight: bold; color: #dc2626;">-$${(summary.total_refunded || 0).toFixed(2)}</div>
+                </div>
+                <div style="padding: 10px; background: white; border-radius: 8px; border-left: 4px solid #2563eb; border: 1px solid #e2e8f0;">
+                    <div style="font-size: 12px; color: #666666; margin-bottom: 4px;">Total Exchanges</div>
+                    <div style="font-size: 20px; font-weight: bold; color: #000000;">${summary.total_exchanges || 0}</div>
+                </div>
+                <div style="padding: 10px; background: white; border-radius: 8px; border-left: 4px solid #000000; border: 1px solid #e2e8f0;">
+                    <div style="font-size: 12px; color: #666666; margin-bottom: 4px;">Average Refund</div>
+                    <div style="font-size: 20px; font-weight: bold; color: #000000;">$${(summary.avg_refund_amount || 0).toFixed(2)}</div>
+                </div>
+            </div>
+            
+            <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #000000; padding: 8px; background: #f8f8f8; border-radius: 6px; border-left: 4px solid #000000;">Refund & Exchange Details</h3>
+        `;
+        
+        refunds.forEach(refund => {
+            const isExchange = refund.is_exchange;
+            const typeColor = isExchange ? '#2563eb' : '#9333ea';
+            const typeText = isExchange ? 'Exchange' : 'Refund';
+            const typeIcon = isExchange ? '⇄' : '↶';
+            
+            reportContent += `
+                <div style="margin-bottom: 12px; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0; page-break-inside: avoid;">
+                    <div style="padding: 10px 12px; background: #f8f8f8;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div>
+                                <div style="font-size: 16px; font-weight: bold; margin-bottom: 2px; color: #000000;">Refund #${refund.refund_number}</div>
+                                <div style="font-size: 12px; color: #666666;">${refund.date} • ${refund.customer || 'Guest'}</div>
+                                <div style="font-size: 12px; color: #666666; margin-top: 2px;">Original Order: #${refund.parent_order_number}</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="display: inline-block; padding: 4px 10px; background: ${typeColor}; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; margin-bottom: 4px;">
+                                    ${typeIcon} ${typeText}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="padding: 10px; background: white; border-radius: 0 0 8px 8px;">
+                        ${refund.reason ? `
+                        <div style="padding: 8px; background: #fef3c7; border-left: 3px solid #f59e0b; border-radius: 4px; margin-bottom: 10px;">
+                            <div style="font-size: 11px; font-weight: 600; color: #92400e; margin-bottom: 2px;">REASON</div>
+                            <div style="font-size: 12px; color: #78350f;">${refund.reason}</div>
+                        </div>
+                        ` : ''}
+                        
+                        <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                            <thead>
+                                <tr style="background: #f5f5f5;">
+                                    <th style="text-align: left; padding: 6px 8px; font-weight: 600; color: #333333;">Item</th>
+                                    <th style="text-align: center; padding: 6px 8px; font-weight: 600; color: #333333;">Qty</th>
+                                    <th style="text-align: right; padding: 6px 8px; font-weight: 600; color: #333333;">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+            `;
+            
+            if (refund.items && Array.isArray(refund.items)) {
+                refund.items.forEach((item, index) => {
+                    const bgColor = index % 2 === 0 ? '#ffffff' : '#f9fafb';
+                    reportContent += `
+                        <tr style="background: ${bgColor};">
+                            <td style="padding: 6px 8px; color: #000000;">${item.name}</td>
+                            <td style="padding: 6px 8px; text-align: center; font-weight: 600; color: #000000;">${item.quantity}</td>
+                            <td style="padding: 6px 8px; text-align: right; font-weight: 500; color: #000000;">$${(item.total || 0).toFixed(2)}</td>
+                        </tr>
+                    `;
+                });
+            }
+            
+            reportContent += `
+                            </tbody>
+                        </table>
+                        
+                        <div style="padding: 8px; background: #fee2e2; border-radius: 6px; margin-top: 8px; border: 1px solid #fca5a5;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-size: 14px; font-weight: 600; color: #991b1b;">Total Refunded:</span>
+                                <span style="font-size: 18px; font-weight: bold; color: #dc2626;">-$${(refund.amount || 0).toFixed(2)}</span>
+                            </div>
+                        </div>
+                        
+                        ${isExchange && refund.exchange_order_id ? `
+                        <div style="padding: 8px; background: #dbeafe; border-radius: 6px; margin-top: 8px; border: 1px solid #93c5fd;">
+                            <div style="font-size: 11px; font-weight: 600; color: #1e40af; margin-bottom: 2px;">EXCHANGE ORDER</div>
+                            <div style="font-size: 13px; font-weight: bold; color: #1e3a8a;">#${refund.exchange_order_id}</div>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        });
+        
+        const printContent = document.getElementById('print-report-content');
+        if (printContent) {
+            printContent.innerHTML = reportContent;
+        }
+    }
+
+    /**
+     * Print report in new window (like receipts)
+     */
+    printReport() {
+        const content = document.getElementById('print-report-content').innerHTML;
+        const printWindow = window.open('', '', 'height=800,width=900');
+        
+        printWindow.document.write('<html><head><title>Print Report</title>');
+        printWindow.document.write(`
+            <style>
+                body {
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                    font-size: 12px;
+                    margin: 20px;
+                    color: #000;
+                }
+                * { box-sizing: border-box; }
+                h1, h2, h3 { color: #000; margin: 0; }
+                table { border-collapse: collapse; width: 100%; }
+                th, td { padding: 8px; text-align: left; }
+                .text-center { text-align: center; }
+                .text-right { text-align: right; }
+                @media print {
+                    body { margin: 0.5in; }
+                }
+            </style>
+        `);
+        printWindow.document.write('</head><body>');
+        printWindow.document.write(content);
+        printWindow.document.write('</body></html>');
+        printWindow.document.close();
+        printWindow.focus();
+        
+        setTimeout(() => {
+            printWindow.print();
+            printWindow.close();
+        }, 500);
     }
 
     /**
