@@ -71,6 +71,16 @@ class ProductEditorManager {
         const barcodeBtn = document.getElementById('generate-barcode-btn');
         if (barcodeBtn) barcodeBtn.addEventListener('click', () => this.handleBarcodeGeneration());
 
+        // Image upload event listeners
+        const featuredImageInput = document.getElementById('featured-image-input');
+        if (featuredImageInput) featuredImageInput.addEventListener('change', (e) => this.handleFeaturedImageUpload(e));
+
+        const galleryImagesInput = document.getElementById('gallery-images-input');
+        if (galleryImagesInput) galleryImagesInput.addEventListener('change', (e) => this.handleGalleryImagesUpload(e));
+
+        const removeFeaturedBtn = document.getElementById('remove-featured-image-btn');
+        if (removeFeaturedBtn) removeFeaturedBtn.addEventListener('click', () => this.removeFeaturedImage());
+
         // Attribute option management - event delegation
         this.setupAttributeEventDelegation();
     }
@@ -150,8 +160,11 @@ class ProductEditorManager {
             // Load tax classes for new product
             await this.loadTaxClasses();
             
-            // Show info message about images
-            document.getElementById('product-editor-status').textContent = 'Note: Images must be added through WooCommerce after creating the product';
+            // Setup image interface for create mode
+            this.setupImageInterface('create');
+            
+            // Show info message
+            document.getElementById('product-editor-status').textContent = 'Note: Images can be added after creating the product';
             document.getElementById('product-editor-status').className = 'text-sm text-right h-5 mt-2 text-blue-400';
         } else {
             // EDIT MODE
@@ -174,6 +187,9 @@ class ProductEditorManager {
 
                 // Load tax classes
                 await this.loadTaxClasses();
+                
+                // Setup image interface for edit mode
+                this.setupImageInterface('edit');
 
             } catch (error) {
                 console.error("Error loading product details:", error);
@@ -1254,6 +1270,9 @@ class ProductEditorManager {
                 saveBtn.textContent = 'Save Changes';
                 saveBtn.setAttribute('data-mode', 'edit');
                 
+                // Setup image interface for edit mode (product now has ID)
+                this.setupImageInterface('edit');
+                
                 // Show success toast
                 this.ui.showToast(`Product "${formData.name}" created successfully!`);
                 
@@ -1384,6 +1403,342 @@ class ProductEditorManager {
             btn.disabled = false;
             btnIcon.className = originalIcon;
             btnText.textContent = originalText;
+        }
+    }
+
+    /**
+     * Show or hide image upload interface based on mode
+     * @param {string} mode - 'create' or 'edit'
+     */
+    setupImageInterface(mode) {
+        const createMessage = document.getElementById('image-create-mode-message');
+        const uploadInterface = document.getElementById('image-upload-interface');
+
+        if (mode === 'create') {
+            createMessage.classList.remove('hidden');
+            uploadInterface.classList.add('hidden');
+        } else {
+            createMessage.classList.add('hidden');
+            uploadInterface.classList.remove('hidden');
+            
+            // Load existing images if in edit mode
+            if (this.currentEditingProduct) {
+                this.loadExistingImages();
+            }
+        }
+    }
+
+    /**
+     * Load and display existing product images
+     */
+    loadExistingImages() {
+        const product = this.currentEditingProduct;
+        
+        // Display featured image if exists
+        if (product.featured_image && product.featured_image.url) {
+            this.displayFeaturedImage(product.featured_image.url);
+        }
+        
+        // Display gallery images if exist
+        if (product.gallery_images && product.gallery_images.length > 0) {
+            this.displayGalleryImages(product.gallery_images);
+        }
+    }
+
+    /**
+     * Display featured image preview
+     * @param {string} imageUrl - URL of the featured image
+     */
+    displayFeaturedImage(imageUrl) {
+        const preview = document.getElementById('featured-image-preview');
+        const img = document.getElementById('featured-image-display');
+        
+        img.src = imageUrl;
+        preview.classList.remove('hidden');
+    }
+
+    /**
+     * Display gallery images previews
+     * @param {Array} images - Array of gallery image objects with id and url
+     */
+    displayGalleryImages(images) {
+        const preview = document.getElementById('gallery-images-preview');
+        const container = document.getElementById('gallery-images-container');
+        
+        container.innerHTML = '';
+        
+        images.forEach(image => {
+            const imageDiv = document.createElement('div');
+            imageDiv.className = 'relative inline-block';
+            imageDiv.innerHTML = `
+                <img src="${image.url}" alt="Gallery" class="w-24 h-24 object-cover rounded border border-slate-500">
+                <button type="button"
+                        class="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 hover:bg-red-500"
+                        onclick="window.productEditorManager.removeGalleryImage(${image.id})"
+                        title="Remove image">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            `;
+            container.appendChild(imageDiv);
+        });
+        
+        preview.classList.remove('hidden');
+    }
+
+    /**
+     * Handle featured image upload
+     * @param {Event} event - Change event from file input
+     */
+    async handleFeaturedImageUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const statusEl = document.getElementById('featured-image-status');
+        statusEl.textContent = 'Uploading...';
+        statusEl.className = 'text-xs text-blue-400 mt-1';
+
+        // Validate file
+        if (!file.type.startsWith('image/')) {
+            statusEl.textContent = 'Error: Please select an image file';
+            statusEl.className = 'text-xs text-red-400 mt-1';
+            event.target.value = '';
+            return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+            statusEl.textContent = 'Error: File size exceeds 5MB';
+            statusEl.className = 'text-xs text-red-400 mt-1';
+            event.target.value = '';
+            return;
+        }
+
+        if (!this.currentEditingProduct || !this.currentEditingProduct.id) {
+            statusEl.textContent = 'Error: Please save the product first';
+            statusEl.className = 'text-xs text-red-400 mt-1';
+            event.target.value = '';
+            return;
+        }
+
+        try {
+            const formData = new FormData();
+            formData.append('image', file);
+            formData.append('product_id', this.currentEditingProduct.id);
+            formData.append('nonce', this.state.getState('nonces.productEdit'));
+
+            const response = await fetch('api/product-images.php?action=upload_featured', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) throw new Error(`Server responded with ${response.status}`);
+            const result = await response.json();
+
+            if (!result.success) {
+                throw new Error(result.message || result.error || 'Failed to upload image');
+            }
+
+            // Display the uploaded image
+            this.displayFeaturedImage(result.data.url);
+            
+            statusEl.textContent = 'Featured image uploaded successfully!';
+            statusEl.className = 'text-xs text-green-400 mt-1';
+            
+            this.ui.showToast('Featured image uploaded successfully!');
+            
+            // Clear the file input
+            event.target.value = '';
+
+        } catch (error) {
+            console.error('Featured image upload error:', error);
+            statusEl.textContent = `Error: ${error.message}`;
+            statusEl.className = 'text-xs text-red-400 mt-1';
+            event.target.value = '';
+        }
+    }
+
+    /**
+     * Handle gallery images upload
+     * @param {Event} event - Change event from file input
+     */
+    async handleGalleryImagesUpload(event) {
+        const files = Array.from(event.target.files);
+        if (files.length === 0) return;
+
+        const statusEl = document.getElementById('gallery-images-status');
+        statusEl.textContent = `Uploading ${files.length} image(s)...`;
+        statusEl.className = 'text-xs text-blue-400 mt-1';
+
+        // Validate files
+        for (const file of files) {
+            if (!file.type.startsWith('image/')) {
+                statusEl.textContent = 'Error: All files must be images';
+                statusEl.className = 'text-xs text-red-400 mt-1';
+                event.target.value = '';
+                return;
+            }
+            if (file.size > 5 * 1024 * 1024) {
+                statusEl.textContent = `Error: ${file.name} exceeds 5MB`;
+                statusEl.className = 'text-xs text-red-400 mt-1';
+                event.target.value = '';
+                return;
+            }
+        }
+
+        if (!this.currentEditingProduct || !this.currentEditingProduct.id) {
+            statusEl.textContent = 'Error: Please save the product first';
+            statusEl.className = 'text-xs text-red-400 mt-1';
+            event.target.value = '';
+            return;
+        }
+
+        // Check current gallery count
+        const currentGalleryCount = this.currentEditingProduct.gallery_images?.length || 0;
+        if (currentGalleryCount + files.length > 10) {
+            statusEl.textContent = `Error: Gallery limit is 10 images (currently ${currentGalleryCount})`;
+            statusEl.className = 'text-xs text-red-400 mt-1';
+            event.target.value = '';
+            return;
+        }
+
+        try {
+            const formData = new FormData();
+            files.forEach(file => {
+                formData.append('images[]', file);
+            });
+            formData.append('product_id', this.currentEditingProduct.id);
+            formData.append('nonce', this.state.getState('nonces.productEdit'));
+
+            const response = await fetch('api/product-images.php?action=upload_gallery', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) throw new Error(`Server responded with ${response.status}`);
+            const result = await response.json();
+
+            if (!result.success) {
+                throw new Error(result.message || result.error || 'Failed to upload images');
+            }
+
+            // Update current product's gallery images
+            if (!this.currentEditingProduct.gallery_images) {
+                this.currentEditingProduct.gallery_images = [];
+            }
+            
+            // Add newly uploaded images
+            result.data.uploaded.forEach(img => {
+                this.currentEditingProduct.gallery_images.push({
+                    id: img.attachment_id,
+                    url: img.url
+                });
+            });
+
+            // Display updated gallery
+            this.displayGalleryImages(this.currentEditingProduct.gallery_images);
+            
+            const uploadedCount = result.data.uploaded.length;
+            const errorCount = result.data.errors?.length || 0;
+            
+            if (errorCount > 0) {
+                statusEl.textContent = `${uploadedCount} uploaded, ${errorCount} failed`;
+                statusEl.className = 'text-xs text-yellow-400 mt-1';
+            } else {
+                statusEl.textContent = `${uploadedCount} image(s) uploaded successfully!`;
+                statusEl.className = 'text-xs text-green-400 mt-1';
+            }
+            
+            this.ui.showToast(`${uploadedCount} gallery image(s) uploaded!`);
+            
+            // Clear the file input
+            event.target.value = '';
+
+        } catch (error) {
+            console.error('Gallery images upload error:', error);
+            statusEl.textContent = `Error: ${error.message}`;
+            statusEl.className = 'text-xs text-red-400 mt-1';
+            event.target.value = '';
+        }
+    }
+
+    /**
+     * Remove featured image
+     */
+    async removeFeaturedImage() {
+        if (!this.currentEditingProduct || !this.currentEditingProduct.id) {
+            this.ui.showToast('No product loaded');
+            return;
+        }
+
+        if (!confirm('Remove featured image?')) return;
+
+        try {
+            const response = await fetch(`api/product-images.php?action=remove_featured&product_id=${this.currentEditingProduct.id}&nonce=${this.state.getState('nonces.productEdit')}`, {
+                method: 'POST'
+            });
+
+            if (!response.ok) throw new Error(`Server responded with ${response.status}`);
+            const result = await response.json();
+
+            if (!result.success) {
+                throw new Error(result.message || result.error || 'Failed to remove image');
+            }
+
+            // Hide preview
+            document.getElementById('featured-image-preview').classList.add('hidden');
+            document.getElementById('featured-image-status').textContent = 'Featured image removed';
+            document.getElementById('featured-image-status').className = 'text-xs text-green-400 mt-1';
+            
+            this.ui.showToast('Featured image removed');
+
+        } catch (error) {
+            console.error('Remove featured image error:', error);
+            this.ui.showToast(`Error: ${error.message}`);
+        }
+    }
+
+    /**
+     * Remove gallery image
+     * @param {number} attachmentId - ID of the attachment to remove
+     */
+    async removeGalleryImage(attachmentId) {
+        if (!this.currentEditingProduct || !this.currentEditingProduct.id) {
+            this.ui.showToast('No product loaded');
+            return;
+        }
+
+        if (!confirm('Remove this image from gallery?')) return;
+
+        try {
+            const response = await fetch(`api/product-images.php?action=remove_gallery&product_id=${this.currentEditingProduct.id}&attachment_id=${attachmentId}&nonce=${this.state.getState('nonces.productEdit')}`, {
+                method: 'POST'
+            });
+
+            if (!response.ok) throw new Error(`Server responded with ${response.status}`);
+            const result = await response.json();
+
+            if (!result.success) {
+                throw new Error(result.message || result.error || 'Failed to remove image');
+            }
+
+            // Update current product's gallery images
+            this.currentEditingProduct.gallery_images = this.currentEditingProduct.gallery_images.filter(
+                img => img.id !== attachmentId
+            );
+
+            // Re-display gallery
+            if (this.currentEditingProduct.gallery_images.length > 0) {
+                this.displayGalleryImages(this.currentEditingProduct.gallery_images);
+            } else {
+                document.getElementById('gallery-images-preview').classList.add('hidden');
+            }
+            
+            this.ui.showToast('Gallery image removed');
+
+        } catch (error) {
+            console.error('Remove gallery image error:', error);
+            this.ui.showToast(`Error: ${error.message}`);
         }
     }
 }

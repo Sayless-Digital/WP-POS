@@ -128,6 +128,7 @@ class ReceiptsManager {
         // Payment methods and change
         let paymentHTML = '';
         let totalPaid = 0;
+        let paymentBreakdown = { cash: 0, card: 0, other: 0 };
         
         if (data.split_payments && Array.isArray(data.split_payments) && data.split_payments.length > 1) {
             paymentHTML = `<div class='flex flex-col gap-1 mt-2'><p class='font-semibold'>Payment Methods:</p>`;
@@ -135,6 +136,17 @@ class ReceiptsManager {
                 let method = sp.method === 'Other' ? 'Other' : sp.method;
                 let amount = parseFloat(sp.amount) || 0;
                 totalPaid += amount;
+                
+                // Track payment breakdown
+                const methodLower = method.toLowerCase();
+                if (methodLower === 'cash') {
+                    paymentBreakdown.cash += amount;
+                } else if (methodLower === 'card') {
+                    paymentBreakdown.card += amount;
+                } else {
+                    paymentBreakdown.other += amount;
+                }
+                
                 paymentHTML += `
                     <div class='flex justify-between'>
                         <span>${method}</span>
@@ -143,6 +155,16 @@ class ReceiptsManager {
                 `;
             });
             paymentHTML += '</div>';
+            
+            // Add payment breakdown summary for split payments
+            paymentHTML += `
+                <div class='mt-2 pt-2 border-t border-dashed border-gray-400'>
+                    <p class='font-semibold text-xs mb-1'>Payment Breakdown:</p>
+                    ${paymentBreakdown.cash > 0 ? `<div class='flex justify-between text-xs'><span>Cash:</span><span>$${paymentBreakdown.cash.toFixed(2)}</span></div>` : ''}
+                    ${paymentBreakdown.card > 0 ? `<div class='flex justify-between text-xs'><span>Card:</span><span>$${paymentBreakdown.card.toFixed(2)}</span></div>` : ''}
+                    ${paymentBreakdown.other > 0 ? `<div class='flex justify-between text-xs'><span>Other:</span><span>$${paymentBreakdown.other.toFixed(2)}</span></div>` : ''}
+                </div>
+            `;
         } else {
             let method = data.payment_method === 'Other' ? 'Other' : data.payment_method;
             totalPaid = parseFloat(data.amount_paid || data.total) || 0;

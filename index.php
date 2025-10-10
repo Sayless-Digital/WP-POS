@@ -17,11 +17,11 @@ require_once __DIR__ . '/../wp-load.php';
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- Custom JSON syntax highlighting -->
     
-    <!-- WP POS v1.9.151 - Enhanced Attribute Name Selection with Searchable Dropdowns -->
+    <!-- WP POS v1.9.160 - Moved Payment Breakdown Cards to Top of Reports Page - better visibility for payment method analysis -->
     
     <!-- Core Modules - Load First -->
     <script src="assets/js/modules/state.js?v=1.9.72&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/routing.js?v=1.9.135&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/routing.js?v=1.9.158&t=<?php echo time(); ?>"></script>
     <script src="assets/js/modules/core/ui-helpers.js?v=1.9.72&t=<?php echo time(); ?>"></script>
     
     <!-- Auth & UI Modules -->
@@ -29,8 +29,8 @@ require_once __DIR__ . '/../wp-load.php';
     <script src="assets/js/modules/keyboard.js?v=1.9.125&t=<?php echo time(); ?>"></script>
     
     <!-- Products Modules -->
-    <script src="assets/js/modules/products/products.js?v=1.9.72&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/products/product-editor.js?v=1.9.151&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/products/products.js?v=1.9.156&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/products/product-editor.js?v=1.9.152&t=<?php echo time(); ?>"></script>
     
     <!-- Cart Modules -->
     <script src="assets/js/modules/cart/cart.js?v=1.9.72&t=<?php echo time(); ?>"></script>
@@ -39,12 +39,12 @@ require_once __DIR__ . '/../wp-load.php';
     
     <!-- Orders & Receipts Modules -->
     <script src="assets/js/modules/orders/orders.js?v=1.9.72&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/orders/receipts.js?v=1.9.89&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/orders/receipts.js?v=1.9.158&t=<?php echo time(); ?>"></script>
     
     <!-- Financial Modules -->
     <script src="assets/js/modules/financial/drawer.js?v=1.9.72&t=<?php echo time(); ?>"></script>
     <script src="assets/js/modules/financial/refund-reports.js?v=1.9.142&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/financial/reports.js?v=1.9.142&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/financial/reports.js?v=1.9.158&t=<?php echo time(); ?>"></script>
     
     <!-- Admin Modules -->
     <script src="assets/js/modules/admin/settings.js?v=1.9.147&t=<?php echo time(); ?>"></script>
@@ -52,7 +52,7 @@ require_once __DIR__ . '/../wp-load.php';
     <script src="assets/js/modules/admin/users.js?v=1.9.144&t=<?php echo time(); ?>"></script>
     
     <!-- Main Orchestrator - Load Last -->
-    <script src="assets/js/main.js?v=1.9.145&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/main.js?v=1.9.156&t=<?php echo time(); ?>"></script>
     <style>
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
@@ -618,7 +618,44 @@ require_once __DIR__ . '/../wp-load.php';
                 </header>
                 
                 <main class="flex-grow flex flex-col overflow-y-auto gap-4">
-                    <!-- Component 1: Full-width Chart -->
+                    <!-- Component 1: Payment Breakdown -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 flex-shrink-0">
+                        <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                            <div class="flex items-center gap-3 mb-2">
+                                <div class="w-10 h-10 bg-green-600/20 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-money-bill-wave text-green-400 text-lg"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="text-2xl font-bold text-white" id="cash-payments">$0.00</div>
+                                    <div class="text-sm text-slate-400">Cash Payments</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                            <div class="flex items-center gap-3 mb-2">
+                                <div class="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-credit-card text-blue-400 text-lg"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="text-2xl font-bold text-white" id="card-payments">$0.00</div>
+                                    <div class="text-sm text-slate-400">Card Payments</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                            <div class="flex items-center gap-3 mb-2">
+                                <div class="w-10 h-10 bg-purple-600/20 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-wallet text-purple-400 text-lg"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="text-2xl font-bold text-white" id="other-payments">$0.00</div>
+                                    <div class="text-sm text-slate-400">Other Payments</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Component 2: Full-width Chart -->
                     <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700 flex-shrink-0">
                         <div class="flex items-center justify-between mb-4">
                             <h2 class="text-lg font-semibold text-slate-200">Sales Overview</h2>
@@ -638,7 +675,7 @@ require_once __DIR__ . '/../wp-load.php';
                         </div>
                     </div>
                     
-                    <!-- Component 2: Summary Statistics -->
+                    <!-- Component 3: Summary Statistics -->
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 flex-shrink-0">
                         <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
                             <div class="text-2xl font-bold text-white" id="total-orders">0</div>
@@ -658,7 +695,7 @@ require_once __DIR__ . '/../wp-load.php';
                         </div>
                     </div>
                     
-                    <!-- Component 3: Orders List -->
+                    <!-- Component 4: Orders List -->
                     <div class="bg-slate-800/50 rounded-xl border border-slate-700 flex-grow flex flex-col">
                         <div class="p-4 border-b border-slate-700">
                             <h3 class="text-lg font-semibold text-slate-200">Order Details</h3>
@@ -788,7 +825,7 @@ require_once __DIR__ . '/../wp-load.php';
             <section id="products-page" class="page-content w-full hidden flex flex-col p-3 gap-3">
                 <header class="flex items-center gap-4 p-2 bg-slate-800/80 backdrop-blur-sm border border-slate-700 rounded-xl shadow-lg flex-shrink-0">
                     <button class="menu-toggle p-2 rounded-lg hover:bg-slate-700 transition-colors"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg></button>
-                    <h1 class="text-xl font-bold">Products</h1>
+                    <h1 class="text-xl font-bold mr-auto">Products</h1>
                     <div class="relative flex-grow min-w-[150px] max-w-[250px]"><div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none"><svg class="w-4 h-4 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg></div><input type="text" id="products-list-filter" placeholder="Filter list by name or SKU..." class="w-full pl-10 p-2 rounded-lg bg-slate-700 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"></div>
                     <select id="products-category-filter" class="p-2 rounded-lg bg-slate-700 border border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 flex-shrink-0"><option value="all">All Categories</option></select>
                     <select id="products-tag-filter" class="p-2 rounded-lg bg-slate-700 border border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 flex-shrink-0"><option value="all">All Tags</option></select>
@@ -815,7 +852,7 @@ require_once __DIR__ . '/../wp-load.php';
                         <div class="col-span-2 text-right">Stock</div>
                         <div class="col-span-1 text-center">Actions</div>
                     </div>
-                    <div id="stock-list" class="flex-grow p-2 space-y-2"></div>
+                    <div id="stock-list" class="flex-grow p-2 space-y-2 overflow-y-auto"></div>
                 </main>
             </section>
             
@@ -1287,13 +1324,69 @@ require_once __DIR__ . '/../wp-load.php';
                     </div>
                 </div>
 
-                <!-- Images Section - Removed (Image upload disabled) -->
+                <!-- Product Images Section -->
                 <div class="bg-slate-700/50 p-4 rounded-lg">
                     <h3 class="text-lg font-semibold mb-4 text-slate-200">Product Images</h3>
-                    <div class="text-center p-4 bg-slate-700 rounded-lg border border-slate-600">
-                        <i class="fa fa-info-circle text-slate-400 text-2xl mb-2"></i>
-                        <p class="text-slate-300 text-sm">Image upload functionality has been disabled</p>
-                        <p class="text-slate-500 text-xs mt-1">Please use WooCommerce to manage product images</p>
+                    
+                    <!-- Create mode message -->
+                    <div id="image-create-mode-message" class="hidden text-center p-4 bg-blue-900/20 rounded-lg border border-blue-700/30">
+                        <i class="fa fa-info-circle text-blue-400 text-xl mb-2"></i>
+                        <p class="text-slate-300 text-sm">Images can be added after creating the product</p>
+                        <p class="text-slate-400 text-xs mt-1">Save the product first, then you can upload images</p>
+                    </div>
+                    
+                    <!-- Edit mode - image upload interface -->
+                    <div id="image-upload-interface" class="hidden space-y-4">
+                        <!-- Featured Image -->
+                        <div class="border border-slate-600 rounded-lg p-3">
+                            <label class="block text-sm font-medium text-slate-300 mb-2">Featured Image</label>
+                            <div id="featured-image-preview" class="mb-3 hidden">
+                                <div class="relative inline-block">
+                                    <img id="featured-image-display" src="" alt="Featured" class="w-32 h-32 object-cover rounded border border-slate-500">
+                                    <button type="button" id="remove-featured-image-btn"
+                                            class="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 hover:bg-red-500"
+                                            title="Remove featured image">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <input type="file" id="featured-image-input" accept="image/png,image/jpeg,image/jpg,image/webp,image/gif"
+                                       class="block w-full text-sm text-slate-400
+                                              file:mr-4 file:py-2 file:px-4
+                                              file:rounded file:border-0
+                                              file:text-sm file:font-semibold
+                                              file:bg-blue-600 file:text-white
+                                              hover:file:bg-blue-500
+                                              file:cursor-pointer cursor-pointer">
+                                <span class="text-xs text-slate-500">Max 5MB</span>
+                            </div>
+                            <p id="featured-image-status" class="text-xs text-slate-400 mt-1"></p>
+                        </div>
+                        
+                        <!-- Gallery Images -->
+                        <div class="border border-slate-600 rounded-lg p-3">
+                            <label class="block text-sm font-medium text-slate-300 mb-2">Gallery Images (Max 10)</label>
+                            <div id="gallery-images-preview" class="mb-3 hidden">
+                                <div id="gallery-images-container" class="flex flex-wrap gap-2">
+                                    <!-- Gallery image previews will be added here -->
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <input type="file" id="gallery-images-input" accept="image/png,image/jpeg,image/jpg,image/webp,image/gif" multiple
+                                       class="block w-full text-sm text-slate-400
+                                              file:mr-4 file:py-2 file:px-4
+                                              file:rounded file:border-0
+                                              file:text-sm file:font-semibold
+                                              file:bg-green-600 file:text-white
+                                              hover:file:bg-green-500
+                                              file:cursor-pointer cursor-pointer">
+                                <span class="text-xs text-slate-500">Max 5MB each</span>
+                            </div>
+                            <p id="gallery-images-status" class="text-xs text-slate-400 mt-1"></p>
+                        </div>
                     </div>
                 </div>
 

@@ -20,7 +20,7 @@ JPOS_Performance_Monitor::start_monitoring();
 
 // Get pagination parameters
 $page = max(1, intval($_GET['page'] ?? 1));
-$per_page = min(100, max(10, intval($_GET['per_page'] ?? 20))); // Default 20, max 100
+$per_page = min(10000, max(10, intval($_GET['per_page'] ?? 10000))); // Default 10000 to load all products
 $offset = ($page - 1) * $per_page;
 
 try {

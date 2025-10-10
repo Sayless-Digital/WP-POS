@@ -174,6 +174,10 @@ class RoutingManager {
                     }
                     break;
                 case 'products-page':
+                    // Fetch products first, then render the stock list
+                    if (typeof window.productsManager !== 'undefined' && window.productsManager.fetchProducts) {
+                        await window.productsManager.fetchProducts();
+                    }
                     if (typeof window.renderStockList === 'function') {
                         window.renderStockList();
                     }
@@ -195,7 +199,11 @@ class RoutingManager {
                     break;
                 case 'pos-page':
                 default:
-                    // POS page doesn't need special data loading
+                    // Fetch products and render grid for POS page
+                    if (typeof window.productsManager !== 'undefined' && window.productsManager.fetchProducts) {
+                        await window.productsManager.fetchProducts();
+                        window.productsManager.renderProductGrid();
+                    }
                     break;
             }
         } catch (error) {

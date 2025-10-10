@@ -121,6 +121,19 @@ class ReportsManager {
         const periodRangeEl = document.getElementById('period-range');
         if (periodRangeEl) periodRangeEl.textContent = periodText;
         
+        // Update payment breakdown
+        const chartData = this.state.getState('reports.chartData');
+        if (chartData && chartData.payment_breakdown) {
+            const breakdown = chartData.payment_breakdown;
+            const cashEl = document.getElementById('cash-payments');
+            const cardEl = document.getElementById('card-payments');
+            const otherEl = document.getElementById('other-payments');
+            
+            if (cashEl) cashEl.textContent = `$${(breakdown.cash || 0).toFixed(2)}`;
+            if (cardEl) cardEl.textContent = `$${(breakdown.card || 0).toFixed(2)}`;
+            if (otherEl) otherEl.textContent = `$${(breakdown.other || 0).toFixed(2)}`;
+        }
+        
         // Render orders list
         this.renderReportsOrdersList();
     }
@@ -436,6 +449,7 @@ class ReportsManager {
         const orders = this.state.getState('reports.orders');
         const chartData = this.state.getState('reports.chartData');
         const periodData = chartData?.period;
+        const paymentBreakdown = chartData?.payment_breakdown;
         
         if (!summary || !orders) return;
         
@@ -480,6 +494,26 @@ class ReportsManager {
                     <div style="font-size: 14px; font-weight: 600; color: #000000;">$${(summary.min_order_value || 0).toFixed(2)} - $${(summary.max_order_value || 0).toFixed(2)}</div>
                 </div>
             </div>
+            
+            ${paymentBreakdown ? `
+            <div style="margin-bottom: 16px; padding: 12px; background: white; border-radius: 8px; border: 1px solid #e2e8f0;">
+                <h3 style="font-size: 14px; font-weight: 600; margin-bottom: 12px; color: #000000;">Payment Breakdown</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                    <div style="padding: 8px; background: #f0fdf4; border-radius: 6px; border: 1px solid #86efac; text-align: center;">
+                        <div style="font-size: 11px; color: #166534; margin-bottom: 4px;">💵 Cash</div>
+                        <div style="font-size: 16px; font-weight: bold; color: #16a34a;">$${(paymentBreakdown.cash || 0).toFixed(2)}</div>
+                    </div>
+                    <div style="padding: 8px; background: #eff6ff; border-radius: 6px; border: 1px solid #93c5fd; text-align: center;">
+                        <div style="font-size: 11px; color: #1e40af; margin-bottom: 4px;">💳 Card</div>
+                        <div style="font-size: 16px; font-weight: bold; color: #2563eb;">$${(paymentBreakdown.card || 0).toFixed(2)}</div>
+                    </div>
+                    <div style="padding: 8px; background: #faf5ff; border-radius: 6px; border: 1px solid #d8b4fe; text-align: center;">
+                        <div style="font-size: 11px; color: #6b21a8; margin-bottom: 4px;">💼 Other</div>
+                        <div style="font-size: 16px; font-weight: bold; color: #9333ea;">$${(paymentBreakdown.other || 0).toFixed(2)}</div>
+                    </div>
+                </div>
+            </div>
+            ` : ''}
             
             <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #000000; padding: 8px; background: #f8f8f8; border-radius: 6px; border-left: 4px solid #000000;">Order Details</h3>
         `;

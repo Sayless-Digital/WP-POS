@@ -288,7 +288,7 @@ function getOrdersForPeriod($start_date, $end_date, $limit = 100) {
 function getSummaryStats($start_date, $end_date) {
     global $wpdb;
     
-    $sql = "SELECT 
+    $sql = "SELECT
         COUNT(*) as total_orders,
         SUM(CAST(pm_total.meta_value AS DECIMAL(10,2))) as total_revenue,
         AVG(CAST(pm_total.meta_value AS DECIMAL(10,2))) as avg_order_value,
@@ -296,9 +296,9 @@ function getSummaryStats($start_date, $end_date) {
         MAX(CAST(pm_total.meta_value AS DECIMAL(10,2))) as max_order_value
     FROM {$wpdb->prefix}posts p
     LEFT JOIN {$wpdb->prefix}postmeta pm_total ON p.ID = pm_total.post_id AND pm_total.meta_key = '_order_total'
-    WHERE p.post_type = 'shop_order' 
+    WHERE p.post_type = 'shop_order'
     AND p.post_status IN ('wc-completed', 'wc-processing', 'wc-on-hold')
-    AND p.post_date >= %s 
+    AND p.post_date >= %s
     AND p.post_date <= %s";
     
     $result = $wpdb->get_row($wpdb->prepare($sql, $start_date, $end_date));
@@ -310,6 +310,69 @@ function getSummaryStats($start_date, $end_date) {
         'min_order_value' => floatval($result->min_order_value ?? 0),
         'max_order_value' => floatval($result->max_order_value ?? 0)
     ];
+}
+
+/**
+ * Calculate payment breakdown by method
+ */
+function getPaymentBreakdown($start_date, $end_date) {
+    global $wpdb;
+    
+    // Get all order IDs in the period
+    $order_ids = $wpdb->get_col($wpdb->prepare(
+        "SELECT ID FROM {$wpdb->prefix}posts
+        WHERE post_type = 'shop_order'
+        AND post_status IN ('wc-completed', 'wc-processing', 'wc-on-hold')
+        AND post_date >= %s
+        AND post_date <= %s",
+        $start_date,
+        $end_date
+    ));
+    
+    $breakdown = [
+        'cash' => 0,
+        'card' => 0,
+        'other' => 0
+    ];
+    
+    foreach ($order_ids as $order_id) {
+        $order = wc_get_order($order_id);
+        if (!$order) continue;
+        
+        $total = floatval($order->get_total());
+        
+        // Check for split payments
+        $split_payments = $order->get_meta('_split_payments');
+        
+        if ($split_payments && is_array($split_payments)) {
+            // Handle split payments
+            foreach ($split_payments as $payment) {
+                $method = strtolower($payment['method'] ?? '');
+                $amount = floatval($payment['amount'] ?? 0);
+                
+                if ($method === 'cash') {
+                    $breakdown['cash'] += $amount;
+                } elseif ($method === 'card') {
+                    $breakdown['card'] += $amount;
+                } else {
+                    $breakdown['other'] += $amount;
+                }
+            }
+        } else {
+            // Single payment method
+            $payment_method = strtolower($order->get_payment_method_title());
+            
+            if (strpos($payment_method, 'cash') !== false) {
+                $breakdown['cash'] += $total;
+            } elseif (strpos($payment_method, 'card') !== false || strpos($payment_method, 'credit') !== false || strpos($payment_method, 'debit') !== false) {
+                $breakdown['card'] += $total;
+            } else {
+                $breakdown['other'] += $total;
+            }
+        }
+    }
+    
+    return $breakdown;
 }
 
 try {
@@ -335,6 +398,9 @@ try {
     // Get summary statistics
     $summary = getSummaryStats($start_date, $end_date);
     
+    // Get payment breakdown
+    $payment_breakdown = getPaymentBreakdown($start_date, $end_date);
+    
     // Prepare response
     $response = [
         'success' => true,
@@ -346,6 +412,7 @@ try {
                 'granularity' => $granularity
             ],
             'summary' => $summary,
+            'payment_breakdown' => $payment_breakdown,
             'chart_data' => $chart_data,
             'orders' => $orders,
             'chart_labels' => array_map(function($item) use ($granularity) {

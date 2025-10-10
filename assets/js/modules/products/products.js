@@ -160,7 +160,8 @@ class ProductsManager {
      */
     async fetchProducts(filters = {}) {
         try {
-            const response = await fetch('/wp-pos/api/products.php');
+            // Load all products at once
+            const response = await fetch('api/products.php');
             if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
             
             const result = await response.json();
