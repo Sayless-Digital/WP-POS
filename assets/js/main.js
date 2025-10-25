@@ -1,6 +1,6 @@
-// WP POS v1.9.145 - Product Creation & UI Scale Feature
+// WP POS v1.9.157 - Fixed Settings Loading Before Authentication
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('WP POS v1.9.145 loaded - Product creation restored & UI scale feature added');
+    console.log('WP POS v1.9.157 loaded - Fixed settings loading before authentication');
     
     // Apply saved UI scale immediately on page load (before anything else renders)
     const savedScale = localStorage.getItem('jpos_ui_scale');
@@ -44,8 +44,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const sessionsManager = new SessionsManager(state, uiHelpers);
     const usersManager = new UsersManager(state, uiHelpers);
     
-    // Load settings into state on app initialization
-    await settingsManager.loadReceiptSettings();
+    // Note: Settings loading moved to after authentication in auth.js
     
     // Expose managers globally for routing and cross-module access
     window.uiHelpers = uiHelpers;

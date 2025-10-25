@@ -17,20 +17,20 @@ require_once __DIR__ . '/../wp-load.php';
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- Custom JSON syntax highlighting -->
     
-    <!-- WP POS v1.9.160 - Moved Payment Breakdown Cards to Top of Reports Page - better visibility for payment method analysis -->
+    <!-- WP POS v1.9.167 - Added Loading Indicators to Product Editor Save Button -->
     
     <!-- Core Modules - Load First -->
     <script src="assets/js/modules/state.js?v=1.9.72&t=<?php echo time(); ?>"></script>
     <script src="assets/js/modules/routing.js?v=1.9.158&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/core/ui-helpers.js?v=1.9.72&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/core/ui-helpers.js?v=1.9.166&t=<?php echo time(); ?>"></script>
     
     <!-- Auth & UI Modules -->
     <script src="assets/js/modules/auth.js?v=1.9.106&t=<?php echo time(); ?>"></script>
     <script src="assets/js/modules/keyboard.js?v=1.9.125&t=<?php echo time(); ?>"></script>
     
     <!-- Products Modules -->
-    <script src="assets/js/modules/products/products.js?v=1.9.156&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/products/product-editor.js?v=1.9.152&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/products/products.js?v=1.9.165&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/products/product-editor.js?v=1.9.167&t=<?php echo time(); ?>"></script>
     
     <!-- Cart Modules -->
     <script src="assets/js/modules/cart/cart.js?v=1.9.72&t=<?php echo time(); ?>"></script>
@@ -39,12 +39,12 @@ require_once __DIR__ . '/../wp-load.php';
     
     <!-- Orders & Receipts Modules -->
     <script src="assets/js/modules/orders/orders.js?v=1.9.72&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/orders/receipts.js?v=1.9.158&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/orders/receipts.js?v=1.9.165&t=<?php echo time(); ?>"></script>
     
     <!-- Financial Modules -->
     <script src="assets/js/modules/financial/drawer.js?v=1.9.72&t=<?php echo time(); ?>"></script>
     <script src="assets/js/modules/financial/refund-reports.js?v=1.9.142&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/financial/reports.js?v=1.9.158&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/financial/reports.js?v=1.9.164&t=<?php echo time(); ?>"></script>
     
     <!-- Admin Modules -->
     <script src="assets/js/modules/admin/settings.js?v=1.9.147&t=<?php echo time(); ?>"></script>
@@ -52,7 +52,7 @@ require_once __DIR__ . '/../wp-load.php';
     <script src="assets/js/modules/admin/users.js?v=1.9.144&t=<?php echo time(); ?>"></script>
     
     <!-- Main Orchestrator - Load Last -->
-    <script src="assets/js/main.js?v=1.9.156&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/main.js?v=1.9.157&t=<?php echo time(); ?>"></script>
     <style>
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
@@ -705,10 +705,11 @@ require_once __DIR__ . '/../wp-load.php';
                                 <div class="col-span-2">Order #</div>
                                 <div class="col-span-2">Date</div>
                                 <div class="col-span-1">Source</div>
-                                <div class="col-span-2">Status</div>
+                                <div class="col-span-1">Status</div>
                                 <div class="col-span-1 text-center">Items</div>
                                 <div class="col-span-2 text-right">Total</div>
                                 <div class="col-span-2 text-center">Customer</div>
+                                <div class="col-span-1 text-center">Actions</div>
                             </div>
                             <div id="reports-order-list" class="p-2 space-y-2">
                                 <!-- Orders will be populated here -->

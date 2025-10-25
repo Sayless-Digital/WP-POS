@@ -1,5 +1,6 @@
-// WP POS v1.9.0 - Products Manager Module
+// WP POS v1.9.165 - Products Manager Module
 // Handles product display, variations, barcode scanning, and stock management
+// Added: Toast notifications showing "Updating products..." during refresh
 
 class ProductsManager {
     constructor(stateManager, uiHelpers, cartManager) {
@@ -49,55 +50,118 @@ class ProductsManager {
                 await this.saveStockChanges();
             });
         }
+        
+        // Close modal if clicked outside (on overlay)
+        if (modal) {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.add('hidden');
+                }
+            });
+        }
     }
     
     /**
      * Save stock changes from stock edit modal
      */
     async saveStockChanges() {
+        console.log('=== STOCK EDIT SAVE STARTED ===');
         const modal = document.getElementById('stock-edit-modal');
         const rows = document.querySelectorAll('#stock-edit-variations-list .stock-edit-row');
-        const updates = [];
+        const variations = [];
+        
+        // Get parent product ID from state
+        const parentProductId = this.state.getState('editingStockProduct.id');
+        console.log('Parent Product ID:', parentProductId);
+        if (!parentProductId) {
+            this.ui.showToast('Error: Product ID not found');
+            return;
+        }
         
         rows.forEach(row => {
             const variationId = row.dataset.variationId;
-            const input = row.querySelector('input[type="number"]');
-            if (input && variationId) {
-                updates.push({
-                    variation_id: parseInt(variationId),
-                    stock_quantity: parseInt(input.value) || 0
+            const sku = row.dataset.sku || '';
+            const price = parseFloat(row.dataset.price) || 0;
+            const stockInput = row.querySelector('input[type="number"]');
+            
+            if (stockInput && variationId) {
+                variations.push({
+                    id: parseInt(variationId),
+                    sku: sku,
+                    price: price,
+                    stock_quantity: parseInt(stockInput.value) || 0
                 });
             }
         });
         
-        if (updates.length === 0) {
+        if (variations.length === 0) {
+            console.log('No variations to save');
             this.ui.showToast('No changes to save');
             return;
         }
         
+        console.log(`Saving ${variations.length} variations for product ${parentProductId}`);
+        console.log('Variations data:', variations);
+        
         try {
             const nonce = this.state.getState('nonces.stock');
+            const payload = { 
+                action: 'update_variations',
+                parent_id: parentProductId,
+                variations: variations,
+                nonce: nonce
+            };
+            console.log('Sending payload to API:', payload);
+            
             const response = await fetch('/wp-pos/api/stock.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ updates, nonce })
+                body: JSON.stringify(payload)
             });
             
-            if (!response.ok) throw new Error('Failed to update stock');
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Stock update HTTP error:', response.status, errorText);
+                throw new Error(`Failed to update stock: ${response.status}`);
+            }
             
             const result = await response.json();
-            if (result.success) {
-                this.ui.showToast('Stock updated successfully');
-                if (modal) modal.classList.add('hidden');
-                // Refresh products
+            console.log('Stock update API response:', result);
+            
+            // Handle WordPress wp_send_json_success format
+            const success = result.success === true;
+            const message = result.data?.message || result.message || '';
+            
+            if (success) {
+                console.log('Stock update successful, refreshing products immediately...');
+                
+                // Show updating toast
+                this.ui.showToast('Updating products...', 'info');
+                
+                // Refresh products IMMEDIATELY after save
                 await this.fetchProducts();
+                console.log('Products fetched, rendering views...');
+                
+                // Render both views to ensure data is up to date
                 this.renderStockList();
+                this.renderProductGrid();
+                console.log('Both views rendered (stock list + product grid)');
+                
+                // Show success toast and close modal AFTER refresh
+                this.ui.showToast(message || 'Products updated successfully!', 'success');
+                
+                // Small delay to let the user see the refresh happened
+                setTimeout(() => {
+                    if (modal) modal.classList.add('hidden');
+                    console.log('Modal closed');
+                }, 500);
             } else {
-                throw new Error(result.message || 'Update failed');
+                const errorMsg = result.data?.message || result.message || 'Update failed';
+                throw new Error(errorMsg);
             }
         } catch (error) {
             console.error('Stock update error:', error);
-            this.ui.showToast('Failed to update stock');
+            this.ui.showToast('Failed to update stock: ' + error.message);
         }
     }
     
@@ -113,6 +177,12 @@ class ProductsManager {
             return;
         }
         
+        // Store the product ID and data in state for saving later
+        this.state.updateState('editingStockProduct', {
+            id: product.id,
+            name: product.name
+        });
+        
         const modal = document.getElementById('stock-edit-modal');
         const title = document.getElementById('stock-edit-title');
         const list = document.getElementById('stock-edit-variations-list');
@@ -125,6 +195,8 @@ class ProductsManager {
                 const row = document.createElement('div');
                 row.className = 'stock-edit-row grid grid-cols-12 gap-4 items-center bg-slate-700/50 p-3 rounded-lg';
                 row.dataset.variationId = variation.id;
+                row.dataset.sku = variation.sku || '';
+                row.dataset.price = variation.price || 0;
                 
                 const attrText = Object.values(variation.attributes || {})
                     .map(v => v.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()))
@@ -160,6 +232,7 @@ class ProductsManager {
      */
     async fetchProducts(filters = {}) {
         try {
+            console.log('Fetching products from API...');
             // Load all products at once
             const response = await fetch('api/products.php');
             if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
@@ -168,6 +241,7 @@ class ProductsManager {
             if (!result.success) throw new Error(result.data?.message || 'Failed to load products.');
             
             const products = result.data.products || [];
+            console.log(`Fetched ${products.length} products, updating state...`);
             this.state.updateState('products.all', products);
             
             // Build filter UI if categories/tags available
@@ -175,6 +249,7 @@ class ProductsManager {
                 this.buildFilterUI(result.data.categories || [], result.data.tags || []);
             }
             
+            console.log('Products state updated successfully');
             return products;
         } catch (error) {
             console.error('Error fetching products:', error);

@@ -1219,8 +1219,21 @@ class ProductEditorManager {
     async saveProductEditor() {
         const statusEl = document.getElementById('product-editor-status');
         const saveBtn = document.getElementById('product-editor-save');
+        const saveJsonBtn = document.getElementById('product-editor-save-json');
         const titleEl = document.getElementById('product-editor-title');
 
+        // Store original button state
+        const originalBtnText = saveBtn.textContent;
+        const originalBtnHtml = saveBtn.innerHTML;
+        
+        // Set loading state on both save buttons
+        saveBtn.disabled = true;
+        saveJsonBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Saving...';
+        saveJsonBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Saving...';
+        saveBtn.classList.add('opacity-75', 'cursor-not-allowed');
+        saveJsonBtn.classList.add('opacity-75', 'cursor-not-allowed');
+        
         statusEl.textContent = 'Saving...';
         statusEl.className = 'text-sm text-right h-5 mt-2 text-slate-400';
 
@@ -1277,8 +1290,15 @@ class ProductEditorManager {
                 this.ui.showToast(`Product "${formData.name}" created successfully!`);
                 
                 // Refresh products list to show new product
+                console.log('Refreshing products after product creation...');
                 if (window.productsManager && typeof window.productsManager.fetchProducts === 'function') {
+                    this.ui.showToast('Updating products...', 'info');
                     await window.productsManager.fetchProducts();
+                    // Also render both views
+                    window.productsManager.renderStockList();
+                    window.productsManager.renderProductGrid();
+                    console.log('Products refreshed and both views rendered');
+                    this.ui.showToast('Products updated successfully!', 'success');
                 }
 
             } else {
@@ -1327,9 +1347,15 @@ class ProductEditorManager {
                 statusEl.className = 'text-sm text-right h-5 mt-2 text-green-400';
                 
                 // Auto-refresh products list to show updated stock/details
-                console.log('Refreshing products after save...');
+                console.log('Refreshing products after product editor save...');
                 if (window.productsManager && typeof window.productsManager.fetchProducts === 'function') {
+                    this.ui.showToast('Updating products...', 'info');
                     await window.productsManager.fetchProducts();
+                    // Also render both views to ensure they're updated
+                    window.productsManager.renderStockList();
+                    window.productsManager.renderProductGrid();
+                    console.log('Products refreshed and both views rendered');
+                    this.ui.showToast('Products updated successfully!', 'success');
                 }
             }
 
@@ -1337,6 +1363,15 @@ class ProductEditorManager {
             console.error('Error saving product:', error);
             statusEl.textContent = `Error: ${error.message}`;
             statusEl.className = 'text-sm text-right h-5 mt-2 text-red-400';
+            this.ui.showToast(`Error: ${error.message}`, 'error');
+        } finally {
+            // Restore button state
+            saveBtn.disabled = false;
+            saveJsonBtn.disabled = false;
+            saveBtn.textContent = originalBtnText;
+            saveJsonBtn.textContent = originalBtnText;
+            saveBtn.classList.remove('opacity-75', 'cursor-not-allowed');
+            saveJsonBtn.classList.remove('opacity-75', 'cursor-not-allowed');
         }
     }
 

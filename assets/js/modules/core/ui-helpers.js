@@ -6,8 +6,9 @@ class UIHelpers {
     /**
      * Display a toast notification with a progress bar
      * @param {string} message - The message to display
+     * @param {string} type - The type of toast: 'info', 'success', 'error', or default
      */
-    showToast(message) {
+    showToast(message, type = 'default') {
         // Remove any existing static toast
         let oldToast = document.getElementById('jpos-toast');
         if (oldToast) oldToast.remove();
@@ -22,8 +23,28 @@ class UIHelpers {
         toast.style.transform = 'translateX(-50%) translateY(40px)';
         toast.style.minWidth = '120px';
         toast.style.maxWidth = '90vw';
-        toast.style.background = 'rgba(255,255,255,0.60)';
-        toast.style.color = '#111';
+        
+        // Set colors based on type
+        let backgroundColor = 'rgba(255,255,255,0.60)';
+        let textColor = '#111';
+        let loaderColor = '#111';
+        
+        if (type === 'info') {
+            backgroundColor = 'rgba(59, 130, 246, 0.90)'; // Blue
+            textColor = '#fff';
+            loaderColor = '#fff';
+        } else if (type === 'success') {
+            backgroundColor = 'rgba(34, 197, 94, 0.90)'; // Green
+            textColor = '#fff';
+            loaderColor = '#fff';
+        } else if (type === 'error') {
+            backgroundColor = 'rgba(239, 68, 68, 0.90)'; // Red
+            textColor = '#fff';
+            loaderColor = '#fff';
+        }
+        
+        toast.style.background = backgroundColor;
+        toast.style.color = textColor;
         toast.style.fontWeight = 'bold';
         toast.style.fontSize = '0.95rem';
         toast.style.padding = '0.5rem 1rem 0.7rem 1rem';
@@ -52,7 +73,7 @@ class UIHelpers {
         loader.style.left = '0';
         loader.style.bottom = '0';
         loader.style.margin = '0';
-        loader.innerHTML = `<div style="height:100%;width:100%;background:#111;border-radius:0 0 0.6rem 0.6rem;transform:scaleX(1);transform-origin:left;transition:transform 2.5s linear;"></div>`;
+        loader.innerHTML = `<div style="height:100%;width:100%;background:${loaderColor};border-radius:0 0 0.6rem 0.6rem;transform:scaleX(1);transform-origin:left;transition:transform 2.5s linear;"></div>`;
         
         toast.style.position = 'fixed';
         toast.style.bottom = '32px';
@@ -79,7 +100,7 @@ class UIHelpers {
         toast.style.height = '24px';
         toast.style.minHeight = '24px';
         toast.style.maxHeight = '24px';
-        toast.style.background = 'rgba(255,255,255,0.6)';
+        toast.style.background = backgroundColor;
         toast.style.backdropFilter = 'blur(8px)';
         toast.style.padding = '0 1rem 0 1rem';
         toast.style.display = 'flex';
@@ -106,7 +127,7 @@ class UIHelpers {
         loader.style.left = '0';
         loader.style.bottom = '0';
         loader.style.margin = '0';
-        loader.innerHTML = `<div style="height:100%;width:100%;background:#111;border-radius:0 0 0.6rem 0.6rem;transform:scaleX(1);transform-origin:left;transition:transform 2.5s linear;"></div>`;
+        loader.innerHTML = `<div style="height:100%;width:100%;background:${loaderColor};border-radius:0 0 0.6rem 0.6rem;transform:scaleX(1);transform-origin:left;transition:transform 2.5s linear;"></div>`;
     }
 
     /**
