@@ -187,6 +187,10 @@ if (!empty($order_ids)) {
             }
         }
         
+        // Check if order has refunds
+        $refunds = $order->get_refunds();
+        $has_refunds = !empty($refunds);
+        
         $response_data[] = [
             'id'           => $order->get_id(),
             'order_number' => $order->get_order_number(),
@@ -198,6 +202,7 @@ if (!empty($order_ids)) {
             'source'       => $order_source,
             'customer_id'  => $customer_id,
             'customer_name' => $customer_name,
+            'has_refunds'  => $has_refunds,
             'items'        => array_map(function($item) {
                 $product = $item->get_product();
                 return [

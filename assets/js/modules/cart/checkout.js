@@ -586,6 +586,12 @@ class CheckoutManager {
         if (result.success) {
             this.ui.showToast('Refund/Exchange processed successfully!', 'success');
             this.cart.clearCart(true);
+            
+            // Show refund/exchange receipt
+            if (result.data && result.data.receipt_data && window.receiptsManager) {
+                window.receiptsManager.showRefundReceipt(result.data.receipt_data);
+            }
+            
             if (window.fetchOrders) await window.fetchOrders();
         } else {
             throw new Error(result.message || 'Refund failed.');

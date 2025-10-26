@@ -159,6 +159,7 @@ class OrdersManager {
                 <div class="col-span-2 text-right font-mono">$${order.total}</div>
                 <div class="col-span-2 text-right flex gap-2 justify-end">
                     <button class="view-receipt-btn px-3 py-1 bg-indigo-600 text-xs rounded hover:bg-indigo-500" data-order-id="${order.id}">Receipt</button>
+                    ${order.has_refunds ? `<button class="view-refund-receipt-btn px-3 py-1 bg-purple-600 text-xs rounded hover:bg-purple-500" data-order-id="${order.id}">Refund Receipt</button>` : ''}
                     ${order.status === 'completed' ? `<button class="return-order-btn px-3 py-1 bg-amber-600 text-xs rounded hover:bg-amber-500" data-order-id="${order.id}">Return</button>` : ''}
                     <button class="delete-order-btn px-3 py-1 bg-red-600 text-xs rounded hover:bg-red-500" data-order-id="${order.id}" data-order-number="${order.order_number}">Delete</button>
                 </div>
@@ -194,6 +195,13 @@ class OrdersManager {
                         split_payments: order.split_payments
                     });
                 }
+            });
+        });
+        
+        container.querySelectorAll('.view-refund-receipt-btn').forEach(button => {
+            button.addEventListener('click', async (e) => {
+                const orderId = parseInt(e.target.dataset.orderId);
+                await this.showRefundReceipt(orderId);
             });
         });
         
@@ -612,6 +620,28 @@ class OrdersManager {
         
         if (modal) {
             modal.classList.remove('hidden');
+        }
+    }
+    
+    /**
+     * Show refund receipt for an order
+     * @param {number} orderId - Order ID to fetch refund receipt for
+     */
+    async showRefundReceipt(orderId) {
+        try {
+            const response = await fetch(`api/get-refund-receipt.php?order_id=${orderId}`);
+            if (!response.ok) throw new Error('Failed to fetch refund receipt');
+            
+            const result = await response.json();
+            if (!result.success) throw new Error(result.data?.message || 'Failed to load refund receipt');
+            
+            // Show the refund receipt using receiptsManager
+            if (window.receiptsManager) {
+                window.receiptsManager.showRefundReceipt(result.data);
+            }
+        } catch (error) {
+            console.error('Error loading refund receipt:', error);
+            this.ui.showToast(`Error: ${error.message}`, 'error');
         }
     }
     

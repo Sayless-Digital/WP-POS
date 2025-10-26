@@ -99,8 +99,53 @@ try {
     $original_order->add_order_note($refund_note);
     $original_order->save();
     
+    // Build comprehensive receipt data for refund/exchange
+    $receipt_data = [
+        'transaction_type' => !empty($new_sale_items) ? 'EXCHANGE' : 'REFUND',
+        'refund_id' => $refund->get_id(),
+        'original_order_number' => $original_order->get_order_number(),
+        'date_created' => current_time('mysql'),
+        'customer_name' => $original_order->get_formatted_billing_full_name() ?: 'Guest',
+        'payment_method' => $payment_method_title,
+        
+        // Returned items (negative quantities for display)
+        'returned_items' => array_map(function($item) {
+            return [
+                'name' => wc_get_product($item['id'])->get_name(),
+                'sku' => wc_get_product($item['id'])->get_sku(),
+                'quantity' => -abs($item['qty']), // Negative to show as return
+                'price' => floatval($item['price']),
+                'total' => -abs(floatval($item['price']) * abs($item['qty'])) // Negative total
+            ];
+        }, $refund_items),
+        
+        'refund_amount' => $total_refund_amount,
+        
+        // New items if exchange
+        'new_items' => !empty($new_sale_items) ? array_map(function($item) {
+            $product = wc_get_product($item['id']);
+            return [
+                'name' => $product->get_name(),
+                'sku' => $product->get_sku(),
+                'quantity' => $item['qty'],
+                'price' => floatval($product->get_price()),
+                'total' => floatval($product->get_price()) * $item['qty']
+            ];
+        }, $new_sale_items) : [],
+        
+        'exchange_order_number' => !empty($new_sale_items) ? $exchange_order->get_order_number() : null,
+        'exchange_total' => !empty($new_sale_items) ? floatval($exchange_order->get_total()) : 0,
+        
+        // Calculate net amount (negative = refund due, positive = payment due)
+        'net_amount' => (!empty($new_sale_items) ? floatval($exchange_order->get_total()) : 0) - $total_refund_amount
+    ];
+    
     $wpdb->query('COMMIT');
-    wp_send_json_success(['message' => 'Refund/Exchange processed successfully.', 'refund_id' => $refund->get_id()]);
+    wp_send_json_success([
+        'message' => 'Refund/Exchange processed successfully.',
+        'refund_id' => $refund->get_id(),
+        'receipt_data' => $receipt_data
+    ]);
 
 } catch (Exception $e) {
     $wpdb->query('ROLLBACK');

@@ -256,6 +256,104 @@ class ReceiptsManager {
     }
 
     /**
+     * Show refund/exchange receipt
+     * @param {Object} data - Refund receipt data from API
+     */
+    showRefundReceipt(data) {
+        const modal = document.getElementById('receipt-modal');
+        const content = document.getElementById('receipt-content');
+        
+        if (!modal || !content) return;
+        
+        // Get store name from state or use default
+        const storeName = this.state.getState('settings.receipt.store_name') || 'Store';
+        const isExchange = data.transaction_type === 'EXCHANGE';
+        
+        // Build receipt HTML
+        let html = `
+            <div style="font-family: monospace; text-align: center;">
+                <h2 style="margin: 0; font-size: 1.5em;">${storeName}</h2>
+                <p style="margin: 5px 0; font-size: 1.2em; font-weight: bold; color: ${isExchange ? '#f59e0b' : '#ef4444'};">
+                    ${data.transaction_type} RECEIPT
+                </p>
+                <p style="margin: 5px 0;">Original Order: #${data.original_order_number}</p>
+                <p style="margin: 5px 0;">${isExchange ? 'Exchange' : 'Refund'} ID: #${data.refund_id}</p>
+                <p style="margin: 5px 0;">${new Date(data.date_created).toLocaleString()}</p>
+                ${data.customer_name ? `<p style="margin: 5px 0;">Customer: ${data.customer_name}</p>` : ''}
+                <hr style="border: 1px dashed #000; margin: 10px 0;">
+                
+                <h3 style="text-align: left; margin: 10px 0; font-weight: bold;">RETURNED ITEMS:</h3>
+        `;
+        
+        // Add returned items
+        data.returned_items.forEach(item => {
+            html += `
+                <div style="display: flex; justify-content: space-between; margin: 5px 0;">
+                    <span>${item.quantity}x ${item.name}</span>
+                    <span style="color: #ef4444;">-$${Math.abs(item.total).toFixed(2)}</span>
+                </div>
+                ${item.sku ? `<div style="font-size: 0.85em; color: #666; margin-left: 20px;">SKU: ${item.sku}</div>` : ''}
+            `;
+        });
+        
+        html += `
+                <hr style="border: 1px dashed #000; margin: 10px 0;">
+                <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 1.1em;">
+                    <span>REFUND CREDIT:</span>
+                    <span style="color: #10b981;">$${data.refund_amount.toFixed(2)}</span>
+                </div>
+        `;
+        
+        // Add new items if exchange
+        if (isExchange && data.new_items && data.new_items.length > 0) {
+            html += `
+                <hr style="border: 1px dashed #000; margin: 10px 0;">
+                <h3 style="text-align: left; margin: 10px 0; font-weight: bold;">NEW ITEMS:</h3>
+            `;
+            
+            data.new_items.forEach(item => {
+                html += `
+                    <div style="display: flex; justify-content: space-between; margin: 5px 0;">
+                        <span>${item.quantity}x ${item.name}</span>
+                        <span style="color: #10b981;">$${item.total.toFixed(2)}</span>
+                    </div>
+                    ${item.sku ? `<div style="font-size: 0.85em; color: #666; margin-left: 20px;">SKU: ${item.sku}</div>` : ''}
+                `;
+            });
+            
+            html += `
+                <hr style="border: 1px dashed #000; margin: 10px 0;">
+                <div style="display: flex; justify-content: space-between; font-weight: bold;">
+                    <span>New Order Total:</span>
+                    <span>$${data.exchange_total.toFixed(2)}</span>
+                </div>
+                <div style="font-size: 0.9em; margin: 5px 0;">
+                    New Order: #${data.exchange_order_number}
+                </div>
+            `;
+        }
+        
+        // Net amount (refund due or payment due)
+        html += `
+                <hr style="border: 2px solid #000; margin: 10px 0;">
+                <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 1.3em;">
+                    <span>${data.net_amount < 0 ? 'REFUND DUE:' : 'PAYMENT DUE:'}</span>
+                    <span style="color: ${data.net_amount < 0 ? '#10b981' : '#ef4444'};">
+                        $${Math.abs(data.net_amount).toFixed(2)}
+                    </span>
+                </div>
+                <hr style="border: 2px solid #000; margin: 10px 0;">
+                
+                <p style="margin: 10px 0;">Payment Method: ${data.payment_method}</p>
+                <p style="margin: 20px 0; font-size: 0.9em;">Thank you for your business!</p>
+            </div>
+        `;
+        
+        content.innerHTML = html;
+        modal.classList.remove('hidden');
+    }
+
+    /**
      * Print receipt in new window
      */
     printReceipt() {
