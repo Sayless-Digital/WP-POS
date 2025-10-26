@@ -331,16 +331,82 @@ class CheckoutManager {
      */
     async processRefund(splits) {
         const cartItems = this.state.getState('cart.items') || [];
-        const refund_items = cartItems.filter(item => item.qty < 0);
-        const new_sale_items = cartItems.filter(item => item.qty > 0);
+        
+        // Validate cart items have required structure
+        if (!Array.isArray(cartItems) || cartItems.length === 0) {
+            throw new Error('No items in cart for refund/exchange');
+        }
+        
+        // Filter and validate refund items (negative quantities)
+        const refund_items = cartItems.filter(item => {
+            if (!item || typeof item !== 'object') {
+                console.error('Invalid cart item:', item);
+                return false;
+            }
+            return item.qty < 0;
+        });
+        
+        // Filter and validate new sale items (positive quantities)
+        const new_sale_items = cartItems.filter(item => {
+            if (!item || typeof item !== 'object') {
+                console.error('Invalid cart item:', item);
+                return false;
+            }
+            return item.qty > 0;
+        });
+        
+        // Validate we have either refund items or new sale items
+        if (refund_items.length === 0 && new_sale_items.length === 0) {
+            throw new Error('No valid items found for refund/exchange');
+        }
+        
+        // Validate each refund item has required properties
+        for (const item of refund_items) {
+            if (!item.id) {
+                throw new Error(`Refund item missing 'id' property: ${JSON.stringify(item)}`);
+            }
+            if (typeof item.qty === 'undefined') {
+                throw new Error(`Refund item missing 'qty' property: ${JSON.stringify(item)}`);
+            }
+            if (typeof item.price === 'undefined') {
+                throw new Error(`Refund item missing 'price' property: ${JSON.stringify(item)}`);
+            }
+        }
+        
+        // Validate each new sale item has required properties
+        for (const item of new_sale_items) {
+            if (!item.id) {
+                throw new Error(`New sale item missing 'id' property: ${JSON.stringify(item)}`);
+            }
+            if (typeof item.qty === 'undefined') {
+                throw new Error(`New sale item missing 'qty' property: ${JSON.stringify(item)}`);
+            }
+            if (typeof item.price === 'undefined') {
+                throw new Error(`New sale item missing 'price' property: ${JSON.stringify(item)}`);
+            }
+        }
+        
+        // Get and validate original order ID
+        const originalOrderId = this.state.getState('returns.fromOrderId');
+        if (!originalOrderId) {
+            throw new Error('Original order ID not found for refund');
+        }
+        
+        // Get and validate nonce
+        const refundNonce = this.state.getState('nonces.refund');
+        if (!refundNonce) {
+            throw new Error('Security token not found for refund');
+        }
         
         const payload = {
-            original_order_id: this.state.getState('returns.fromOrderId'),
+            original_order_id: originalOrderId,
             refund_items: refund_items,
             new_sale_items: new_sale_items,
             payment_method: splits[0].method,
-            nonce: this.state.getState('nonces.refund')
+            nonce: refundNonce
         };
+        
+        console.log('Refund payload:', payload);
 
         const response = await fetch('/wp-pos/api/refund.php', {
             method: 'POST',

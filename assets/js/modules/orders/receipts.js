@@ -156,15 +156,22 @@ class ReceiptsManager {
             });
             paymentHTML += '</div>';
             
-            // Add payment breakdown summary for split payments
-            paymentHTML += `
-                <div class='mt-2 pt-2 border-t border-dashed border-gray-400'>
-                    <p class='font-semibold text-xs mb-1'>Payment Breakdown:</p>
-                    ${paymentBreakdown.cash > 0 ? `<div class='flex justify-between text-xs'><span>Cash:</span><span>$${paymentBreakdown.cash.toFixed(2)}</span></div>` : ''}
-                    ${paymentBreakdown.card > 0 ? `<div class='flex justify-between text-xs'><span>Card:</span><span>$${paymentBreakdown.card.toFixed(2)}</span></div>` : ''}
-                    ${paymentBreakdown.other > 0 ? `<div class='flex justify-between text-xs'><span>Other:</span><span>$${paymentBreakdown.other.toFixed(2)}</span></div>` : ''}
-                </div>
-            `;
+            // Count how many payment types were actually used
+            const paymentTypesUsed = (paymentBreakdown.cash > 0 ? 1 : 0) +
+                                     (paymentBreakdown.card > 0 ? 1 : 0) +
+                                     (paymentBreakdown.other > 0 ? 1 : 0);
+            
+            // Only show payment breakdown summary if there are genuinely multiple payment types
+            if (paymentTypesUsed > 1) {
+                paymentHTML += `
+                    <div class='mt-2 pt-2 border-t border-dashed border-gray-400'>
+                        <p class='font-semibold text-xs mb-1'>Payment Breakdown:</p>
+                        ${paymentBreakdown.cash > 0 ? `<div class='flex justify-between text-xs'><span>Cash:</span><span>$${paymentBreakdown.cash.toFixed(2)}</span></div>` : ''}
+                        ${paymentBreakdown.card > 0 ? `<div class='flex justify-between text-xs'><span>Card:</span><span>$${paymentBreakdown.card.toFixed(2)}</span></div>` : ''}
+                        ${paymentBreakdown.other > 0 ? `<div class='flex justify-between text-xs'><span>Other:</span><span>$${paymentBreakdown.other.toFixed(2)}</span></div>` : ''}
+                    </div>
+                `;
+            }
         } else {
             let method = data.payment_method === 'Other' ? 'Other' : data.payment_method;
             totalPaid = parseFloat(data.amount_paid || data.total) || 0;

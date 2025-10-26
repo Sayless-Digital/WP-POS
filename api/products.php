@@ -52,7 +52,7 @@ try {
         SELECT post_id, meta_key, meta_value
         FROM {$wpdb->postmeta}
         WHERE post_id IN ({$all_post_ids})
-        AND meta_key IN ('_price', '_sku', '_stock_status', '_stock', '_manage_stock', '_thumbnail_id', '_sale_price', '_product_type')
+        AND (meta_key LIKE 'attribute_%' OR meta_key IN ('_price', '_sku', '_stock_status', '_stock', '_manage_stock', '_thumbnail_id', '_sale_price', '_product_type'))
     ");
     
     $meta_map = [];

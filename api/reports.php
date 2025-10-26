@@ -270,8 +270,10 @@ function getOrdersForPeriod($start_date, $end_date, $limit = 100) {
             'customer' => $order->get_billing_first_name() . ' ' . $order->get_billing_last_name(),
             'payment_method' => $order->get_payment_method_title(),
             'items' => array_map(function($item) {
+                $product = $item->get_product();
                 return [
                     'name' => $item->get_name(),
+                    'sku' => $product ? $product->get_sku() : '',
                     'quantity' => $item->get_quantity(),
                     'total' => floatval($item->get_total())
                 ];
@@ -342,7 +344,7 @@ function getPaymentBreakdown($start_date, $end_date) {
         $total = floatval($order->get_total());
         
         // Check for split payments
-        $split_payments = $order->get_meta('_split_payments');
+        $split_payments = $order->get_meta('_jpos_split_payments');
         
         if ($split_payments && is_array($split_payments)) {
             // Handle split payments

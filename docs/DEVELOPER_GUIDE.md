@@ -2,6 +2,137 @@
 
 ## Latest Updates
 
+### v1.9.167 - Fixed Product Editor Save Button Loading Indicator (2025-10-25)
+
+**Issue**: Product editor save button provided no visual feedback during save operations, leaving users uncertain whether their changes were being processed
+
+**Problem Details**:
+- Clicking "Save Product" button showed no indication that the system was working
+- Users couldn't tell if the button was clicked, if the save was processing, or if it had completed
+- No spinner, no disabled state, no visual change during potentially long save operations
+- Users would click multiple times thinking it didn't work, potentially causing race conditions
+- Only a status text element updated, which was easy to miss
+
+**Root Cause**:
+The `saveProductEditor()` method at [`assets/js/modules/products/product-editor.js:1219-1367`](../assets/js/modules/products/product-editor.js:1219-1367) only updated a status text element (`statusElement.textContent`) but made no modifications to the save button's visual state. There was:
+- No disabled state to prevent double-clicks
+- No spinner icon to show processing
+- No text change to indicate "Saving..."
+- No visual styling changes (opacity, cursor)
+- No guaranteed cleanup in case of errors
+
+**Solution (v1.9.167)**:
+
+Implemented comprehensive loading state management in the `saveProductEditor()` method:
+
+**1. Button State Storage** (Line 1223):
+```javascript
+// Store original button state
+const originalBtnText = saveBtn.textContent;
+```
+- Preserves original button text before any modifications
+- Allows restoration to exact original state after operation
+
+**2. Comprehensive Loading State** (Lines 1226-1232):
+```javascript
+// Set loading state on both save buttons
+saveBtn.disabled = true;
+saveJsonBtn.disabled = true;
+saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Saving...';
+saveJsonBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Saving...';
+saveBtn.classList.add('opacity-75', 'cursor-not-allowed');
+saveJsonBtn.classList.add('opacity-75', 'cursor-not-allowed');
+```
+- **Disables both buttons**: Prevents accidental double-clicks that could cause data corruption
+- **Spinner icon**: Font Awesome spinning icon provides clear visual animation
+- **Text change**: "Saving..." message explicitly tells user what's happening
+- **Visual styling**: Reduced opacity (75%) and disabled cursor indicate non-interactive state
+- **Dual button support**: Updates both form view AND JSON view save buttons simultaneously
+
+**3. Enhanced Error Feedback** (Lines 1350-1352):
+```javascript
+console.error('Error saving product:', error);
+UIHelpers.showToast('Failed to save product: ' + error.message, 'error');
+statusElement.textContent = 'Error saving product: ' + error.message;
+```
+- Added toast notification for prominent error display
+- Maintains existing status text for backward compatibility
+- Logs error to console for debugging
+
+**4. Guaranteed State Restoration** (Lines 1356-1362):
+```javascript
+} finally {
+    // Always restore button state
+    saveBtn.disabled = false;
+    saveJsonBtn.disabled = false;
+    saveBtn.textContent = originalBtnText;
+    saveJsonBtn.textContent = originalBtnText;
+    saveBtn.classList.remove('opacity-75', 'cursor-not-allowed');
+    saveJsonBtn.classList.remove('opacity-75', 'cursor-not-allowed');
+}
+```
+- **Finally block**: Guarantees execution regardless of success or failure
+- **Complete restoration**: Returns button to exact original state
+- **Both buttons**: Ensures form and JSON view buttons both reset properly
+- **No lingering state**: Prevents buttons from staying disabled after errors
+
+**Technical Details**:
+- Uses Font Awesome 6.x icons (fa-spinner fa-spin) for animated loading indicator
+- Tailwind CSS classes for visual feedback (opacity-75, cursor-not-allowed)
+- Try-catch-finally pattern ensures state cleanup even on error
+- Status element updated for accessibility (screen readers)
+- Compatible with both simple and variable product saves
+- Works across form view and JSON view modes
+
+**Why This Pattern Works**:
+1. **User Confidence**: Clear visual feedback confirms button click registered
+2. **Prevents Errors**: Disabled state blocks problematic double-submissions
+3. **Professional UX**: Matches industry standards for async operations
+4. **Error Recovery**: Finally block ensures UI never gets "stuck" in loading state
+5. **Accessibility**: Multiple feedback methods (visual, text, state) serve all users
+
+**Files Changed**:
+- [`assets/js/modules/products/product-editor.js:1219-1367`](../assets/js/modules/products/product-editor.js:1219-1367) - Added comprehensive loading state management
+- [`index.php:33`](../index.php:33) - Updated product-editor.js version to v1.9.167
+- [`index.php:20`](../index.php:20) - Updated system version comment to v1.9.167
+
+**Cache Busting**:
+Updated version numbers to v1.9.167 to force browser cache refresh:
+- Main version comment: [`index.php:20`](../index.php:20)
+- Product editor version: [`index.php:33`](../index.php:33)
+
+**Testing Checklist**:
+- [ ] Hard refresh browser (Ctrl+F5) to clear cache
+- [ ] Open product editor for any product
+- [ ] Make a change (edit name, price, etc.)
+- [ ] Click "Save Product" button
+- [ ] Verify spinner icon appears immediately
+- [ ] Verify button text changes to "Saving..."
+- [ ] Verify button becomes disabled (can't click again)
+- [ ] Verify button has reduced opacity
+- [ ] After save completes, verify button returns to normal
+- [ ] Test error scenario (disconnect internet, save)
+- [ ] Verify button still restores properly after error
+- [ ] Test on multiple browsers (Chrome, Firefox, Safari, Edge)
+
+**Performance Impact**:
+- Minimal overhead (DOM updates only)
+- No impact on save operation speed
+- Improves perceived performance (users see feedback immediately)
+- Reduces server load (prevents double-submission clicks)
+
+**Related Documentation**:
+- Product Editor Manager: [`assets/js/modules/products/product-editor.js`](../assets/js/modules/products/product-editor.js:1)
+- UI Helpers: [`assets/js/modules/core/ui-helpers.js`](../assets/js/modules/core/ui-helpers.js:1)
+- State Manager: [`assets/js/modules/state.js`](../assets/js/modules/state.js:1)
+
+**Prevention**:
+- Always provide visual feedback for async operations
+- Use disabled state to prevent double-clicks
+- Implement try-catch-finally for guaranteed cleanup
+- Test loading states, not just success/failure outcomes
+- Consider all UX feedback channels (visual, text, state)
+
 ### v1.9.153 - Fixed Products Page Loading and Button Layout (2025-10-09)
 
 **Issue 1**: Products page showed skeleton loaders but never displayed actual products
@@ -3234,6 +3365,54 @@ php tests/php/test-database-optimizer.php
 ## Troubleshooting
 
 ### Common Issues
+
+#### Split Payment Display Not Working in Reports (v1.9.161)
+- **Problem**: Split payments (transactions using multiple payment methods like cash + card) not displaying correctly in payment breakdown section of reports page
+- **Symptoms**:
+  - Payment breakdown info cards show $0.00 for cash, card, and other payment methods
+  - Split payment data exists in database but not retrieved by reports
+  - Single-payment transactions work correctly
+  - No console errors indicating the problem
+- **Root Cause**: Meta key mismatch between checkout save and reports retrieval at [`api/reports.php:345`](../api/reports.php:345) - checkout saves split payments with meta key `_jpos_split_payments` (with jpos_ prefix) at [`api/checkout.php:184`](../api/checkout.php:184), but reports API was attempting to retrieve using `_split_payments` (without prefix), causing `$order->get_meta('_split_payments')` to return empty array
+- **Solution (v1.9.161)**:
+  - Changed meta key retrieval in [`getPaymentBreakdown()`](../api/reports.php:345) function:
+    ```php
+    // BEFORE (BROKEN - missing jpos_ prefix)
+    $split_payments = $order->get_meta('_split_payments');
+    
+    // AFTER (FIXED - correct meta key with prefix)
+    $split_payments = $order->get_meta('_jpos_split_payments');
+    ```
+  - Updated system version from v1.9.160 to v1.9.161
+  - Added comprehensive documentation in agents.md version history
+  - Updated DEVELOPER_GUIDE.md with troubleshooting entry
+- **Technical Details**:
+  - **Meta Key Convention**: WP POS uses `_jpos_` prefix for all custom meta keys to prevent conflicts
+  - **Split Payment Structure**: Array of payment objects with `method` and `amount` fields
+  - **Data Flow**: Checkout saves → Reports retrieves → Payment breakdown displays
+  - **Why It Failed**: String mismatch caused WooCommerce's `get_meta()` to return empty instead of split payment array
+- **Prevention**:
+  - **ALWAYS use consistent meta key naming** across all API endpoints
+  - Use project prefix (`_jpos_`) for all custom meta keys
+  - Document meta key names in a central location
+  - Test with actual split payment transactions, not just single payments
+  - Add integration tests that verify meta key consistency
+  - Search codebase for meta key usage to ensure consistency
+- **Testing**:
+  1. Process a split payment transaction (cash + card)
+  2. Navigate to Reports page
+  3. Select any period that includes the split payment
+  4. Verify payment breakdown cards show correct amounts
+  5. Check cash total includes cash portion
+  6. Check card total includes card portion
+  7. Verify totals add up to order total
+  8. Test with multiple split payment orders
+  9. Test with mix of single and split payments
+- **Related Issues**:
+  - Any custom meta key usage should follow `_jpos_` naming convention
+  - Check all `add_meta_data()` and `get_meta()` calls for consistency
+  - Verify meta keys match between save and retrieve operations
+  - Document all custom meta keys in central reference
 
 #### Products Not Displaying on Products Page or POS Page (v1.9.154)
 - **Problem**: Products fail to load on both the Products page and POS page, showing only skeleton loaders indefinitely

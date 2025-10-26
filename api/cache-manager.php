@@ -7,6 +7,8 @@ class JPOS_Cache_Manager {
     private static $cache_dir;
     private static $cache_enabled = true;
     private static $default_ttl = 300; // 5 minutes
+    private static $max_cache_files = 100; // Maximum number of cache files
+    private static $max_cache_size = 10485760; // 10MB in bytes
     
     /**
      * Initialize cache directory
@@ -22,6 +24,17 @@ class JPOS_Cache_Manager {
         // Set proper permissions
         if (file_exists(self::$cache_dir)) {
             chmod(self::$cache_dir, 0755);
+        }
+        
+        // Clean expired cache on initialization
+        self::clean_expired();
+        
+        // Check cache limits
+        self::enforce_cache_limits();
+        
+        // Schedule automatic cleanup if not already scheduled
+        if (!wp_next_scheduled('jpos_cache_cleanup')) {
+            wp_schedule_event(time(), 'hourly', 'jpos_cache_cleanup');
         }
     }
     
@@ -184,6 +197,56 @@ class JPOS_Cache_Manager {
     }
     
     /**
+     * Enforce cache limits (file count and size)
+     */
+    public static function enforce_cache_limits() {
+        if (!file_exists(self::$cache_dir)) {
+            return;
+        }
+        
+        $files = glob(self::$cache_dir . '*.cache');
+        
+        // Check file count
+        if (count($files) > self::$max_cache_files) {
+            // Sort by modification time (oldest first)
+            usort($files, function($a, $b) {
+                return filemtime($a) - filemtime($b);
+            });
+            
+            // Delete oldest files until we're under the limit
+            $to_delete = count($files) - self::$max_cache_files;
+            for ($i = 0; $i < $to_delete; $i++) {
+                if (isset($files[$i])) {
+                    unlink($files[$i]);
+                }
+            }
+        }
+        
+        // Check total size
+        $total_size = 0;
+        $files = glob(self::$cache_dir . '*.cache');
+        
+        foreach ($files as $file) {
+            $total_size += filesize($file);
+        }
+        
+        // If over size limit, delete oldest files
+        if ($total_size > self::$max_cache_size) {
+            usort($files, function($a, $b) {
+                return filemtime($a) - filemtime($b);
+            });
+            
+            foreach ($files as $file) {
+                if ($total_size <= self::$max_cache_size) {
+                    break;
+                }
+                $total_size -= filesize($file);
+                unlink($file);
+            }
+        }
+    }
+    
+    /**
      * Cache key generator for common patterns
      */
     public static function generate_key($prefix, $params = []) {
@@ -193,3 +256,11 @@ class JPOS_Cache_Manager {
 
 // Initialize cache manager
 JPOS_Cache_Manager::init();
+
+// Register WordPress cron cleanup action
+add_action('jpos_cache_cleanup', ['JPOS_Cache_Manager', 'clean_expired']);
+
+// Clean up on plugin deactivation
+register_deactivation_hook(__FILE__, function() {
+    wp_clear_scheduled_hook('jpos_cache_cleanup');
+});

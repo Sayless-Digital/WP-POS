@@ -399,15 +399,50 @@ class ReportsManager {
                 <div class="col-span-1 text-sm">
                     <span class="px-2 py-1 rounded text-xs ${order.source === 'POS' ? 'bg-blue-900 text-blue-300' : 'bg-green-900 text-green-300'}">${order.source}</span>
                 </div>
-                <div class="col-span-2 text-sm">
+                <div class="col-span-1 text-sm">
                     <span class="px-2 py-1 rounded text-xs ${statusColor}">${order.status}</span>
                 </div>
                 <div class="col-span-1 text-center text-sm">${order.item_count}</div>
                 <div class="col-span-2 text-right font-mono text-sm">$${(order.total || 0).toFixed(2)}</div>
                 <div class="col-span-2 text-center text-sm">${order.customer || 'Guest'}</div>
+                <div class="col-span-1 text-center">
+                    <button class="view-report-receipt-btn px-3 py-1 bg-indigo-600 text-xs rounded hover:bg-indigo-500" data-order-id="${order.id}">Receipt</button>
+                </div>
             `;
             
             container.appendChild(orderElement);
+        });
+        
+        // Attach event listeners to receipt buttons
+        container.querySelectorAll('.view-report-receipt-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const orderId = parseInt(e.target.dataset.orderId);
+                const orders = this.state.getState('reports.orders') || [];
+                const order = orders.find(o => o.id === orderId);
+                if (order && window.receiptsManager) {
+                    // Convert items object to array if needed
+                    let itemsArray = [];
+                    if (order.items) {
+                        if (Array.isArray(order.items)) {
+                            itemsArray = order.items;
+                        } else if (typeof order.items === 'object') {
+                            itemsArray = Object.values(order.items);
+                        }
+                    }
+                    
+                    window.receiptsManager.showReceipt({
+                        ...order,
+                        order_number: order.number,
+                        date_created: order.date,
+                        items: itemsArray,
+                        payment_method: order.payment_method,
+                        split_payments: order.split_payments,
+                        customer_name: order.customer,
+                        subtotal: order.subtotal,
+                        total: order.total
+                    });
+                }
+            });
         });
     }
 

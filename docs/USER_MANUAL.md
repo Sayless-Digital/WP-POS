@@ -1,5 +1,31 @@
 ## Latest Updates
 
+### v1.9.167 - Improved Product Editor Save Button (2025-10-25)
+
+When you save changes in the Product Editor, you'll now see clear visual feedback that your changes are being saved!
+
+**What's New:**
+- ✅ **Spinning icon** appears next to button text while saving
+- ✅ **"Saving..." text** replaces the button text to show progress
+- ✅ **Button becomes disabled** so you can't accidentally click it twice
+- ✅ **Visual styling changes** (button appears slightly faded) to indicate it's processing
+- ✅ **Automatic restoration** - button returns to normal when save completes
+
+**Why This Matters:**
+- You no longer need to wonder if the system received your save request
+- Clear feedback prevents accidental double-clicks that could cause errors
+- Professional user experience that matches modern app standards
+- Works for both successful saves and error cases
+
+**How to See It:**
+1. Open any product in the Product Editor
+2. Make a change (edit name, price, etc.)
+3. Click "Save Product"
+4. Watch the button change to show "Saving..." with a spinning icon
+5. Button returns to normal when save completes
+
+**Note:** This improvement works for both the form view and JSON view save buttons!
+
 ### v1.9.133 - Refunds & Exchanges Reports
 Track all refunds and exchanges processed through your POS system with comprehensive reporting and filtering options.
 
