@@ -309,13 +309,13 @@ class CartManager {
 
     /**
      * Get cart total (subtotal + fees - discounts)
-     * @returns {Number} Total amount
+     * @returns {Number} Total amount (can be negative for returns)
      */
     getTotal() {
         let total = this.getSubtotal();
         total += this.getFees();
         total -= this.getDiscounts();
-        return Math.max(0, total);
+        return total;
     }
 
     /**

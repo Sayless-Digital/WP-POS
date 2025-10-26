@@ -53,17 +53,44 @@ class CheckoutManager {
         // Update button text
         applyBtn.textContent = 'Pay';
         
-        // Default: single payment method
+        // Payment methods including Return/Refund Credit (at end)
         const paymentMethods = [
             { label: 'Cash', value: 'Cash' },
             { label: 'Card', value: 'Card' },
-            { label: 'Other', value: 'Other' }
+            { label: 'Other', value: 'Other' },
+            { label: 'Return/Refund Credit', value: 'Return/Refund Credit' }
         ];
         
         const cartTotal = this.getCartTotal();
-        let splits = [
-            { method: 'Cash', amount: cartTotal }
-        ];
+        const returnFromOrderId = this.state.getState('returns.fromOrderId');
+        let splits = [];
+        
+        // Calculate refund credit if processing return/exchange
+        let refundCredit = 0;
+        if (returnFromOrderId) {
+            const cartItems = this.state.getState('cart.items') || [];
+            // Sum up negative quantities (return items) to get credit amount
+            cartItems.forEach(item => {
+                if (item.qty < 0) {
+                    refundCredit += Math.abs((parseFloat(item.price) || 0) * item.qty);
+                }
+            });
+        }
+        
+        // Setup initial payment splits
+        if (returnFromOrderId && refundCredit > 0) {
+            // Return/Exchange: Pre-fill refund credit first
+            splits.push({ method: 'Return/Refund Credit', amount: refundCredit });
+            
+            // If cart total exceeds credit, add second payment method for remainder
+            if (cartTotal > refundCredit) {
+                splits.push({ method: 'Cash', amount: cartTotal - refundCredit });
+            }
+        } else {
+            // Regular checkout: Default to Cash
+            splits = [{ method: 'Cash', amount: cartTotal }];
+        }
+        
         let activeInput = null;
         let inputFirstFocus = [];
         
@@ -192,7 +219,7 @@ class CheckoutManager {
             list.appendChild(row);
         });
         
-        // Add button
+        // Add button (limit to 4 payment methods max)
         if (splits.length < paymentMethods.length) {
             const addBtn = document.createElement('button');
             addBtn.className = 'px-2 py-1 bg-slate-700 hover:bg-slate-600 text-xs rounded mt-2';
@@ -299,7 +326,7 @@ class CheckoutManager {
     async handlePayment(splits, cartTotal, modal) {
         const sum = splits.reduce((a, b) => a + (parseFloat(b.amount) || 0), 0);
         if (sum < cartTotal) {
-            alert('Total payment amount must cover the cart total.');
+            this.ui.showToast('Total payment amount must cover the cart total.', 'error');
             return;
         }
         
@@ -318,7 +345,7 @@ class CheckoutManager {
                 await this.processCheckout(splits);
             }
         } catch (error) {
-            alert(`An error occurred: ${error.message}`);
+            this.ui.showToast(`An error occurred: ${error.message}`, 'error');
         } finally {
             checkoutBtn.disabled = !this.state.getState('drawer.isOpen');
             checkoutBtn.textContent = 'Checkout';
@@ -424,7 +451,7 @@ class CheckoutManager {
         const result = await response.json();
 
         if (result.success) {
-            alert('Refund/Exchange processed successfully!');
+            this.ui.showToast('Refund/Exchange processed successfully!', 'success');
             this.cart.clearCart(true);
             if (window.fetchOrders) await window.fetchOrders();
         } else {
@@ -497,7 +524,7 @@ class CheckoutManager {
 
     /**
      * Calculate total cart value including fees and discounts
-     * @returns {number} Total cart value
+     * @returns {number} Total cart value (can be negative for returns)
      */
     getCartTotal() {
         let total = 0;
@@ -528,7 +555,7 @@ class CheckoutManager {
             total -= Math.abs(discountVal);
         }
         
-        return Math.max(0, total);
+        return total;
     }
 }
 

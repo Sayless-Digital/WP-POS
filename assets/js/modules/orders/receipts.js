@@ -128,7 +128,7 @@ class ReceiptsManager {
         // Payment methods and change
         let paymentHTML = '';
         let totalPaid = 0;
-        let paymentBreakdown = { cash: 0, card: 0, other: 0 };
+        let paymentBreakdown = { cash: 0, card: 0, credit: 0, other: 0 };
         
         if (data.split_payments && Array.isArray(data.split_payments) && data.split_payments.length > 1) {
             paymentHTML = `<div class='flex flex-col gap-1 mt-2'><p class='font-semibold'>Payment Methods:</p>`;
@@ -143,6 +143,8 @@ class ReceiptsManager {
                     paymentBreakdown.cash += amount;
                 } else if (methodLower === 'card') {
                     paymentBreakdown.card += amount;
+                } else if (methodLower.includes('return') || methodLower.includes('refund') || methodLower.includes('credit')) {
+                    paymentBreakdown.credit += amount;
                 } else {
                     paymentBreakdown.other += amount;
                 }
@@ -159,6 +161,7 @@ class ReceiptsManager {
             // Count how many payment types were actually used
             const paymentTypesUsed = (paymentBreakdown.cash > 0 ? 1 : 0) +
                                      (paymentBreakdown.card > 0 ? 1 : 0) +
+                                     (paymentBreakdown.credit > 0 ? 1 : 0) +
                                      (paymentBreakdown.other > 0 ? 1 : 0);
             
             // Only show payment breakdown summary if there are genuinely multiple payment types
@@ -168,6 +171,7 @@ class ReceiptsManager {
                         <p class='font-semibold text-xs mb-1'>Payment Breakdown:</p>
                         ${paymentBreakdown.cash > 0 ? `<div class='flex justify-between text-xs'><span>Cash:</span><span>$${paymentBreakdown.cash.toFixed(2)}</span></div>` : ''}
                         ${paymentBreakdown.card > 0 ? `<div class='flex justify-between text-xs'><span>Card:</span><span>$${paymentBreakdown.card.toFixed(2)}</span></div>` : ''}
+                        ${paymentBreakdown.credit > 0 ? `<div class='flex justify-between text-xs'><span>Return/Refund Credit:</span><span>$${paymentBreakdown.credit.toFixed(2)}</span></div>` : ''}
                         ${paymentBreakdown.other > 0 ? `<div class='flex justify-between text-xs'><span>Other:</span><span>$${paymentBreakdown.other.toFixed(2)}</span></div>` : ''}
                     </div>
                 `;

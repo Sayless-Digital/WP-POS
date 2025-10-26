@@ -1292,6 +1292,17 @@ class ProductEditorManager {
                 // Refresh products list to show new product
                 console.log('Refreshing products after product creation...');
                 if (window.productsManager && typeof window.productsManager.fetchProducts === 'function') {
+                    // Show loading state on both containers
+                    const productGridContainer = document.getElementById('product-list');
+                    const stockListContainer = document.getElementById('stock-list');
+                    
+                    if (productGridContainer) {
+                        productGridContainer.innerHTML = this.ui.getSkeletonLoaderHtml('grid', 12);
+                    }
+                    if (stockListContainer) {
+                        stockListContainer.innerHTML = this.ui.getSkeletonLoaderHtml('list-rows', 10);
+                    }
+                    
                     this.ui.showToast('Updating products...', 'info');
                     await window.productsManager.fetchProducts();
                     // Also render both views
@@ -1349,6 +1360,17 @@ class ProductEditorManager {
                 // Auto-refresh products list to show updated stock/details
                 console.log('Refreshing products after product editor save...');
                 if (window.productsManager && typeof window.productsManager.fetchProducts === 'function') {
+                    // Show loading state on both containers
+                    const productGridContainer = document.getElementById('product-list');
+                    const stockListContainer = document.getElementById('stock-list');
+                    
+                    if (productGridContainer) {
+                        productGridContainer.innerHTML = this.ui.getSkeletonLoaderHtml('grid', 12);
+                    }
+                    if (stockListContainer) {
+                        stockListContainer.innerHTML = this.ui.getSkeletonLoaderHtml('list-rows', 10);
+                    }
+                    
                     this.ui.showToast('Updating products...', 'info');
                     await window.productsManager.fetchProducts();
                     // Also render both views to ensure they're updated
