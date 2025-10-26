@@ -17,7 +17,7 @@ require_once __DIR__ . '/../wp-load.php';
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- Custom JSON syntax highlighting -->
     
-    <!-- WP POS v1.9.173 - Fixed Negative Totals for Returns -->
+    <!-- WP POS v1.9.183 - Fixed Payment Amount Display Persistence -->
     
     <!-- Core Modules - Load First -->
     <script src="assets/js/modules/state.js?v=1.9.72&t=<?php echo time(); ?>"></script>
@@ -30,11 +30,11 @@ require_once __DIR__ . '/../wp-load.php';
     
     <!-- Products Modules -->
     <script src="assets/js/modules/products/products.js?v=1.9.165&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/products/product-editor.js?v=1.9.169&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/products/product-editor.js?v=1.9.182&t=<?php echo time(); ?>"></script>
     
     <!-- Cart Modules -->
-    <script src="assets/js/modules/cart/cart.js?v=1.9.173&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/cart/checkout.js?v=1.9.173&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/cart/cart.js?v=1.9.174&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/cart/checkout.js?v=1.9.183&t=<?php echo time(); ?>"></script>
     <script src="assets/js/modules/cart/held-carts.js?v=1.9.72&t=<?php echo time(); ?>"></script>
     
     <!-- Orders & Receipts Modules -->
@@ -47,12 +47,12 @@ require_once __DIR__ . '/../wp-load.php';
     <script src="assets/js/modules/financial/reports.js?v=1.9.164&t=<?php echo time(); ?>"></script>
     
     <!-- Admin Modules -->
-    <script src="assets/js/modules/admin/settings.js?v=1.9.147&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/admin/settings.js?v=1.9.181&t=<?php echo time(); ?>"></script>
     <script src="assets/js/modules/admin/sessions.js?v=1.9.72&t=<?php echo time(); ?>"></script>
     <script src="assets/js/modules/admin/users.js?v=1.9.144&t=<?php echo time(); ?>"></script>
     
     <!-- Main Orchestrator - Load Last -->
-    <script src="assets/js/main.js?v=1.9.157&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/main.js?v=1.9.181&t=<?php echo time(); ?>"></script>
     <style>
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
@@ -1614,7 +1614,7 @@ require_once __DIR__ . '/../wp-load.php';
         <span class="text-base font-semibold text-white">Total</span>
         <span id="split-payment-total" class="font-mono text-white text-lg font-bold">$0.00</span>
       </div>
-      <div class="flex items-center justify-between text-sm pt-2 border-t border-slate-600">
+      <div id="split-payment-paid-row" class="flex items-center justify-between text-sm pt-2 border-t border-slate-600">
         <span class="text-slate-300">Amount Paid</span>
         <span id="split-payment-paid" class="font-medium text-slate-200">$0.00</span>
       </div>
@@ -1623,9 +1623,14 @@ require_once __DIR__ . '/../wp-load.php';
         <span id="split-payment-change" class="font-medium text-blue-400">$0.00</span>
       </div>
     </div>
-    <div class="flex justify-end gap-2">
-      <button id="split-payment-cancel" class="px-4 py-2 bg-slate-600 rounded-lg hover:bg-slate-500 text-white">Cancel</button>
-      <button id="split-payment-apply" class="px-4 py-2 bg-indigo-600 rounded-lg hover:bg-indigo-500 text-white font-bold">Apply</button>
+    <div class="flex justify-between gap-2">
+      <button id="split-payment-reset" class="px-4 py-2 bg-amber-600 rounded-lg hover:bg-amber-500 text-white flex items-center gap-2" title="Reset to initial state">
+        <i class="fas fa-undo"></i> Reset
+      </button>
+      <div class="flex gap-2">
+        <button id="split-payment-cancel" class="px-4 py-2 bg-slate-600 rounded-lg hover:bg-slate-500 text-white">Cancel</button>
+        <button id="split-payment-apply" class="px-4 py-2 bg-indigo-600 rounded-lg hover:bg-indigo-500 text-white font-bold">Apply</button>
+      </div>
     </div>
   </div>
 </div>

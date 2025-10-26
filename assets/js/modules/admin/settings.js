@@ -909,8 +909,18 @@ class SettingsManager {
      * @param {number} scale - Scale percentage (50-150)
      */
     applyUIScale(scale) {
-        // Apply zoom to the body element
-        document.body.style.zoom = `${scale}%`;
+        // Convert percentage to decimal for CSS (100% = 1.0)
+        const scaleFactor = scale / 100;
+        
+        // Apply scale using CSS custom property to scale font sizes and spacing
+        // This approach scales content but maintains viewport heights (h-screen, h-full, etc.)
+        document.documentElement.style.setProperty('--ui-scale', scaleFactor);
+        
+        // Apply font-size scaling to root element
+        // Base font size is 16px, scale it proportionally
+        const baseFontSize = 16;
+        const scaledFontSize = baseFontSize * scaleFactor;
+        document.documentElement.style.fontSize = `${scaledFontSize}px`;
         
         // Store in localStorage for immediate access on next page load
         localStorage.setItem('jpos_ui_scale', scale);

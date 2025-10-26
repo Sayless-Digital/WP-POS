@@ -22,6 +22,13 @@ class CheckoutManager {
                 if (modal) modal.classList.add('hidden');
             });
         }
+        
+        const resetBtn = document.getElementById('split-payment-reset');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => {
+                this.resetCheckoutModal();
+            });
+        }
     }
 
     /**
@@ -41,6 +48,22 @@ class CheckoutManager {
     }
 
     /**
+     * Reset checkout modal to initial state
+     */
+    resetCheckoutModal() {
+        const modal = document.getElementById('split-payment-modal');
+        if (modal && !modal.classList.contains('hidden')) {
+            // Close and reopen the modal to reset everything
+            modal.classList.add('hidden');
+            this.ui.showToast('Payment calculations reset', 'info');
+            // Reopen after a brief delay to ensure clean state
+            setTimeout(() => {
+                this.openSplitPaymentModal();
+            }, 100);
+        }
+    }
+
+    /**
      * Open split payment modal for payment processing
      */
     openSplitPaymentModal() {
@@ -49,9 +72,6 @@ class CheckoutManager {
         const totalEl = document.getElementById('split-payment-total');
         const numpad = document.getElementById('split-payment-numpad');
         const applyBtn = document.getElementById('split-payment-apply');
-        
-        // Update button text
-        applyBtn.textContent = 'Pay';
         
         // Payment methods including Return/Refund Credit (at end)
         const paymentMethods = [
@@ -63,22 +83,21 @@ class CheckoutManager {
         
         const cartTotal = this.getCartTotal();
         const returnFromOrderId = this.state.getState('returns.fromOrderId');
+        const cartItems = this.state.getState('cart.items') || [];
         let splits = [];
         
-        // Calculate refund credit if processing return/exchange
+        // Calculate refund credit from cart items with negative quantities
         let refundCredit = 0;
-        if (returnFromOrderId) {
-            const cartItems = this.state.getState('cart.items') || [];
-            // Sum up negative quantities (return items) to get credit amount
-            cartItems.forEach(item => {
-                if (item.qty < 0) {
-                    refundCredit += Math.abs((parseFloat(item.price) || 0) * item.qty);
-                }
-            });
-        }
+        let hasReturnItems = false;
+        cartItems.forEach(item => {
+            if (item.qty < 0) {
+                hasReturnItems = true;
+                refundCredit += Math.abs((parseFloat(item.price) || 0) * item.qty);
+            }
+        });
         
         // Setup initial payment splits
-        if (returnFromOrderId && refundCredit > 0) {
+        if (hasReturnItems && refundCredit > 0) {
             // Return/Exchange: Pre-fill refund credit first
             splits.push({ method: 'Return/Refund Credit', amount: refundCredit });
             
@@ -154,7 +173,7 @@ class CheckoutManager {
                 <select class="split-method p-1 rounded bg-slate-700 border border-slate-600 text-xs w-24">
                     ${paymentMethods.map(opt => `<option value="${opt.value}"${split.method === opt.value ? ' selected' : ''}>${opt.label}</option>`).join('')}
                 </select>
-                <input type="text" class="split-amount p-1 rounded bg-slate-700 border border-slate-600 text-xs w-24 text-right" value="${split.amount}" />
+                <input type="text" class="split-amount p-1 rounded bg-slate-700 border border-slate-600 text-xs w-24 text-right" value="${split.amount}" data-split-idx="${i}" />
                 ${splits.length > 1 ? `<button class="remove-split px-2 py-1 bg-red-600 hover:bg-red-500 text-xs rounded">&times;</button>` : ''}
             `;
             
@@ -239,30 +258,100 @@ class CheckoutManager {
      * @private
      */
     updateTotal(splits, cartTotal, totalEl, applyBtn) {
-        const sum = splits.reduce((a, b) => a + (parseFloat(b.amount) || 0), 0);
-        const change = sum - cartTotal;
+        // Calculate sum of actual payments (exclude Return/Refund Credit)
+        const sum = splits.reduce((a, b) => {
+            if (b.method === 'Return/Refund Credit') {
+                return a; // Don't count credits as payments
+            }
+            return a + (parseFloat(b.amount) || 0);
+        }, 0);
         
-        // Calculate subtotal (before fees/discounts)
-        let subtotal = 0;
+        // Calculate subtotal - separate returns from new items
         const cartItems = this.state.getState('cart.items') || [];
+        let returnItemsTotal = 0;
+        let newItemsTotal = 0;
+        
         cartItems.forEach(item => {
-            subtotal += (parseFloat(item.price) || 0) * (item.qty || 0);
+            const itemTotal = (parseFloat(item.price) || 0) * (item.qty || 0);
+            if (item.qty < 0) {
+                returnItemsTotal += Math.abs(itemTotal);
+            } else {
+                newItemsTotal += itemTotal;
+            }
         });
         
-        // Update subtotal
+        // Calculate actual refund credit being used from splits
+        let actualRefundCredit = 0;
+        splits.forEach(split => {
+            if (split.method === 'Return/Refund Credit') {
+                actualRefundCredit += (parseFloat(split.amount) || 0);
+            }
+        });
+        
+        // Calculate net amount
+        let netAmount = newItemsTotal;
+        const fee = this.state.getState('fee');
+        const discount = this.state.getState('discount');
+        
+        if (fee && fee.amount) {
+            let feeVal = 0;
+            if (fee.amountType === 'percentage') {
+                feeVal = newItemsTotal * (parseFloat(fee.amount) / 100);
+            } else {
+                feeVal = parseFloat(fee.amount);
+            }
+            netAmount += feeVal;
+        }
+        
+        if (discount && discount.amount) {
+            let discountVal = 0;
+            if (discount.amountType === 'percentage') {
+                discountVal = newItemsTotal * (parseFloat(discount.amount) / 100);
+            } else {
+                discountVal = parseFloat(discount.amount);
+            }
+            netAmount -= Math.abs(discountVal);
+        }
+        
+        // Subtract actual refund credit being used (not just available)
+        netAmount -= actualRefundCredit;
+        const change = sum - netAmount;
+        
+        // Update subtotal display - use actual refund credit from splits if present
         const subtotalEl = document.getElementById('split-payment-subtotal');
         if (subtotalEl) {
-            subtotalEl.textContent = `$${subtotal.toFixed(2)}`;
+            if (returnItemsTotal > 0 && newItemsTotal > 0) {
+                // Exchange - show actual refund credit being used
+                const displayCredit = actualRefundCredit > 0 ? actualRefundCredit : returnItemsTotal;
+                subtotalEl.innerHTML = `
+                    <div class="text-xs space-y-1 w-full">
+                        <div class="flex justify-between">
+                            <span>New Items:</span>
+                            <span class="text-green-400">$${newItemsTotal.toFixed(2)}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Return Credit:</span>
+                            <span class="text-amber-400">-$${displayCredit.toFixed(2)}</span>
+                        </div>
+                    </div>
+                `;
+            } else if (returnItemsTotal > 0) {
+                // Return only - show actual refund credit being used
+                const displayCredit = actualRefundCredit > 0 ? actualRefundCredit : returnItemsTotal;
+                subtotalEl.innerHTML = `<span class="text-amber-400">Return Credit: $${displayCredit.toFixed(2)}</span>`;
+            } else {
+                // Regular purchase
+                subtotalEl.textContent = `$${newItemsTotal.toFixed(2)}`;
+            }
         }
         
         // Show/hide and update fee if present
-        const fee = this.state.getState('fee');
         const feeRow = document.getElementById('split-payment-fee-row');
         const feeEl = document.getElementById('split-payment-fee');
         if (fee && fee.amount) {
             let feeVal = 0;
             if (fee.amountType === 'percentage') {
-                feeVal = subtotal * (parseFloat(fee.amount) / 100);
+                feeVal = newItemsTotal * (parseFloat(fee.amount) / 100);
             } else {
                 feeVal = parseFloat(fee.amount);
             }
@@ -273,13 +362,12 @@ class CheckoutManager {
         }
         
         // Show/hide and update discount if present
-        const discount = this.state.getState('discount');
         const discountRow = document.getElementById('split-payment-discount-row');
         const discountEl = document.getElementById('split-payment-discount');
         if (discount && discount.amount) {
             let discountVal = 0;
             if (discount.amountType === 'percentage') {
-                discountVal = subtotal * (parseFloat(discount.amount) / 100);
+                discountVal = newItemsTotal * (parseFloat(discount.amount) / 100);
             } else {
                 discountVal = parseFloat(discount.amount);
             }
@@ -289,34 +377,78 @@ class CheckoutManager {
             if (discountRow) discountRow.classList.add('hidden');
         }
         
-        // Update total
+        // Update total with clear labeling
+        const isRefund = netAmount < 0;
         if (totalEl) {
-            totalEl.textContent = `$${cartTotal.toFixed(2)}`;
-        }
-        
-        // Update amount paid
-        const paidEl = document.getElementById('split-payment-paid');
-        if (paidEl) {
-            paidEl.textContent = `$${sum.toFixed(2)}`;
-        }
-        
-        // Update change
-        const changeEl = document.getElementById('split-payment-change');
-        const changeRow = document.getElementById('split-payment-change-row');
-        if (changeEl && changeRow) {
-            if (change >= 0) {
-                changeEl.textContent = `$${change.toFixed(2)}`;
-                changeEl.className = 'font-medium text-blue-400';
-                changeRow.querySelector('.text-slate-300').textContent = 'Change';
+            if (isRefund) {
+                totalEl.innerHTML = `<span class="text-green-400">Refund Due: $${Math.abs(netAmount).toFixed(2)}</span>`;
             } else {
-                changeEl.textContent = `$${Math.abs(change).toFixed(2)}`;
-                changeEl.className = 'font-medium text-red-400';
-                changeRow.querySelector('.text-slate-300').textContent = 'Remaining';
+                totalEl.textContent = `$${Math.abs(netAmount).toFixed(2)}`;
             }
         }
         
-        // Enable/disable pay button
-        applyBtn.disabled = sum < cartTotal;
+        // For pure refunds (negative netAmount), hide payment tracking rows
+        const paidRow = document.getElementById('split-payment-paid-row');
+        const changeRow = document.getElementById('split-payment-change-row');
+        const paidEl = document.getElementById('split-payment-paid');
+        const changeEl = document.getElementById('split-payment-change');
+        
+        if (isRefund) {
+            // Hide payment tracking for pure refunds - no payment needed
+            if (paidRow) paidRow.classList.add('hidden');
+            if (changeRow) changeRow.classList.add('hidden');
+        } else {
+            // Show and update payment tracking for purchases and exchanges
+            if (paidRow) paidRow.classList.remove('hidden');
+            if (changeRow) changeRow.classList.remove('hidden');
+            
+            // Update amount paid
+            if (paidEl) {
+                paidEl.textContent = `$${sum.toFixed(2)}`;
+            }
+            
+            // Update change/remaining
+            if (changeEl && changeRow) {
+                if (change >= 0) {
+                    changeEl.textContent = `$${change.toFixed(2)}`;
+                    changeEl.className = 'font-medium text-blue-400';
+                    changeRow.querySelector('.text-slate-300').textContent = 'Change';
+                } else {
+                    changeEl.textContent = `$${Math.abs(change).toFixed(2)}`;
+                    changeEl.className = 'font-medium text-red-400';
+                    changeRow.querySelector('.text-slate-300').textContent = 'Remaining';
+                }
+            }
+        }
+        
+        // Update button text and color based on transaction type
+        if (applyBtn) {
+            // Remove all color classes first
+            applyBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-500', 'bg-green-600', 'hover:bg-green-500', 'bg-amber-600', 'hover:bg-amber-500');
+            
+            if (isRefund) {
+                // Pure refund - customer getting money back
+                applyBtn.textContent = `Issue Refund $${Math.abs(netAmount).toFixed(2)}`;
+                applyBtn.classList.add('bg-green-600', 'hover:bg-green-500');
+                applyBtn.disabled = false; // Always enabled for refunds
+            } else if (returnItemsTotal > 0 && newItemsTotal > 0) {
+                // Exchange - has both returns and new items
+                if (netAmount > 0) {
+                    applyBtn.textContent = `Complete Exchange & Pay $${Math.abs(netAmount).toFixed(2)}`;
+                    applyBtn.classList.add('bg-amber-600', 'hover:bg-amber-500');
+                    applyBtn.disabled = sum < Math.abs(netAmount);
+                } else {
+                    applyBtn.textContent = `Complete Exchange`;
+                    applyBtn.classList.add('bg-amber-600', 'hover:bg-amber-500');
+                    applyBtn.disabled = false;
+                }
+            } else {
+                // Regular purchase
+                applyBtn.textContent = `Complete Payment $${Math.abs(netAmount).toFixed(2)}`;
+                applyBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-500');
+                applyBtn.disabled = sum < Math.abs(netAmount);
+            }
+        }
     }
 
     /**
@@ -325,7 +457,8 @@ class CheckoutManager {
      */
     async handlePayment(splits, cartTotal, modal) {
         const sum = splits.reduce((a, b) => a + (parseFloat(b.amount) || 0), 0);
-        if (sum < cartTotal) {
+        // For refunds (negative total), no payment needed. For purchases, payment must cover total.
+        if (cartTotal > 0 && sum < cartTotal) {
             this.ui.showToast('Total payment amount must cover the cart total.', 'error');
             return;
         }

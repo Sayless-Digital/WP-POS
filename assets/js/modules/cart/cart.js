@@ -455,19 +455,56 @@ class CartManager {
             cartContainer.appendChild(li);
         });
 
-        // Calculate totals
-        const subtotal = this.getSubtotal();
+        // Calculate totals - separate returns from new items
+        const cartItems = cart.items || [];
+        let returnItemsTotal = 0;
+        let newItemsTotal = 0;
+        
+        cartItems.forEach(item => {
+            const itemTotal = (parseFloat(item.price) || 0) * (item.qty || 0);
+            if (item.qty < 0) {
+                returnItemsTotal += Math.abs(itemTotal); // Store as positive
+            } else {
+                newItemsTotal += itemTotal;
+            }
+        });
+        
         const discountAmount = this.getDiscounts();
         const feeAmount = this.getFees();
-        const total = this.getTotal();
+        
+        // Calculate net amount (new items + fees - discounts - return credit)
+        let netAmount = newItemsTotal;
+        netAmount += feeAmount;
+        netAmount -= discountAmount;
+        netAmount -= returnItemsTotal; // Subtract return credit
 
         // Consistent structure for Discount and Fee rows
         const rowStyle = 'flex items-center justify-between text-sm text-slate-200';
         const labelStyle = 'flex items-center gap-1';
         
-        // Update subtotal display
+        // Update display based on transaction type
         if (subtotalEl) {
-            subtotalEl.textContent = `$${subtotal.toFixed(2)}`;
+            if (returnItemsTotal > 0 && newItemsTotal > 0) {
+                // Exchange: Show both
+                subtotalEl.innerHTML = `
+                    <div class="text-xs space-y-1">
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">New Items:</span>
+                            <span class="text-green-400">$${newItemsTotal.toFixed(2)}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">Return Credit:</span>
+                            <span class="text-amber-400">-$${returnItemsTotal.toFixed(2)}</span>
+                        </div>
+                    </div>
+                `;
+            } else if (returnItemsTotal > 0) {
+                // Return only
+                subtotalEl.innerHTML = `<span class="text-amber-400">Return Credit: $${returnItemsTotal.toFixed(2)}</span>`;
+            } else {
+                // Regular purchase
+                subtotalEl.textContent = `$${newItemsTotal.toFixed(2)}`;
+            }
         }
         
         // Render discount row
@@ -525,22 +562,42 @@ class CartManager {
             cartContainer.innerHTML = '<p class="text-center text-slate-400 text-xs py-6">Your cart is empty.</p>';
         }
 
-        // Update total display
-        if (totalEl) totalEl.textContent = `$${total.toFixed(2)}`;
-        if (totalBottomEl) totalBottomEl.textContent = `$${total.toFixed(2)}`;
+        // Update total display with clear labeling
+        const isRefund = netAmount < 0;
+        const displayAmount = Math.abs(netAmount);
+        
+        if (totalEl) {
+            if (isRefund) {
+                totalEl.innerHTML = `<span class="text-green-400">Refund Due: $${displayAmount.toFixed(2)}</span>`;
+            } else {
+                totalEl.textContent = `$${displayAmount.toFixed(2)}`;
+            }
+        }
+        
+        if (totalBottomEl) {
+            if (isRefund) {
+                totalBottomEl.innerHTML = `<span class="text-green-400">Refund Due: $${displayAmount.toFixed(2)}</span>`;
+            } else {
+                totalBottomEl.textContent = `$${displayAmount.toFixed(2)}`;
+            }
+        }
         
         // Update summary with item count
         if (summaryEl) summaryEl.textContent = `${itemCount} item${itemCount !== 1 ? 's' : ''} (${qtyCount} unit${qtyCount !== 1 ? 's' : ''})`;
 
-        // Update checkout button based on cart total
+        // Update checkout button based on transaction type
         if (checkoutBtn) {
-            if (total < 0) {
+            if (isRefund) {
                 checkoutBtn.textContent = 'Process Refund';
                 checkoutBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-500');
-                checkoutBtn.classList.add('bg-red-600', 'hover:bg-red-500');
+                checkoutBtn.classList.add('bg-green-600', 'hover:bg-green-500');
+            } else if (returnItemsTotal > 0) {
+                checkoutBtn.textContent = 'Process Exchange';
+                checkoutBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-500', 'bg-green-600', 'hover:bg-green-500');
+                checkoutBtn.classList.add('bg-amber-600', 'hover:bg-amber-500');
             } else {
                 checkoutBtn.textContent = 'Checkout';
-                checkoutBtn.classList.remove('bg-red-600', 'hover:bg-red-500');
+                checkoutBtn.classList.remove('bg-green-600', 'hover:bg-green-500', 'bg-amber-600', 'hover:bg-amber-500');
                 checkoutBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-500');
             }
         }

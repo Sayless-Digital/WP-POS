@@ -1353,9 +1353,22 @@ class ProductEditorManager {
                     throw new Error(errorMsg);
                 }
 
-                // EDIT MODE SUCCESS
-                statusEl.textContent = 'Product updated successfully!';
-                statusEl.className = 'text-sm text-right h-5 mt-2 text-green-400';
+                // EDIT MODE SUCCESS - Keep modal open and show refresh progress
+                statusEl.textContent = '✓ Product saved successfully!';
+                statusEl.className = 'text-sm text-right h-5 mt-2 text-green-400 font-semibold';
+                
+                // Show prominent initial success toast
+                this.ui.showToast('Product updated successfully!', 'success');
+                
+                // Add a small delay so user can see the success message before refresh starts
+                await new Promise(resolve => setTimeout(resolve, 800));
+                
+                // Show refresh status with prominent indicator
+                statusEl.textContent = '🔄 Refreshing products list...';
+                statusEl.className = 'text-sm text-right h-5 mt-2 text-blue-400 font-semibold animate-pulse';
+                
+                // Show second toast about the refresh
+                this.ui.showToast('Updating products list...', 'info');
                 
                 // Auto-refresh products list to show updated stock/details
                 console.log('Refreshing products after product editor save...');
@@ -1371,13 +1384,16 @@ class ProductEditorManager {
                         stockListContainer.innerHTML = this.ui.getSkeletonLoaderHtml('list-rows', 10);
                     }
                     
-                    this.ui.showToast('Updating products...', 'info');
                     await window.productsManager.fetchProducts();
                     // Also render both views to ensure they're updated
                     window.productsManager.renderStockList();
                     window.productsManager.renderProductGrid();
                     console.log('Products refreshed and both views rendered');
-                    this.ui.showToast('Products updated successfully!', 'success');
+                    
+                    // Final success message with checkmark
+                    statusEl.textContent = '✓ Products list updated!';
+                    statusEl.className = 'text-sm text-right h-5 mt-2 text-green-400 font-semibold';
+                    this.ui.showToast('Products list refreshed!', 'success');
                 }
             }
 

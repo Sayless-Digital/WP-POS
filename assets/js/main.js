@@ -1,11 +1,13 @@
-// WP POS v1.9.157 - Fixed Settings Loading Before Authentication
+// WP POS v1.9.181 - Fixed UI Scale Viewport Heights
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('WP POS v1.9.157 loaded - Fixed settings loading before authentication');
+    console.log('WP POS v1.9.181 loaded - Fixed UI scale to maintain viewport heights');
     
     // Apply saved UI scale immediately on page load (before anything else renders)
     const savedScale = localStorage.getItem('jpos_ui_scale');
     if (savedScale) {
-        document.body.style.zoom = `${savedScale}%`;
+        const scaleValue = parseFloat(savedScale) / 100;
+        document.documentElement.style.setProperty('--ui-scale', scaleValue);
+        document.documentElement.style.fontSize = `${16 * scaleValue}px`;
     }
     
     // Initialize State Manager (already global from state.js)
