@@ -1,5 +1,110 @@
 ## Latest Updates
 
+### v1.9.200 - FIXED: Exchange Discount Logic (Smart Credit Calculation) (2025-10-27)
+
+**Important Update** - When processing returns/exchanges, discounts now work correctly!
+
+**What Was the Issue:**
+
+Previously, when returning items from an order that had a discount:
+- You'd get full value credit for returned items
+- But customer only paid discounted price originally
+- This gave customers more credit than they deserved!
+
+**Example of the Problem:**
+```
+Customer bought:
+- $200 worth of items
+- 30% discount applied
+- They paid $140
+
+They return $100 worth of items:
+- OLD: Got $100 credit ❌ (but they only paid $70 for those!)
+- NEW: Gets $70 credit ✅ (what they actually paid)
+```
+
+**What's Fixed:**
+
+✅ **Return credit accurately reflects what was paid**
+- If original order had 30% discount, return credit is also reduced by 30%
+- Fair for both customer and business
+
+✅ **New items in exchange priced separately**  
+- New items purchased at current prices (no automatic discount)
+- Cashier can manually add current discounts if needed
+
+✅ **Clear breakdown in payment modal**
+- Shows adjusted return credit amount
+- Displays note: "(Adjusted for original discount/fee)"
+
+**How It Works Now:**
+
+**Scenario 1: Simple Return**
+```
+Original order: $200 with 30% discount = paid $140
+Return $100 worth of items:
+→ Refund: $70 (not $100!)
+```
+
+**Scenario 2: Exchange**
+```
+Original order: $200 with 30% discount = paid $140
+Return $100 items, add $300 new items:
+
+Return Credit: $100 - 30% = $70 (adjusted)
+New Items: $300 (full price)
+───────────────────────────
+Total to Pay: $300 - $70 = $230
+```
+
+**What You'll See:**
+
+When processing an exchange from an order with discount:
+
+**Payment Modal Shows:**
+```
+New Items:           $300.00
+Return Credit:       -$70.00
+(Adjusted for original discount/fee)
+───────────────────────────
+Total:               $230.00
+```
+
+**Why This Makes Sense:**
+
+**Return Credit** = Customer gets back what they actually paid
+- They paid $70 for those items (after 30% off)
+- They get $70 back ✅
+
+**New Items** = Priced at today's rates
+- No automatic discount from old order
+- Fresh purchase at current prices
+- Cashier can add NEW discount if applicable
+
+**Important Notes:**
+
+📌 **Percentage discounts** (like 30%) = Fully supported  
+📌 **Flat discounts** (like $20 off) = Not currently adjusted for returns  
+📌 **Manual discounts** = Cashier can still add discounts to new items  
+📌 **Visual indicator** = You'll see when adjustment is applied
+
+**Example Walkthrough:**
+
+1. Customer bought items with "Black Friday 30% Off" discount
+2. They return some items today
+3. Return credit is reduced by 30% (they paid discounted price)
+4. They add new items - priced at today's rates
+5. You can manually add today's discount if there's a current promotion
+
+**Business Benefits:**
+
+✅ Fair refund amounts (customer gets what they paid)  
+✅ New items priced correctly (no free discounts)  
+✅ Clear accounting (separate return vs new purchase)  
+✅ Flexibility (cashier controls discounts on new items)
+
+---
+
 ### v1.9.199 - FIXED: Discounts & Fees Now Show on Past Order Receipts (2025-10-27)
 
 **Important Update** - Receipts viewed from the Orders page now correctly display discounts and fees!

@@ -1791,6 +1791,94 @@ class WP-POS_Cache_Manager {
         }
     }
 }
+## Version 1.9.200 (2025-10-27)
+**FIXED: Exchange Discount Logic - Apply Original Discount Only to Return Credit**
+
+**User Request:**
+When processing an exchange (returning $195 worth of items, adding $300 new items), the original order's discount should only apply to the return credit calculation, NOT to the new items being purchased.
+
+**Business Logic:**
+- **Return credit** = what the customer actually paid (already discounted)
+- **New items** = fresh purchase at current prices (no automatic discount)
+- **Original discount** was for the original transaction only
+
+**Example Scenario:**
+```
+Original Order:
+- Items: $200
+- Discount: 30%
+- Paid: $140
+
+Exchange Transaction:
+- Return: $100 worth of items
+- New: $300 worth of items
+
+OLD (Wrong) Calculation:
+- Return credit: $100 (full value)
+- New items: $300
+- Total: $300 - $100 = $200 ❌
+
+NEW (Correct) Calculation:
+- Return credit: $100 - 30% = $70 (adjusted for original discount)
+- New items: $300 (no discount)
+- Total: $300 - $70 = $230 ✅
+```
+
+**Implementation:**
+
+1. **Store Original Discount/Fee** ([`orders.js:370-371`](assets/js/modules/orders/orders.js:370-371)):
+```javascript
+// When opening return modal, save original order's discount/fee
+this.state.updateState('returns.originalDiscount', order.discount || null);
+this.state.updateState('returns.originalFee', order.fee || null);
+```
+
+2. **Apply to Return Credit Only** ([`checkout.js:338-377`](assets/js/modules/cart/checkout.js:338-377)):
+```javascript
+// Apply current cart discount/fee to NEW ITEMS ONLY
+if (discount && discount.amount) {
+    netAmount -= Math.abs(discountVal); // Only affects new items
+}
+
+// Apply original order discount/fee to RETURN CREDIT ONLY
+if (returnItemsTotal > 0) {
+    let adjustedReturnCredit = returnItemsTotal;
+    
+    if (originalDiscount && originalDiscount.amountType === 'percentage') {
+        // Apply original discount percentage to return items
+        originalDiscountVal = returnItemsTotal * (parseFloat(originalDiscount.amount) / 100);
+        adjustedReturnCredit -= originalDiscountVal;
+    }
+    
+    netAmount -= adjustedReturnCredit; // Use adjusted credit
+}
+```
+
+3. **Visual Feedback** ([`checkout.js:409`](assets/js/modules/cart/checkout.js:409)):
+- Shows `(Adjusted for original discount/fee)` in payment modal when applicable
+- Displays correct adjusted return credit amount
+
+**Technical Details:**
+- **Percentage discounts/fees**: Fully supported - applies proportionally to return value
+- **Flat discounts/fees**: Currently skipped for returns (requires knowing original order total for proportional calculation)
+- **Split calculation**: New items and return credit calculated separately
+- **State management**: Original discount/fee stored in `returns.originalDiscount` and `returns.originalFee`
+
+**Result:**
+- ✅ Return credit correctly reflects what customer actually paid
+- ✅ New items priced at current rates without automatic discount
+- ✅ Fair calculation for both customer and business
+- ✅ Clear visual indication when adjustment is applied
+
+**Files Modified:**
+- [`assets/js/modules/orders/orders.js:370-371`](assets/js/modules/orders/orders.js:370-371) - Store original discount/fee
+- [`assets/js/modules/cart/checkout.js:338-432`](assets/js/modules/cart/checkout.js:338-432) - Apply discount only to return credit
+
+**Version Updates:**
+- Updated checkout.js version in [`index.php:37`](index.php:37) from v1.9.198 to v1.9.200
+- Updated orders.js version in [`index.php:41`](index.php:41) from v1.9.187 to v1.9.200
+- Updated system version in [`index.php:20`](index.php:20) to v1.9.200
+
 ## Version 1.9.199 (2025-10-27)
 **FIXED: Discounts & Fees Not Showing on Receipts from Orders Page**
 

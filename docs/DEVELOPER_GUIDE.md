@@ -2,6 +2,161 @@
 
 ## Latest Updates
 
+### v1.9.200 - Fixed Exchange Discount Logic (Apply to Return Credit Only) (2025-10-27)
+
+**Issue**: When processing returns/exchanges for orders that had discounts or fees, the system didn't properly handle the original discount. The discount/fee was either not considered at all, or if manually re-applied, would incorrectly apply to both the return credit AND new items.
+
+**User Request**: 
+> "If I'm returning a product that cost $195 and adding an item that's $300, the discount should only apply to the $195 credit, not the $300 new item."
+
+**Business Logic Problem**:
+
+When a customer bought items with a discount and later returns them:
+- Customer originally paid **discounted price** (e.g., $200 - 30% = $140)
+- When returning $100 worth of items, what credit should they get?
+  - **Wrong**: $100 full value ❌ (they only paid $70 for those items)
+  - **Right**: $70 adjusted value ✅ (what they actually paid)
+- New items in exchange should be at **current prices** (no automatic discount)
+
+**Root Cause**:
+
+The return/exchange flow at [`orders.js:349-375`](../assets/js/modules/orders/orders.js:349-375) didn't store or consider the original order's discount/fee when loading return items. The checkout calculation at [`checkout.js:311-377`](../assets/js/modules/cart/checkout.js:311-377) treated all items equally, without distinguishing between:
+- Return items (should use original pricing)
+- New items (should use current pricing)
+
+**Solution (v1.9.200)**:
+
+**1. Store Original Order Discount/Fee** ([`orders.js:370-371`](../assets/js/modules/orders/orders.js:370-371)):
+
+```javascript
+openReturnModal(orderId) {
+    // ... existing code ...
+    
+    // NEW: Store original order info including discount/fee
+    this.state.updateState('returns.originalDiscount', order.discount || null);
+    this.state.updateState('returns.originalFee', order.fee || null);
+    
+    // This allows checkout to know what discount/fee was on original order
+}
+```
+
+**2. Separate Calculations for Return vs New Items** ([`checkout.js:311-377`](../assets/js/modules/cart/checkout.js:311-377)):
+
+```javascript
+// Calculate net amount
+let netAmount = newItemsTotal;
+
+// Apply CURRENT cart discount/fee to NEW ITEMS ONLY
+const fee = this.state.getState('fee');
+const discount = this.state.getState('discount');
+
+if (discount && discount.amount) {
+    // This affects only newItemsTotal
+    discountVal = newItemsTotal * (parseFloat(discount.amount) / 100);
+    netAmount -= Math.abs(discountVal);
+}
+
+// Apply ORIGINAL order discount/fee to RETURN CREDIT ONLY
+const originalDiscount = this.state.getState('returns.originalDiscount');
+const originalFee = this.state.getState('returns.originalFee');
+
+if (returnItemsTotal > 0) {
+    let adjustedReturnCredit = returnItemsTotal;
+    
+    // Apply original discount percentage to return value
+    if (originalDiscount && originalDiscount.amountType === 'percentage') {
+        originalDiscountVal = returnItemsTotal * (parseFloat(originalDiscount.amount) / 100);
+        adjustedReturnCredit -= originalDiscountVal;
+    }
+    
+    // Use adjusted credit instead of raw return total
+    netAmount -= adjustedReturnCredit;
+}
+```
+
+**Example Walkthrough**:
+
+**Original Order:**
+- Items: $200
+- 30% discount applied
+- Customer paid: $140
+
+**Exchange Transaction:**
+- Return: $100 worth of items
+- Add: $300 worth of new items
+
+**OLD Calculation (Wrong):**
+```javascript
+returnCredit = $100;  // Full item value
+newItems = $300;
+total = $300 - $100 = $200;  // Customer pays $200 ❌
+// Problem: Customer only paid $70 for those $100 items originally!
+```
+
+**NEW Calculation (Correct):**
+```javascript
+// Return credit adjusted for original 30% discount
+returnCredit = $100 - ($100 * 0.30) = $70;  // What they actually paid
+newItems = $300;  // Full current price, no discount
+total = $300 - $70 = $230;  // Customer pays $230 ✅
+// Fair: Customer gets back what they paid, new items at current price
+```
+
+**3. Visual Feedback** ([`checkout.js:409`](../assets/js/modules/cart/checkout.js:409)):
+
+```javascript
+// Show adjustment notice in payment modal
+${(originalDiscount || originalFee) ? 
+  '<div class="text-xs text-slate-400">(Adjusted for original discount/fee)</div>' 
+  : ''}
+```
+
+**Technical Implementation Details**:
+
+**State Management:**
+- `returns.originalDiscount`: Stores discount object from original order
+- `returns.originalFee`: Stores fee object from original order
+- Format: `{ type, amount, label, amountType }`
+
+**Calculation Logic:**
+- **Percentage discounts/fees**: Fully supported - applies proportionally
+  ```javascript
+  adjustment = returnValue * (percentage / 100)
+  ```
+- **Flat discounts/fees**: Currently not adjusted (would require original order total for proportional calculation)
+
+**Separate Pricing Contexts:**
+- **New items**: Use `fee` and `discount` from current cart state
+- **Return items**: Use `returns.originalDiscount` and `returns.originalFee` from original order
+
+**Why This Matters:**
+
+1. **Fair refunds**: Customer gets back what they actually paid
+2. **No automatic discounts**: New items don't inherit old promotions
+3. **Clear accounting**: Separate tracking of return credit vs new purchase
+4. **Business flexibility**: Cashier can manually add current discounts to new items if needed
+
+**Edge Cases Handled:**
+
+- **Pure return (no new items)**: Credit properly adjusted for original discount
+- **Pure exchange (equal value)**: Both sides calculated correctly
+- **Exchange with payment**: New items at full price, return credit adjusted
+- **No original discount**: Works normally (no adjustment needed)
+
+**Files Changed**:
+- [`assets/js/modules/orders/orders.js:370-371`](../assets/js/modules/orders/orders.js:370-371) - Store original discount/fee
+- [`assets/js/modules/cart/checkout.js:311-432`](../assets/js/modules/cart/checkout.js:311-432) - Separate calculation logic
+- [`index.php:37,41`](../index.php:37) - Version updates for cache busting
+
+**Testing Scenarios**:
+- ✅ Return items from order with 30% discount → correct $70 credit for $100 items
+- ✅ Exchange with new items → new items at full price, return credit adjusted
+- ✅ Return items from order with 5% fee → credit reduced by proportional fee
+- ✅ Pure return with discount → refund amount correctly calculated
+- ✅ Exchange with manually added current discount → only applies to new items
+
+---
+
 ### v1.9.199 - Fixed Discounts & Fees Not Showing on Receipts from Orders Page (2025-10-27)
 
 **Issue**: When viewing a receipt from the Orders page, discounts and fees that were applied during checkout were not displayed, even though they appeared correctly on the receipt immediately after checkout.
