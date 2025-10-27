@@ -1613,8 +1613,8 @@ require_once __DIR__ . '/../wp-load.php';
     <!-- Split Payment Modal -->
 <div id="split-payment-modal" class="app-overlay hidden">
   <div class="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] transform transition-all flex flex-col">
-    <div class="p-6 flex-shrink-0">
-      <h2 class="text-2xl font-bold mb-4 text-center">Checkout</h2>
+    <div class="px-6 py-3 flex-shrink-0 border-b border-slate-600">
+      <h2 class="text-lg font-bold text-center">Checkout</h2>
     </div>
     <div class="flex-1 overflow-y-auto px-6 pb-6">
       <div id="split-payment-methods-list" class="space-y-2 mb-4"></div>

@@ -139,3 +139,6 @@
 {"timestamp":"2025-10-27 19:39:53","operation":"load_products","stats":{"execution_time":4137.21,"memory_usage":44.47,"peak_memory":79.17,"query_count":0,"cache_hits":0,"cache_misses":0,"cache_hit_rate":0}}
 {"timestamp":"2025-10-27 19:42:50","operation":"load_products","stats":{"execution_time":1802.38,"memory_usage":44.27,"peak_memory":78.97,"query_count":0,"cache_hits":0,"cache_misses":0,"cache_hit_rate":0}}
 {"timestamp":"2025-10-27 19:42:55","operation":"load_products","stats":{"execution_time":3597.92,"memory_usage":44.3,"peak_memory":79.01,"query_count":0,"cache_hits":0,"cache_misses":0,"cache_hit_rate":0}}
+{"timestamp":"2025-10-27 19:44:28","operation":"load_products","stats":{"execution_time":1125.17,"memory_usage":44.21,"peak_memory":79.57,"query_count":0,"cache_hits":0,"cache_misses":0,"cache_hit_rate":0}}
+{"timestamp":"2025-10-27 19:44:30","operation":"load_products","stats":{"execution_time":1355.03,"memory_usage":43.82,"peak_memory":78.55,"query_count":0,"cache_hits":0,"cache_misses":0,"cache_hit_rate":0}}
+{"timestamp":"2025-10-27 19:44:44","operation":"load_products","stats":{"execution_time":1844.4,"memory_usage":43.47,"peak_memory":78.19,"query_count":0,"cache_hits":0,"cache_misses":0,"cache_hit_rate":0}}
