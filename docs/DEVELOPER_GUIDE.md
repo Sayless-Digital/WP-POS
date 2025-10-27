@@ -2,6 +2,134 @@
 
 ## Latest Updates
 
+### v1.9.198 - Fixed Discount & Fee Not Applying to Checkout Orders (2025-10-27)
+
+**Issue**: When users applied discounts (e.g., 30%) or fees to the cart and proceeded to checkout, the discount/fee was displayed correctly in the UI but was NOT saved to the WooCommerce order and did NOT appear on the receipt.
+
+**Problem Details**:
+- Cart UI correctly showed discount/fee with proper calculations
+- Split payment modal displayed discount/fee in the totals breakdown
+- But after completing checkout, the order was created WITHOUT the discount/fee
+- Receipt showed no discount/fee line items
+- WooCommerce order details had no fee items attached
+- This affected both percentage-based (e.g., 30%) and flat dollar amount discounts/fees
+
+**Root Cause**:
+
+The `processCheckout()` method in [`assets/js/modules/cart/checkout.js:631`](../assets/js/modules/cart/checkout.js:631) was attempting to retrieve discount/fee data from a **non-existent state property**:
+
+```javascript
+// BROKEN CODE (Line 631):
+const feeDiscount = this.state.getState('cart.feeDiscount'); // <- This state doesn't exist!
+payload.fee_discount = feeDiscount?.type ? feeDiscount : null; // Always null
+```
+
+**Why This Was Wrong**:
+1. When users add discounts/fees via [`cart.js:70-73`](../assets/js/modules/cart/cart.js:70-73), they are stored as **separate state items**:
+   - `'fee'` state: `{ amount: '10', label: '', amountType: 'flat' }`
+   - `'discount'` state: `{ amount: '30', label: '', amountType: 'percentage' }`
+
+2. There is NO `'cart.feeDiscount'` state property anywhere in the codebase
+3. This caused `feeDiscount` variable to always be `undefined`
+4. The checkout API received `fee_discount: null` in the payload
+5. Backend [`checkout.php:146`](../api/checkout.php:146) checked `if ($fee_discount_data && isset(...))` which failed
+6. No WooCommerce fee item was created for the order
+
+**Solution (v1.9.198)**:
+
+Updated `processCheckout()` at [`assets/js/modules/cart/checkout.js:631-658`](../assets/js/modules/cart/checkout.js:631-658) to correctly read from separate state items and construct proper fee_discount object:
+
+**1. Read Separate State Items** (Lines 632-633):
+```javascript
+const fee = this.state.getState('fee');
+const discount = this.state.getState('discount');
+```
+- Retrieves fee data from `'fee'` state (where it's actually stored)
+- Retrieves discount data from `'discount'` state (where it's actually stored)
+
+**2. Construct Complete fee_discount Object** (Lines 636-652):
+```javascript
+let feeDiscount = null;
+if (discount && discount.amount) {
+    // Discount takes priority if both exist
+    feeDiscount = {
+        type: 'discount',
+        amount: discount.amount,
+        label: discount.label || '',
+        amountType: discount.amountType || 'flat'
+    };
+} else if (fee && fee.amount) {
+    feeDiscount = {
+        type: 'fee',
+        amount: fee.amount,
+        label: fee.label || '',
+        amountType: fee.amountType || 'flat'
+    };
+}
+```
+- Checks if discount exists and has an amount
+- If yes, creates proper discount object with ALL required fields
+- If no discount but fee exists, creates proper fee object
+- Includes `type`, `amount`, `label`, and `amountType` (required by backend)
+- Priority: Discount over fee (if both exist, only discount is applied)
+
+**3. Send to Checkout API** (Line 657):
+```javascript
+fee_discount: feeDiscount
+```
+- Sends properly constructed object to backend
+- Backend at [`checkout.php:146-178`](../api/checkout.php:146-178) can now process it
+
+**Backend Processing Flow** (Already Working):
+1. Backend receives `fee_discount` with proper structure
+2. Line 146: Validates it has `type`, `amount`, and amount > 0
+3. Lines 147-151: Copies data to `$fee_data` or `$discount_data` response objects
+4. Lines 154-172: Creates `WC_Order_Item_Fee` with calculated amount
+   - For percentage: `$subtotal * ($amount / 100)`
+   - For flat: Uses amount directly
+   - For discount: Negates the amount `-abs($fee_value)`
+   - For fee: Uses positive amount `abs($fee_value)`
+5. Line 172: Adds fee item to WooCommerce order
+6. Lines 289-290: Returns fee/discount data in receipt response
+
+**Receipt Display** (Already Working):
+- [`receipts.js:74-125`](../assets/js/modules/orders/receipts.js:74-125) checks for `data.fee` and `data.discount`
+- Calculates display amount based on `amountType` (percentage vs flat)
+- Shows formatted line item: "30% Discount: -$15.00" or "Fee: +$5.00"
+
+**Why This Fix Works**:
+1. **Reads from correct state locations**: `'fee'` and `'discount'` states that actually exist
+2. **Complete object construction**: Includes all fields required by backend validation
+3. **Proper type handling**: Distinguishes between fee and discount types
+4. **AmountType preservation**: Maintains whether it's percentage or flat amount
+5. **Backend compatibility**: Sends exact structure backend expects
+
+**Testing Scenarios Verified**:
+- ✅ 30% percentage discount correctly applied to order and receipt
+- ✅ $10 flat discount correctly applied to order and receipt  
+- ✅ 5% percentage fee correctly applied to order and receipt
+- ✅ $5 flat fee correctly applied to order and receipt
+- ✅ Discount calculations based on subtotal for percentage type
+- ✅ WooCommerce order shows fee item in admin panel
+- ✅ Receipt displays discount/fee with proper formatting
+
+**Files Changed**:
+- [`assets/js/modules/cart/checkout.js:631-658`](../assets/js/modules/cart/checkout.js:631-658) - Fixed fee/discount data retrieval and object construction
+- [`index.php:37`](../index.php:37) - Updated checkout.js version to v1.9.198 for cache busting
+- [`index.php:20`](../index.php:20) - Updated system version comment to v1.9.198
+
+**Cache Busting**:
+Updated version numbers to v1.9.198 to force browser cache refresh and ensure users get the fixed code immediately.
+
+**Related Code References**:
+- Discount/Fee UI: [`cart.js:16-162`](../assets/js/modules/cart/cart.js:16-162) - Modal setup and state updates
+- State Storage: [`cart.js:70-73`](../assets/js/modules/cart/cart.js:70-73) - Updates `'fee'` and `'discount'` states
+- Cart Display: [`cart.js:510-558`](../assets/js/modules/cart/cart.js:510-558) - Renders discount/fee in cart UI
+- Backend Processing: [`checkout.php:146-178`](../api/checkout.php:146-178) - Creates WooCommerce fee items
+- Receipt Display: [`receipts.js:74-125`](../assets/js/modules/orders/receipts.js:74-125) - Shows discount/fee on receipt
+
+---
+
 ### v1.9.167 - Fixed Product Editor Save Button Loading Indicator (2025-10-25)
 
 **Issue**: Product editor save button provided no visual feedback during save operations, leaving users uncertain whether their changes were being processed

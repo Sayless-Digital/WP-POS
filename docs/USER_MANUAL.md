@@ -1,5 +1,67 @@
 ## Latest Updates
 
+### v1.9.198 - FIXED: Discounts & Fees Now Apply to Orders (2025-10-27)
+
+**Important Bug Fix** - Your discounts and fees now correctly apply to checkout orders and appear on receipts!
+
+**What Was Wrong:**
+Previously, when you:
+1. Added items to cart
+2. Applied a discount (like 30%) or fee
+3. Completed checkout
+
+The discount/fee would show in the cart but **would NOT be saved to the order** and **would NOT appear on the receipt**. This has now been fixed!
+
+**What's Fixed:**
+- ✅ **Discounts apply correctly** - 30% discount now actually reduces the order total
+- ✅ **Fees apply correctly** - Service fees now increase the order total  
+- ✅ **Shows on receipt** - Discount/fee line items appear on printed receipts
+- ✅ **Saved to orders** - WooCommerce orders include the discount/fee in order details
+- ✅ **Works for percentages** - Both percentage (30%) and flat dollar ($5) amounts work
+- ✅ **Proper calculations** - Percentage discounts calculate correctly from subtotal
+
+**How to Use (Now Working):**
+
+**Adding a Discount:**
+1. Add products to cart
+2. Click "Add Discount" button
+3. Choose "$ Flat" or "% Percentage" tab
+4. Enter amount (e.g., "30" for 30% discount)
+5. Click "Apply"
+6. See discount in cart: "-$XX.XX" or "-30%"
+7. Proceed to checkout
+8. **NEW:** Discount is now included in order and receipt! ✅
+
+**Adding a Fee:**
+1. Add products to cart  
+2. Click "Add Fee" button
+3. Choose "$ Flat" or "% Percentage" tab
+4. Enter amount (e.g., "5" for $5 fee)
+5. Click "Apply"
+6. See fee in cart: "+$5.00" or "+5%"
+7. Proceed to checkout
+8. **NEW:** Fee is now included in order and receipt! ✅
+
+**Example:**
+- Cart has $100 in products
+- You add 30% discount
+- Cart shows: Subtotal $100, Discount -$30, Total $70
+- **Before Fix:** Order created for $100 (discount ignored) ❌
+- **After Fix:** Order created for $70 (discount applied) ✅
+- **Receipt shows:** Subtotal: $100, 30% Discount: -$30.00, Total: $70.00 ✅
+
+**What This Means for You:**
+- Your discount promotions will now correctly reduce order amounts
+- Service fees (delivery, processing, etc.) will now be added to orders
+- Receipts will show complete breakdown including discounts/fees
+- WooCommerce order history will accurately reflect discounts/fees
+- No more manual adjustments needed after checkout!
+
+**Technical Note:**
+This was a critical bug where the checkout system wasn't sending discount/fee data to the order creation process. The fix ensures your pricing adjustments are properly applied and recorded.
+
+---
+
 ### v1.9.167 - Improved Product Editor Save Button (2025-10-25)
 
 When you save changes in the Product Editor, you'll now see clear visual feedback that your changes are being saved!

@@ -1791,6 +1791,57 @@ class WP-POS_Cache_Manager {
         }
     }
 }
+## Version 1.9.198 (2025-10-27)
+**FIXED: Discount & Fee Not Applying to Checkout Orders**
+
+**Problem Identified:**
+- Discounts and fees were displayed correctly in the cart UI and payment modal
+- BUT they were NOT being sent to the checkout API
+- Orders were created without the discount/fee applied
+- Receipts showed no discount/fee information
+
+**Root Cause:**
+- In [`checkout.js`](assets/js/modules/cart/checkout.js:631) `processCheckout()` method was looking for `'cart.feeDiscount'` state
+- This state property doesn't exist - discounts and fees are stored separately as `'fee'` and `'discount'`
+- Result: `fee_discount` payload field was always `null`
+
+**Fix Applied:**
+- Updated `processCheckout()` in [`checkout.js`](assets/js/modules/cart/checkout.js:631-658) to:
+  - Read `'fee'` and `'discount'` from separate state items
+  - Properly construct `fee_discount` object with all required fields (type, amount, label, amountType)
+  - Send complete data to checkout API
+
+**Technical Changes:**
+```javascript
+// OLD (BROKEN):
+const feeDiscount = this.state.getState('cart.feeDiscount'); // <- doesn't exist!
+payload.fee_discount = feeDiscount?.type ? feeDiscount : null;
+
+// NEW (WORKING):
+const fee = this.state.getState('fee');
+const discount = this.state.getState('discount');
+let feeDiscount = null;
+if (discount && discount.amount) {
+    feeDiscount = { type: 'discount', amount: discount.amount, label: discount.label || '', amountType: discount.amountType || 'flat' };
+} else if (fee && fee.amount) {
+    feeDiscount = { type: 'fee', amount: fee.amount, label: fee.label || '', amountType: fee.amountType || 'flat' };
+}
+payload.fee_discount = feeDiscount;
+```
+
+**Verification:**
+- ✅ Backend [`checkout.php`](api/checkout.php:146-178) properly saves discount/fee as WooCommerce order fee item
+- ✅ Receipt display [`receipts.js`](assets/js/modules/orders/receipts.js:74-125) correctly shows discount/fee with percentage or flat amounts
+- ✅ Supports both percentage (e.g., 30%) and flat dollar amounts
+- ✅ Properly calculates subtotal adjustments for percentage-based discounts/fees
+
+**Files Modified:**
+- [`assets/js/modules/cart/checkout.js`](assets/js/modules/cart/checkout.js:631-658) - Fixed fee/discount data retrieval
+
+**Version Update:**
+- Updated checkout.js version in [`index.php`](index.php:37) from v1.9.192 to v1.9.198
+- Updated system version in [`index.php`](index.php:20) to v1.9.198
+
 ## Version 1.9.151 (2025-10-09)
 **Enhanced Attribute Name Selection with Searchable Dropdowns**
 - Added searchable dropdown for attribute name selection when adding new attributes

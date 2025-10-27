@@ -17,7 +17,7 @@ require_once __DIR__ . '/../wp-load.php';
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- Custom JSON syntax highlighting -->
     
-    <!-- WP POS v1.9.197 - FIXED: Auto-Refresh Timer Re-initialization on Page Reload -->
+    <!-- WP POS v1.9.198 - FIXED: Discount & Fee Checkout Integration -->
     
     <!-- Core Modules - Load First -->
     <script src="assets/js/modules/state.js?v=1.9.72&t=<?php echo time(); ?>"></script>
@@ -34,7 +34,7 @@ require_once __DIR__ . '/../wp-load.php';
     
     <!-- Cart Modules -->
     <script src="assets/js/modules/cart/cart.js?v=1.9.174&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/cart/checkout.js?v=1.9.192&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/cart/checkout.js?v=1.9.198&t=<?php echo time(); ?>"></script>
     <script src="assets/js/modules/cart/held-carts.js?v=1.9.72&t=<?php echo time(); ?>"></script>
     
     <!-- Orders & Receipts Modules -->
