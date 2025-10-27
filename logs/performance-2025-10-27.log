@@ -96,3 +96,5 @@
 {"timestamp":"2025-10-27 18:11:09","operation":"load_products","stats":{"execution_time":2306.04,"memory_usage":44.85,"peak_memory":79.98,"query_count":0,"cache_hits":0,"cache_misses":0,"cache_hit_rate":0}}
 {"timestamp":"2025-10-27 18:11:24","operation":"load_products","stats":{"execution_time":1777.55,"memory_usage":44.46,"peak_memory":79.16,"query_count":0,"cache_hits":0,"cache_misses":0,"cache_hit_rate":0}}
 {"timestamp":"2025-10-27 18:12:13","operation":"load_products","stats":{"execution_time":1918.05,"memory_usage":44.82,"peak_memory":79.98,"query_count":0,"cache_hits":0,"cache_misses":0,"cache_hit_rate":0}}
+{"timestamp":"2025-10-27 18:14:26","operation":"load_products","stats":{"execution_time":1883.37,"memory_usage":44.41,"peak_memory":79.14,"query_count":0,"cache_hits":0,"cache_misses":0,"cache_hit_rate":0}}
+{"timestamp":"2025-10-27 18:14:29","operation":"load_products","stats":{"execution_time":1624.82,"memory_usage":44.17,"peak_memory":78.87,"query_count":0,"cache_hits":0,"cache_misses":0,"cache_hit_rate":0}}

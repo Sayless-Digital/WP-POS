@@ -628,12 +628,33 @@ class CheckoutManager {
      * @private
      */
     async processCheckout(splits) {
-        const feeDiscount = this.state.getState('cart.feeDiscount');
+        // Get fee and discount from separate state items (not cart.feeDiscount)
+        const fee = this.state.getState('fee');
+        const discount = this.state.getState('discount');
+        
+        // Construct fee_discount object for API
+        let feeDiscount = null;
+        if (discount && discount.amount) {
+            // Discount takes priority if both exist
+            feeDiscount = {
+                type: 'discount',
+                amount: discount.amount,
+                label: discount.label || '',
+                amountType: discount.amountType || 'flat'
+            };
+        } else if (fee && fee.amount) {
+            feeDiscount = {
+                type: 'fee',
+                amount: fee.amount,
+                label: fee.label || '',
+                amountType: fee.amountType || 'flat'
+            };
+        }
         
         let payload = {
             cart_items: this.state.getState('cart.items') || [],
             payment_method: splits[0].method,
-            fee_discount: feeDiscount?.type ? feeDiscount : null
+            fee_discount: feeDiscount
         };
         
         // Include attached customer if present
