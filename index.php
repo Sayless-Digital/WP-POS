@@ -1616,7 +1616,7 @@ require_once __DIR__ . '/../wp-load.php';
     <div class="px-6 py-3 flex-shrink-0 border-b border-slate-600">
       <h2 class="text-lg font-bold text-center">Checkout</h2>
     </div>
-    <div class="flex-1 overflow-y-auto px-6 pb-6">
+    <div class="flex-1 overflow-y-auto px-6 py-6">
       <div id="split-payment-methods-list" class="space-y-2 mb-4"></div>
     <div id="split-payment-numpad" class="grid grid-cols-3 gap-1 mb-4">
       <button class="split-numpad-btn bg-slate-700 p-2 rounded-lg text-base font-bold hover:bg-slate-600 transition-colors">7</button>
