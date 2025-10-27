@@ -364,8 +364,11 @@ class OrdersManager {
             }
         }
 
+        // Store original order info including discount/fee for return credit calculation
         this.state.updateState('returns.fromOrderId', order.id);
         this.state.updateState('returns.items', order.items.map(item => ({...item})));
+        this.state.updateState('returns.originalDiscount', order.discount || null);
+        this.state.updateState('returns.originalFee', order.fee || null);
         
         this.renderReturnModalItems(order.items);
         document.getElementById('return-modal').classList.remove('hidden');

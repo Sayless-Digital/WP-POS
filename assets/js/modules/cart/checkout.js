@@ -310,6 +310,8 @@ class CheckoutManager {
         
         // Calculate net amount
         let netAmount = newItemsTotal;
+        
+        // Apply current cart discount/fee to NEW ITEMS ONLY
         const fee = this.state.getState('fee');
         const discount = this.state.getState('discount');
         
@@ -333,16 +335,67 @@ class CheckoutManager {
             netAmount -= Math.abs(discountVal);
         }
         
-        // Subtract actual refund credit being used (not just available)
-        netAmount -= actualRefundCredit;
+        // Apply original order discount/fee to RETURN CREDIT ONLY
+        const originalDiscount = this.state.getState('returns.originalDiscount');
+        const originalFee = this.state.getState('returns.originalFee');
+        
+        if (returnItemsTotal > 0) {
+            // Calculate what the return credit should be based on original discount/fee
+            let adjustedReturnCredit = returnItemsTotal;
+            
+            if (originalDiscount && originalDiscount.amount) {
+                let originalDiscountVal = 0;
+                if (originalDiscount.amountType === 'percentage') {
+                    // Apply original discount percentage to return items
+                    originalDiscountVal = returnItemsTotal * (parseFloat(originalDiscount.amount) / 100);
+                } else {
+                    // For flat discounts, calculate proportional amount
+                    // This is tricky - we'd need to know original order total to calculate proportion
+                    // For now, we'll skip flat discount adjustment on returns
+                }
+                adjustedReturnCredit -= originalDiscountVal;
+            }
+            
+            if (originalFee && originalFee.amount) {
+                let originalFeeVal = 0;
+                if (originalFee.amountType === 'percentage') {
+                    // Apply original fee percentage to return items
+                    originalFeeVal = returnItemsTotal * (parseFloat(originalFee.amount) / 100);
+                } else {
+                    // For flat fees, calculate proportional amount
+                    // This is tricky - we'd need to know original order total to calculate proportion
+                    // For now, we'll skip flat fee adjustment on returns
+                }
+                adjustedReturnCredit += originalFeeVal;
+            }
+            
+            // Use adjusted return credit instead of raw return total
+            netAmount -= adjustedReturnCredit;
+        } else {
+            // No return items, just subtract actual refund credit
+            netAmount -= actualRefundCredit;
+        }
         const change = sum - netAmount;
         
-        // Update subtotal display - use actual refund credit from splits if present
+        // Update subtotal display - show adjusted return credit if applicable
         const subtotalEl = document.getElementById('split-payment-subtotal');
         if (subtotalEl) {
             if (returnItemsTotal > 0 && newItemsTotal > 0) {
-                // Exchange - show actual refund credit being used
-                const displayCredit = actualRefundCredit > 0 ? actualRefundCredit : returnItemsTotal;
+                // Exchange - show adjusted refund credit
+                let displayCredit = actualRefundCredit > 0 ? actualRefundCredit : returnItemsTotal;
+                
+                // If we have original discount/fee, show the adjustment
+                if (originalDiscount || originalFee) {
+                    let adjustedCredit = returnItemsTotal;
+                    if (originalDiscount && originalDiscount.amount && originalDiscount.amountType === 'percentage') {
+                        adjustedCredit -= (returnItemsTotal * (parseFloat(originalDiscount.amount) / 100));
+                    }
+                    if (originalFee && originalFee.amount && originalFee.amountType === 'percentage') {
+                        adjustedCredit += (returnItemsTotal * (parseFloat(originalFee.amount) / 100));
+                    }
+                    displayCredit = adjustedCredit;
+                }
+                
                 subtotalEl.innerHTML = `
                     <div class="text-xs space-y-1 w-full">
                         <div class="flex justify-between">
@@ -353,11 +406,24 @@ class CheckoutManager {
                             <span>Return Credit:</span>
                             <span class="text-amber-400">-$${displayCredit.toFixed(2)}</span>
                         </div>
+                        ${(originalDiscount || originalFee) ? '<div class="text-xs text-slate-400">(Adjusted for original discount/fee)</div>' : ''}
                     </div>
                 `;
             } else if (returnItemsTotal > 0) {
-                // Return only - show actual refund credit being used
-                const displayCredit = actualRefundCredit > 0 ? actualRefundCredit : returnItemsTotal;
+                // Return only - show adjusted refund credit
+                let displayCredit = actualRefundCredit > 0 ? actualRefundCredit : returnItemsTotal;
+                
+                if (originalDiscount || originalFee) {
+                    let adjustedCredit = returnItemsTotal;
+                    if (originalDiscount && originalDiscount.amount && originalDiscount.amountType === 'percentage') {
+                        adjustedCredit -= (returnItemsTotal * (parseFloat(originalDiscount.amount) / 100));
+                    }
+                    if (originalFee && originalFee.amount && originalFee.amountType === 'percentage') {
+                        adjustedCredit += (returnItemsTotal * (parseFloat(originalFee.amount) / 100));
+                    }
+                    displayCredit = adjustedCredit;
+                }
+                
                 subtotalEl.innerHTML = `<span class="text-amber-400">Return Credit: $${displayCredit.toFixed(2)}</span>`;
             } else {
                 // Regular purchase
