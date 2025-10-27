@@ -1612,9 +1612,12 @@ require_once __DIR__ . '/../wp-load.php';
     </div>
     <!-- Split Payment Modal -->
 <div id="split-payment-modal" class="app-overlay hidden">
-  <div class="bg-slate-800 border border-slate-700 p-6 rounded-xl shadow-2xl w-full max-w-2xl transform transition-all">
-    <h2 class="text-2xl font-bold mb-4 text-center">Checkout</h2>
-    <div id="split-payment-methods-list" class="space-y-2 mb-4"></div>
+  <div class="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] transform transition-all flex flex-col">
+    <div class="p-6 flex-shrink-0">
+      <h2 class="text-2xl font-bold mb-4 text-center">Checkout</h2>
+    </div>
+    <div class="flex-1 overflow-y-auto px-6 pb-6">
+      <div id="split-payment-methods-list" class="space-y-2 mb-4"></div>
     <div id="split-payment-numpad" class="grid grid-cols-3 gap-1 mb-4">
       <button class="split-numpad-btn bg-slate-700 p-2 rounded-lg text-base font-bold hover:bg-slate-600 transition-colors">7</button>
       <button class="split-numpad-btn bg-slate-700 p-2 rounded-lg text-base font-bold hover:bg-slate-600 transition-colors">8</button>
@@ -1669,13 +1672,16 @@ require_once __DIR__ . '/../wp-load.php';
       </div>
       <p class="text-xs text-slate-400 mt-1 ml-7">When checked, return credit will be adjusted based on the original order's discount/fee</p>
     </div>
-    <div class="flex justify-between gap-2">
-      <button id="split-payment-reset" class="px-4 py-2 bg-amber-600 rounded-lg hover:bg-amber-500 text-white flex items-center gap-2" title="Reset to initial state">
-        <i class="fas fa-undo"></i> Reset
-      </button>
-      <div class="flex gap-2">
-        <button id="split-payment-cancel" class="px-4 py-2 bg-slate-600 rounded-lg hover:bg-slate-500 text-white">Cancel</button>
-        <button id="split-payment-apply" class="px-4 py-2 bg-indigo-600 rounded-lg hover:bg-indigo-500 text-white font-bold">Apply</button>
+    </div>
+    <div class="p-6 flex-shrink-0 border-t border-slate-600">
+      <div class="flex justify-between gap-2">
+        <button id="split-payment-reset" class="px-4 py-2 bg-amber-600 rounded-lg hover:bg-amber-500 text-white flex items-center gap-2" title="Reset to initial state">
+          <i class="fas fa-undo"></i> Reset
+        </button>
+        <div class="flex gap-2">
+          <button id="split-payment-cancel" class="px-4 py-2 bg-slate-600 rounded-lg hover:bg-slate-500 text-white">Cancel</button>
+          <button id="split-payment-apply" class="px-4 py-2 bg-indigo-600 rounded-lg hover:bg-indigo-500 text-white font-bold">Apply</button>
+        </div>
       </div>
     </div>
   </div>

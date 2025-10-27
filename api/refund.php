@@ -1,7 +1,7 @@
 <?php
 // FILE: /jpos/api/refund.php
 
-require_once __DIR__ . '/../wp-load.php';
+require_once __DIR__ . '/../../wp-load.php';
 require_once __DIR__ . '/error_handler.php';
 
 header('Content-Type: application/json');

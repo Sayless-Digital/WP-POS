@@ -8,6 +8,37 @@ class CartManager {
         
         // Setup modal event listeners
         this.setupFeeDiscountModal();
+        
+        // Restore discount state from sessionStorage
+        this.restoreDiscountState();
+    }
+    
+    /**
+     * Restore discount state from sessionStorage
+     * @private
+     */
+    restoreDiscountState() {
+        try {
+            const storedDiscount = sessionStorage.getItem('jpos_return_discount');
+            if (storedDiscount) {
+                const discountData = JSON.parse(storedDiscount);
+                
+                // Check if the data is recent (within last hour)
+                const oneHour = 60 * 60 * 1000;
+                if (Date.now() - discountData.timestamp < oneHour) {
+                    // Restore the discount state
+                    this.state.updateState('returns.originalDiscount', discountData.discount);
+                    this.state.updateState('returns.originalFee', discountData.fee);
+                    this.state.updateState('returns.fromOrderId', discountData.orderId);
+                } else {
+                    // Clear expired data
+                    sessionStorage.removeItem('jpos_return_discount');
+                }
+            }
+        } catch (error) {
+            console.warn('Failed to restore discount state:', error);
+            sessionStorage.removeItem('jpos_return_discount');
+        }
     }
     
     /**
@@ -481,11 +512,28 @@ class CartManager {
         let newItemsTotal = 0;
         
         cartItems.forEach(item => {
-            const itemTotal = (parseFloat(item.price) || 0) * (item.qty || 0);
+            let itemPrice = parseFloat(item.price) || 0;
+            
+            // For return items, check if we should use adjusted price
             if (item.qty < 0) {
-                returnItemsTotal += Math.abs(itemTotal); // Store as positive
+                const originalDiscount = this.state.getState('returns.originalDiscount');
+                const originalFee = this.state.getState('returns.originalFee');
+                const applyDiscountCheckbox = document.getElementById('apply-discount-checkbox');
+                const shouldApplyDiscount = applyDiscountCheckbox ? applyDiscountCheckbox.checked : true;
+                
+                if (shouldApplyDiscount && (originalDiscount || originalFee)) {
+                    // Calculate adjusted price (what customer actually paid)
+                    if (originalDiscount && originalDiscount.amount && originalDiscount.amountType === 'percentage') {
+                        itemPrice = itemPrice * (1 - parseFloat(originalDiscount.amount) / 100);
+                    }
+                    if (originalFee && originalFee.amount && originalFee.amountType === 'percentage') {
+                        itemPrice = itemPrice * (1 + parseFloat(originalFee.amount) / 100);
+                    }
+                }
+                
+                returnItemsTotal += Math.abs(itemPrice * Math.abs(item.qty)); // Store as positive
             } else {
-                newItemsTotal += itemTotal;
+                newItemsTotal += itemPrice * item.qty;
             }
         });
         

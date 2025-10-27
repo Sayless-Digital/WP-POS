@@ -370,6 +370,16 @@ class OrdersManager {
         this.state.updateState('returns.originalDiscount', order.discount || null);
         this.state.updateState('returns.originalFee', order.fee || null);
         
+        // Also store in sessionStorage for persistence across page reloads
+        if (order.discount || order.fee) {
+            sessionStorage.setItem('jpos_return_discount', JSON.stringify({
+                orderId: order.id,
+                discount: order.discount || null,
+                fee: order.fee || null,
+                timestamp: Date.now()
+            }));
+        }
+        
         this.renderReturnModalItems(order.items);
         document.getElementById('return-modal').classList.remove('hidden');
     }

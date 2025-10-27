@@ -128,6 +128,10 @@ class CheckoutManager {
                 // Reset to checked by default
                 if (applyDiscountCheckbox) {
                     applyDiscountCheckbox.checked = true;
+                    
+                    // Add event listener to trigger recalculation when checkbox changes
+                    applyDiscountCheckbox.removeEventListener('change', this.handleDiscountCheckboxChange);
+                    applyDiscountCheckbox.addEventListener('change', this.handleDiscountCheckboxChange.bind(this));
                 }
             } else {
                 applyDiscountContainer.classList.add('hidden');
@@ -289,6 +293,25 @@ class CheckoutManager {
             };
             list.appendChild(addBtn);
         }
+    }
+
+    /**
+     * Handle discount checkbox change - trigger recalculation
+     * @private
+     */
+    handleDiscountCheckboxChange() {
+        // Trigger cart update to recalculate totals
+        if (window.cartManager) {
+            window.cartManager.updateCartDisplay();
+        }
+        
+        // Trigger checkout recalculation
+        this.updateTotal(
+            this.state.getState('checkout.splits') || [],
+            this.getCartTotal(),
+            document.getElementById('split-payment-total'),
+            document.getElementById('split-payment-apply')
+        );
     }
 
     /**
@@ -697,6 +720,9 @@ class CheckoutManager {
         if (result.success) {
             this.ui.showToast('Refund/Exchange processed successfully!', 'success');
             this.cart.clearCart(true);
+            
+            // Clear stored discount state
+            sessionStorage.removeItem('jpos_return_discount');
             
             // Show refund/exchange receipt
             if (result.data && result.data.receipt_data && window.receiptsManager) {
