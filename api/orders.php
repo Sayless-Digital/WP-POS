@@ -191,6 +191,78 @@ if (!empty($order_ids)) {
         $refunds = $order->get_refunds();
         $has_refunds = !empty($refunds);
         
+        // Extract fee/discount items from order
+        $fee_data = [
+            'type' => 'fee',
+            'amount' => '',
+            'label' => '',
+            'amountType' => 'flat',
+        ];
+        $discount_data = [
+            'type' => 'discount',
+            'amount' => '',
+            'label' => '',
+            'amountType' => 'flat',
+        ];
+        $fees_array = [];
+        
+        // Get fee items from order (WC_Order_Item_Fee objects)
+        foreach ($order->get_items('fee') as $fee_item) {
+            $fee_name = $fee_item->get_name();
+            $fee_total = floatval($fee_item->get_total());
+            
+            $fees_array[] = [
+                'name' => $fee_name,
+                'total' => wc_format_decimal($fee_total, 2),
+            ];
+            
+            // Determine if it's a fee or discount based on amount sign
+            // Also try to extract percentage from name if present
+            $is_percentage = (strpos($fee_name, '%') !== false);
+            
+            if ($fee_total < 0) {
+                // Negative = Discount
+                $amount_value = abs($fee_total);
+                
+                // Try to extract percentage value from name (e.g., "30% Discount")
+                if ($is_percentage && preg_match('/(\d+(?:\.\d+)?)\s*%/', $fee_name, $matches)) {
+                    $discount_data = [
+                        'type' => 'discount',
+                        'amount' => $matches[1],
+                        'label' => $fee_name,
+                        'amountType' => 'percentage',
+                    ];
+                } else {
+                    $discount_data = [
+                        'type' => 'discount',
+                        'amount' => (string)$amount_value,
+                        'label' => $fee_name,
+                        'amountType' => 'flat',
+                    ];
+                }
+            } else if ($fee_total > 0) {
+                // Positive = Fee
+                $amount_value = $fee_total;
+                
+                // Try to extract percentage value from name (e.g., "5% Fee")
+                if ($is_percentage && preg_match('/(\d+(?:\.\d+)?)\s*%/', $fee_name, $matches)) {
+                    $fee_data = [
+                        'type' => 'fee',
+                        'amount' => $matches[1],
+                        'label' => $fee_name,
+                        'amountType' => 'percentage',
+                    ];
+                } else {
+                    $fee_data = [
+                        'type' => 'fee',
+                        'amount' => (string)$amount_value,
+                        'label' => $fee_name,
+                        'amountType' => 'flat',
+                    ];
+                }
+            }
+        }
+        
         $response_data[] = [
             'id'           => $order->get_id(),
             'order_number' => $order->get_order_number(),
@@ -216,6 +288,9 @@ if (!empty($order_ids)) {
             'split_payments' => $split_payments,
             'payment_method' => $order->get_payment_method_title(),
             'payment_method_id' => $order->get_payment_method(),
+            'fee'          => $fee_data,
+            'discount'     => $discount_data,
+            'fees'         => $fees_array,
         ];
     }
 }
