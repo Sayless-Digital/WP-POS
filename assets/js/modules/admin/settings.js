@@ -38,7 +38,9 @@ class SettingsManager {
                 footer_message_2: "",
                 virtual_keyboard_enabled: true,
                 virtual_keyboard_auto_show: false,
-                ui_scale: 100
+                ui_scale: 100,
+                auto_refresh_enabled: false,
+                auto_refresh_interval: 5
             });
             alert('Warning: Could not load store settings. Receipts may display default info.');
             
@@ -139,6 +141,42 @@ class SettingsManager {
                 });
             }
         }
+        
+        // Auto-refresh settings
+        const autoRefreshEnabled = document.getElementById('setting-auto-refresh-enabled');
+        const autoRefreshInterval = document.getElementById('setting-auto-refresh-interval');
+        const autoRefreshSection = document.getElementById('auto-refresh-interval-section');
+        
+        if (autoRefreshEnabled) {
+            autoRefreshEnabled.checked = currentSettings.auto_refresh_enabled === true;
+            
+            // Toggle interval section visibility
+            if (autoRefreshSection) {
+                autoRefreshSection.style.display = autoRefreshEnabled.checked ? 'block' : 'none';
+            }
+            
+            autoRefreshEnabled.addEventListener('change', () => {
+                if (autoRefreshSection) {
+                    autoRefreshSection.style.display = autoRefreshEnabled.checked ? 'block' : 'none';
+                }
+            });
+        }
+        
+        if (autoRefreshInterval) {
+            autoRefreshInterval.value = currentSettings.auto_refresh_interval || 5;
+        }
+        
+        // Preset buttons
+        const presetButtons = ['refresh-preset-1', 'refresh-preset-5', 'refresh-preset-10', 'refresh-preset-30'];
+        presetButtons.forEach(btnId => {
+            const btn = document.getElementById(btnId);
+            if (btn && autoRefreshInterval) {
+                btn.addEventListener('click', () => {
+                    const value = parseInt(btnId.split('-')[2]);
+                    autoRefreshInterval.value = value;
+                });
+            }
+        });
         
         // Initialize keyboard auto-show based on settings
         if (window.initKeyboardAutoShow) {
@@ -849,6 +887,10 @@ class SettingsManager {
         const autoShowKeyboard = document.getElementById('setting-keyboard-auto-show');
         const uiScaleSlider = document.getElementById('setting-ui-scale');
         
+        // Get auto-refresh settings
+        const autoRefreshEnabled = document.getElementById('setting-auto-refresh-enabled');
+        const autoRefreshInterval = document.getElementById('setting-auto-refresh-interval');
+        
         const data = {
             name: document.getElementById('setting-name').value,
             logo_url: document.getElementById('setting-logo-url').value,
@@ -860,6 +902,8 @@ class SettingsManager {
             virtual_keyboard_enabled: enableKeyboard ? enableKeyboard.checked : true,
             virtual_keyboard_auto_show: autoShowKeyboard ? autoShowKeyboard.checked : false,
             ui_scale: uiScaleSlider ? parseInt(uiScaleSlider.value) : 100,
+            auto_refresh_enabled: autoRefreshEnabled ? autoRefreshEnabled.checked : false,
+            auto_refresh_interval: autoRefreshInterval ? parseInt(autoRefreshInterval.value) : 5,
             nonce: this.state.getState('nonces.settings')
         };
         
@@ -879,17 +923,43 @@ class SettingsManager {
             statusEl.textContent = apiMessage;
             statusEl.className = 'ml-4 text-sm text-green-400';
             
-            // Update appState with keyboard settings
-            const currentSettings = this.state.getState('settings') || {};
-            currentSettings.virtual_keyboard_enabled = data.virtual_keyboard_enabled;
-            currentSettings.virtual_keyboard_auto_show = data.virtual_keyboard_auto_show;
-            this.state.updateState('settings', currentSettings);
-            
+            // Reload settings from API to ensure state is synchronized
             await this.loadReceiptSettings();
+            
+            // Give state a moment to update after async settings load
+            await new Promise(resolve => setTimeout(resolve, 100));
             
             // Re-initialize keyboard auto-show with new settings
             if (window.initKeyboardAutoShow) {
                 window.initKeyboardAutoShow();
+            }
+            
+            // Re-initialize auto-refresh manager with new settings from state
+            // This ensures the timer starts/stops based on the saved configuration
+            if (window.autoRefreshManager) {
+                console.log('🔄 Re-initializing auto-refresh after settings save...');
+                
+                // Debug: Check what's actually in state before init
+                let currentSettings = this.state.getState('settings');
+                // Handle wrapped data
+                if (currentSettings && currentSettings.data) {
+                    currentSettings = currentSettings.data;
+                }
+                console.log('📋 State before init():', {
+                    auto_refresh_enabled: currentSettings?.auto_refresh_enabled,
+                    auto_refresh_interval: currentSettings?.auto_refresh_interval,
+                    full_settings: currentSettings
+                });
+                
+                // Call init() which will read the updated settings from state
+                // and start/stop the timer accordingly
+                const initSuccess = window.autoRefreshManager.init();
+                
+                if (initSuccess) {
+                    console.log('✅ Auto-refresh re-initialized and started');
+                } else {
+                    console.log('ℹ️ Auto-refresh re-initialized (disabled)');
+                }
             }
             
             this.ui.showToast(apiMessage);

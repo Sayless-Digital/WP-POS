@@ -17,7 +17,7 @@ require_once __DIR__ . '/../wp-load.php';
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- Custom JSON syntax highlighting -->
     
-    <!-- WP POS v1.9.192 - Added Optional Stock Restoration for Refunds/Exchanges -->
+    <!-- WP POS v1.9.197 - FIXED: Auto-Refresh Timer Re-initialization on Page Reload -->
     
     <!-- Core Modules - Load First -->
     <script src="assets/js/modules/state.js?v=1.9.72&t=<?php echo time(); ?>"></script>
@@ -25,7 +25,7 @@ require_once __DIR__ . '/../wp-load.php';
     <script src="assets/js/modules/core/ui-helpers.js?v=1.9.166&t=<?php echo time(); ?>"></script>
     
     <!-- Auth & UI Modules -->
-    <script src="assets/js/modules/auth.js?v=1.9.106&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/auth.js?v=1.9.197&t=<?php echo time(); ?>"></script>
     <script src="assets/js/modules/keyboard.js?v=1.9.125&t=<?php echo time(); ?>"></script>
     
     <!-- Products Modules -->
@@ -47,12 +47,15 @@ require_once __DIR__ . '/../wp-load.php';
     <script src="assets/js/modules/financial/reports.js?v=1.9.164&t=<?php echo time(); ?>"></script>
     
     <!-- Admin Modules -->
-    <script src="assets/js/modules/admin/settings.js?v=1.9.181&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/admin/settings.js?v=1.9.197&t=<?php echo time(); ?>"></script>
     <script src="assets/js/modules/admin/sessions.js?v=1.9.72&t=<?php echo time(); ?>"></script>
     <script src="assets/js/modules/admin/users.js?v=1.9.144&t=<?php echo time(); ?>"></script>
     
+    <!-- Auto-Refresh Module -->
+    <script src="assets/js/modules/auto-refresh.js?v=1.9.197&t=<?php echo time(); ?>"></script>
+    
     <!-- Main Orchestrator - Load Last -->
-    <script src="assets/js/main.js?v=1.9.181&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/main.js?v=1.9.197&t=<?php echo time(); ?>"></script>
     <style>
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
@@ -973,6 +976,35 @@ require_once __DIR__ . '/../wp-load.php';
                                 </div>
                             </div>
                             
+                            <div class="bg-slate-700/30 p-4 rounded-lg border border-slate-600">
+                                <h3 class="text-lg font-semibold mb-4 text-slate-200">Auto-Refresh Settings</h3>
+                                <div class="space-y-4">
+                                    <div class="flex items-center space-x-3">
+                                        <input type="checkbox" id="setting-auto-refresh-enabled" class="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500">
+                                        <label for="setting-auto-refresh-enabled" class="text-sm font-medium text-slate-300">Enable Auto-Refresh</label>
+                                    </div>
+                                    <p class="text-xs text-slate-400 ml-7">When enabled, the app will automatically refresh at the specified interval.</p>
+                                    
+                                    <div id="auto-refresh-interval-section" class="ml-7">
+                                        <label for="setting-auto-refresh-interval" class="form-label">Refresh Interval (minutes)</label>
+                                        <div class="flex items-center gap-2 mb-3">
+                                            <button type="button" id="refresh-preset-1" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors border border-slate-600 text-sm">1</button>
+                                            <button type="button" id="refresh-preset-5" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors border border-slate-600 text-sm">5</button>
+                                            <button type="button" id="refresh-preset-10" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors border border-slate-600 text-sm">10</button>
+                                            <button type="button" id="refresh-preset-30" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors border border-slate-600 text-sm">30</button>
+                                        </div>
+                                        <input type="number"
+                                               id="setting-auto-refresh-interval"
+                                               min="1"
+                                               max="1440"
+                                               value="5"
+                                               class="w-full px-4 py-2 bg-slate-700 text-slate-200 rounded-lg border border-slate-600 focus:border-indigo-500 focus:outline-none"
+                                               placeholder="Enter custom interval">
+                                        <p class="text-xs text-slate-400 mt-2">Choose a preset or enter a custom interval (1-1440 minutes)</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
                             <div class="bg-indigo-900/20 border border-indigo-800 p-4 rounded-lg">
                                 <div class="flex items-start gap-3">
                                     <i class="fas fa-info-circle text-indigo-400 mt-1"></i>
@@ -1843,5 +1875,15 @@ require_once __DIR__ . '/../wp-load.php';
     </div>
 
     <div id="jpos-toast" style="display:none"></div>
+    
+    <!-- Auto-Refresh Countdown Indicator -->
+    <div id="auto-refresh-indicator" class="fixed bottom-4 left-4 bg-slate-800/90 border border-slate-600 rounded-lg px-4 py-2 shadow-lg backdrop-blur-sm hidden z-50">
+        <div class="flex items-center gap-2 text-sm">
+            <i class="fas fa-clock text-indigo-400"></i>
+            <span class="text-slate-300">Next refresh in:</span>
+            <span id="auto-refresh-countdown" class="font-mono font-bold text-white">--:--</span>
+        </div>
+    </div>
+    
     </body>
 </html>

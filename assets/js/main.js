@@ -1,6 +1,6 @@
-// WP POS v1.9.181 - Fixed UI Scale Viewport Heights
+// WP POS v1.9.197 - FIXED: Auto-Refresh Timer Re-initialization on Page Reload
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('WP POS v1.9.181 loaded - Fixed UI scale to maintain viewport heights');
+    console.log('WP POS v1.9.197 loaded - FIXED: Auto-Refresh Timer Re-initialization');
     
     // Apply saved UI scale immediately on page load (before anything else renders)
     const savedScale = localStorage.getItem('jpos_ui_scale');
@@ -46,6 +46,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const sessionsManager = new SessionsManager(state, uiHelpers);
     const usersManager = new UsersManager(state, uiHelpers);
     
+    // Initialize Auto-Refresh Manager
+    const autoRefreshManager = new AutoRefreshManager(state, uiHelpers);
+    
     // Note: Settings loading moved to after authentication in auth.js
     
     // Expose managers globally for routing and cross-module access
@@ -64,6 +67,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.settingsManager = settingsManager;
     window.sessionsManager = sessionsManager;
     window.usersManager = usersManager;
+    window.autoRefreshManager = autoRefreshManager;
     
     // Expose routing helper functions (called by routing.js)
     window.fetchOrders = () => ordersManager.fetchOrders();

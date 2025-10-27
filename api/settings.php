@@ -21,6 +21,8 @@ function get_jpos_default_settings() {
         'virtual_keyboard_enabled' => true,
         'virtual_keyboard_auto_show' => false,
         'ui_scale' => 100,
+        'auto_refresh_enabled' => false,
+        'auto_refresh_interval' => 5,
     ];
 }
 
@@ -77,6 +79,18 @@ if ($request_method === 'GET') {
         // Validate range
         if ($scale >= 50 && $scale <= 150) {
             $current_settings['ui_scale'] = $scale;
+        }
+    }
+    
+    // Handle auto-refresh settings
+    if (isset($data['auto_refresh_enabled'])) {
+        $current_settings['auto_refresh_enabled'] = (bool)$data['auto_refresh_enabled'];
+    }
+    if (isset($data['auto_refresh_interval'])) {
+        $interval = (int)$data['auto_refresh_interval'];
+        // Validate interval (minimum 1 minute, maximum 1440 minutes/24 hours)
+        if ($interval >= 1 && $interval <= 1440) {
+            $current_settings['auto_refresh_interval'] = $interval;
         }
     }
     

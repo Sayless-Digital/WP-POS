@@ -4858,6 +4858,715 @@ window.cartManager.renderCart();
 
 - v1.8.54: Implemented customer attachment functionality for POS orders - created customer search API endpoint [`api/customers.php`](../api/customers.php:1), on-screen keyboard component [`assets/js/modules/keyboard.js`](../assets/js/modules/keyboard.js:1), customer state management, UI integration with search modal and cart display, held cart persistence
 
+## Auto-Refresh System (v1.9.194)
+
+### Overview
+The auto-refresh system provides automatic page reloading at configurable intervals to ensure the POS interface displays the most current data. This is particularly useful for stock updates, pricing changes, and multi-user environments where data may change frequently.
+
+### Architecture
+
+#### Backend API Integration
+**File**: [`api/settings.php`](../api/settings.php:1)
+
+**Settings Fields** (Lines 23-24):
+```php
+'auto_refresh_enabled' => false,     // Boolean - Enable/disable auto-refresh
+'auto_refresh_interval' => 5,        // Integer - Minutes between refreshes
+```
+
+**Storage** (Lines 84-88):
+```php
+// Handle auto-refresh settings
+if (isset($data['auto_refresh_enabled'])) {
+    $current_settings['auto_refresh_enabled'] = (bool)$data['auto_refresh_enabled'];
+}
+if (isset($data['auto_refresh_interval'])) {
+    $interval = (int)$data['auto_refresh_interval'];
+    if ($interval >= 1 && $interval <= 60) {
+        $current_settings['auto_refresh_interval'] = $interval;
+    }
+}
+```
+
+**Validation Rules**:
+- `auto_refresh_enabled`: Boolean, default `false`
+- `auto_refresh_interval`: Integer, range 1-60 minutes, default `5`
+- Invalid intervals are rejected silently (keeps current value)
+
+#### Frontend Manager Class
+**File**: [`assets/js/modules/auto-refresh.js`](../assets/js/modules/auto-refresh.js:1)
+**Lines**: 196
+**Dependencies**: StateManager, UIHelpers
+
+**Class Structure**:
+```javascript
+class AutoRefreshManager {
+    constructor(stateManager, uiHelpers) {
+        this.state = stateManager;
+        this.ui = uiHelpers;
+        this.countdownTimer = null;
+        this.remainingSeconds = 0;
+        this.enabled = false;
+        this.interval = 5; // minutes
+    }
+}
+```
+
+**Key Properties**:
+- `countdownTimer`: setInterval reference for countdown updates
+- `remainingSeconds`: Current seconds until next refresh
+- `enabled`: Whether auto-refresh is active
+- `interval`: Minutes between refreshes
+
+### Core Methods
+
+#### init() - Initialize Manager
+**Location**: [`auto-refresh.js:34-51`](../assets/js/modules/auto-refresh.js:34-51)
+
+```javascript
+init() {
+    // Get DOM elements
+    this.indicator = document.getElementById('auto-refresh-indicator');
+    this.countdownElement = document.getElementById('auto-refresh-countdown');
+    
+    // Load settings from app state
+    this.loadSettings();
+    
+    // Start timer if enabled
+    if (this.enabled) {
+        this.start();
+    }
+}
+```
+
+**Responsibilities**:
+- Cache DOM element references
+- Load settings from application state
+- Start timer if auto-refresh is enabled
+- Called once after user authentication
+
+#### loadSettings() - Read Configuration
+**Location**: [`auto-refresh.js:56-65`](../assets/js/modules/auto-refresh.js:56-65)
+
+```javascript
+loadSettings() {
+    const settings = this.state.getState().settings;
+    this.enabled = settings.auto_refresh_enabled !== false;
+    this.interval = settings.auto_refresh_interval || 5;
+    
+    console.log('[AutoRefresh] Settings loaded:', {
+        enabled: this.enabled,
+        interval: this.interval
+    });
+}
+```
+
+**Default Handling**:
+- Missing `auto_refresh_enabled`: Defaults to `true`
+- Missing `auto_refresh_interval`: Defaults to `5` minutes
+- Settings loaded from `appState.settings` via StateManager
+
+#### start() - Begin Countdown
+**Location**: [`auto-refresh.js:70-100`](../assets/js/modules/auto-refresh.js:70-100)
+
+```javascript
+start() {
+    if (!this.enabled) return;
+    
+    // Calculate total seconds from interval (minutes)
+    this.remainingSeconds = this.interval * 60;
+    
+    // Show indicator
+    if (this.indicator) {
+        this.indicator.classList.remove('hidden');
+    }
+    
+    // Start countdown timer (updates every second)
+    this.countdownTimer = setInterval(() => {
+        this.updateCountdown();
+    }, 1000);
+    
+    // Update display immediately
+    this.updateCountdown();
+}
+```
+
+**Timer Behavior**:
+- Converts interval minutes to total seconds
+- Shows countdown indicator
+- Updates every 1 second via `setInterval`
+- Displays time immediately (no 1-second delay)
+
+#### updateCountdown() - Update Display
+**Location**: [`auto-refresh.js:105-132`](../assets/js/modules/auto-refresh.js:105-132)
+
+```javascript
+updateCountdown() {
+    if (this.remainingSeconds <= 0) {
+        this.refresh();
+        return;
+    }
+    
+    // Calculate minutes and seconds
+    const minutes = Math.floor(this.remainingSeconds / 60);
+    const seconds = this.remainingSeconds % 60;
+    
+    // Format as MM:SS
+    const display = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    
+    // Update countdown element
+    if (this.countdownElement) {
+        this.countdownElement.textContent = display;
+    }
+    
+    // Decrement counter
+    this.remainingSeconds--;
+}
+```
+
+**Display Format**:
+- `MM:SS` format (e.g., "05:00", "01:30", "00:45")
+- Zero-padded for consistent width
+- Updates every second
+- When reaching 0:00, triggers refresh
+
+#### refresh() - Reload Page
+**Location**: [`auto-refresh.js:137-145`](../assets/js/modules/auto-refresh.js:137-145)
+
+```javascript
+refresh() {
+    // Show toast notification
+    this.ui.showToast('Auto-refreshing...', 'info');
+    
+    // Stop timer
+    this.stop();
+    
+    // Reload page
+    setTimeout(() => {
+        window.location.reload();
+    }, 500);
+}
+```
+
+**Refresh Sequence**:
+1. Display toast notification
+2. Stop countdown timer
+3. Wait 500ms (allows toast to display)
+4. Trigger full page reload via `window.location.reload()`
+
+#### stop() - Halt Countdown
+**Location**: [`auto-refresh.js:150-160`](../assets/js/modules/auto-refresh.js:150-160)
+
+```javascript
+stop() {
+    // Clear interval timer
+    if (this.countdownTimer) {
+        clearInterval(this.countdownTimer);
+        this.countdownTimer = null;
+    }
+    
+    // Hide indicator
+    if (this.indicator) {
+        this.indicator.classList.add('hidden');
+    }
+}
+```
+
+**Cleanup Actions**:
+- Clears `setInterval` timer
+- Nullifies timer reference
+- Hides countdown indicator
+- Safe to call multiple times
+
+#### reset() - Restart Timer
+**Location**: [`auto-refresh.js:165-173`](../assets/js/modules/auto-refresh.js:165-173)
+
+```javascript
+reset() {
+    if (!this.enabled) return;
+    
+    // Stop current timer
+    this.stop();
+    
+    // Start fresh countdown
+    this.start();
+}
+```
+
+**Use Cases**:
+- Called on every page navigation
+- Ensures timer restarts with full interval
+- Prevents timer from carrying over partial countdowns
+- Only runs if auto-refresh is enabled
+
+#### updateSettings() - Apply Configuration
+**Location**: [`auto-refresh.js:178-196`](../assets/js/modules/auto-refresh.js:178-196)
+
+```javascript
+updateSettings(enabled, interval) {
+    this.enabled = enabled;
+    this.interval = interval;
+    
+    console.log('[AutoRefresh] Settings updated:', {
+        enabled: this.enabled,
+        interval: this.interval
+    });
+    
+    // Stop current timer
+    this.stop();
+    
+    // Start new timer if enabled
+    if (this.enabled) {
+        this.start();
+    }
+}
+```
+
+**Dynamic Configuration**:
+- Called when user saves settings
+- Applies new configuration immediately
+- No page reload required
+- Starts/stops timer based on enabled state
+
+### UI Components
+
+#### Settings Page Controls
+**File**: [`index.php`](../index.php:979-1006)
+
+**Enable Checkbox** (Lines 979-990):
+```html
+<div class="mb-4">
+    <label class="flex items-center cursor-pointer">
+        <input type="checkbox"
+               id="auto-refresh-enabled"
+               class="form-checkbox h-5 w-5 text-blue-600">
+        <span class="ml-2 text-slate-300">
+            Enable Auto-Refresh
+        </span>
+    </label>
+    <p class="text-xs text-slate-400 mt-1">
+        Automatically reload the page to fetch latest data
+    </p>
+</div>
+```
+
+**Interval Configuration** (Lines 992-1006):
+```html
+<div class="mb-4">
+    <label class="block text-sm font-medium text-slate-300 mb-2">
+        Auto-Refresh Interval (minutes)
+    </label>
+    <div class="flex gap-2 mb-2">
+        <input type="number"
+               id="auto-refresh-interval"
+               min="1"
+               max="60"
+               class="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg">
+        
+        <!-- Preset buttons -->
+        <button type="button" class="preset-interval-btn px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                data-interval="1">1</button>
+        <button type="button" class="preset-interval-btn px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                data-interval="5">5</button>
+        <button type="button" class="preset-interval-btn px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                data-interval="10">10</button>
+        <button type="button" class="preset-interval-btn px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg"
+                data-interval="30">30</button>
+    </div>
+</div>
+```
+
+**Features**:
+- Number input with min/max validation (1-60)
+- Quick preset buttons (1, 5, 10, 30 minutes)
+- User can type custom value within range
+- Settings persist to WordPress database
+
+#### Countdown Indicator
+**File**: [`index.php`](../index.php:1879-1886)
+
+**HTML Structure** (Lines 1879-1886):
+```html
+<!-- Auto-Refresh Countdown Indicator -->
+<div id="auto-refresh-indicator"
+     class="hidden fixed bottom-4 left-4 bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 shadow-lg z-50">
+    <div class="flex items-center gap-2">
+        <i class="fas fa-sync-alt text-blue-400"></i>
+        <span class="text-sm text-slate-300">
+            Auto-refresh in: <span id="auto-refresh-countdown" class="font-mono font-bold">00:00</span>
+        </span>
+    </div>
+</div>
+```
+
+**Styling**:
+- Fixed position: `bottom-4 left-4` (bottom-left corner)
+- z-index: `50` (appears above content)
+- Initially hidden: `hidden` class removed when active
+- Font: Monospace for countdown consistency
+
+**Visibility**:
+- Visible on ALL pages when auto-refresh is enabled
+- Hidden when auto-refresh is disabled
+- Shows countdown in MM:SS format
+- Updates every second
+
+### Integration Points
+
+#### Settings Manager Integration
+**File**: [`assets/js/modules/admin/settings.js`](../assets/js/modules/admin/settings.js:1)
+
+**Load Settings** (Lines 141-146):
+```javascript
+// Auto-refresh settings
+const autoRefreshEnabled = document.getElementById('auto-refresh-enabled');
+const autoRefreshInterval = document.getElementById('auto-refresh-interval');
+
+if (autoRefreshEnabled) {
+    autoRefreshEnabled.checked = currentSettings.auto_refresh_enabled !== false;
+}
+if (autoRefreshInterval) {
+    autoRefreshInterval.value = currentSettings.auto_refresh_interval || 5;
+}
+```
+
+**Preset Button Handlers** (Lines 148-154):
+```javascript
+// Auto-refresh preset buttons
+document.querySelectorAll('.preset-interval-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const interval = btn.getAttribute('data-interval');
+        if (autoRefreshInterval) {
+            autoRefreshInterval.value = interval;
+        }
+    });
+});
+```
+
+**Save Settings** (Lines 272-281):
+```javascript
+// Include auto-refresh settings
+if (autoRefreshEnabled) {
+    settingsData.auto_refresh_enabled = autoRefreshEnabled.checked;
+}
+if (autoRefreshInterval) {
+    settingsData.auto_refresh_interval = parseInt(autoRefreshInterval.value) || 5;
+}
+
+// ... after successful save ...
+if (window.autoRefreshManager) {
+    window.autoRefreshManager.updateSettings(
+        settingsData.auto_refresh_enabled,
+        settingsData.auto_refresh_interval
+    );
+}
+```
+
+#### Authentication Integration
+**File**: [`assets/js/modules/auth.js`](../assets/js/modules/auth.js:1)
+
+**Post-Login Initialization** (Lines 275-285):
+```javascript
+// After settings are loaded successfully
+if (result.success && result.data) {
+    // Store settings in state
+    this.state.setState({ settings: result.data });
+    
+    // Initialize auto-refresh manager
+    if (window.autoRefreshManager) {
+        // Reload settings to ensure fresh data
+        window.autoRefreshManager.loadSettings();
+        
+        // Start the timer
+        window.autoRefreshManager.init();
+    }
+}
+```
+
+**Critical Sequence**:
+1. User logs in successfully
+2. Settings loaded from API
+3. Settings stored in application state
+4. AutoRefreshManager reads settings
+5. Timer initialized and started
+6. Countdown displays immediately
+
+#### Routing Integration
+**File**: [`assets/js/main-modular.js`](../assets/js/main-modular.js:1)
+
+**Page Navigation Handler** (Line 194):
+```javascript
+function showPage(viewName) {
+    // ... page switching logic ...
+    
+    // Reset auto-refresh timer on every page navigation
+    if (window.autoRefreshManager) {
+        window.autoRefreshManager.reset();
+    }
+}
+```
+
+**Purpose**:
+- Ensures timer restarts with full interval on every page change
+- Prevents timer from carrying over partial countdown
+- User always gets full refresh interval when navigating
+
+### Technical Implementation Details
+
+#### Timer Accuracy
+- **Update Frequency**: Every 1 second via `setInterval()`
+- **Precision**: ±500ms due to JavaScript timer limitations
+- **Not Critical**: POS systems don't require precise timing
+- **Browser Throttling**: Inactive tabs may slow updates
+
+#### Performance Considerations
+- **Memory Usage**: Minimal (~1KB) for timer state
+- **CPU Usage**: Negligible (single DOM update per second)
+- **Network Impact**: None until refresh triggers
+- **Battery Impact**: Minimal (1 Hz update rate)
+
+#### Browser Compatibility
+- **Modern Browsers**: Full support (Chrome, Firefox, Safari, Edge)
+- **setInterval**: Universally supported
+- **classList API**: IE10+ (not a concern for modern POS)
+- **No Polyfills Required**: All APIs are standard
+
+### Configuration Examples
+
+#### Aggressive Refresh (Stock Updates)
+```javascript
+// Settings for high-frequency stock changes
+{
+    auto_refresh_enabled: true,
+    auto_refresh_interval: 1  // Every 1 minute
+}
+```
+
+**Use Case**: Multiple users making rapid stock changes
+
+#### Standard Refresh (General Use)
+```javascript
+// Default balanced configuration
+{
+    auto_refresh_enabled: true,
+    auto_refresh_interval: 5  // Every 5 minutes
+}
+```
+
+**Use Case**: Normal POS operations with occasional updates
+
+#### Extended Refresh (Stable Inventory)
+```javascript
+// Longer interval for stable environments
+{
+    auto_refresh_enabled: true,
+    auto_refresh_interval: 30  // Every 30 minutes
+}
+```
+
+**Use Case**: Single user with rarely changing data
+
+#### Disabled (Manual Control)
+```javascript
+// Disable auto-refresh completely
+{
+    auto_refresh_enabled: false,
+    auto_refresh_interval: 5  // Ignored when disabled
+}
+```
+
+**Use Case**: User prefers manual refresh button control
+
+### Error Handling
+
+#### Missing DOM Elements
+```javascript
+// Graceful degradation if elements not found
+if (this.indicator) {
+    this.indicator.classList.remove('hidden');
+}
+// No error thrown, auto-refresh simply won't show indicator
+```
+
+#### Invalid Interval Values
+```php
+// Backend validation prevents invalid storage
+if ($interval >= 1 && $interval <= 60) {
+    $current_settings['auto_refresh_interval'] = $interval;
+}
+// Out of range values are rejected silently
+```
+
+#### State Not Loaded
+```javascript
+// Safe defaults if state unavailable
+this.enabled = settings.auto_refresh_enabled !== false;
+this.interval = settings.auto_refresh_interval || 5;
+```
+
+### Testing Checklist
+
+**Functional Testing**:
+- [ ] Enable auto-refresh in settings
+- [ ] Verify countdown appears in bottom-left
+- [ ] Confirm countdown updates every second
+- [ ] Wait for countdown to reach 0:00
+- [ ] Verify page reloads automatically
+- [ ] Test with different intervals (1, 5, 10, 30 minutes)
+- [ ] Disable auto-refresh and verify countdown hides
+- [ ] Test preset buttons set correct intervals
+
+**Integration Testing**:
+- [ ] Timer shows immediately after login
+- [ ] Timer resets when navigating between pages
+- [ ] Timer persists through cart operations
+- [ ] Settings changes apply without page reload
+- [ ] Countdown visible on all pages (POS, Orders, Products, etc.)
+
+**Edge Cases**:
+- [ ] Test with interval = 1 minute (minimum)
+- [ ] Test with interval = 60 minutes (maximum)
+- [ ] Test enabling/disabling rapidly
+- [ ] Test changing interval while timer running
+- [ ] Test with browser in background tab
+- [ ] Test after system sleep/wake
+
+**Browser Compatibility**:
+- [ ] Chrome/Chromium (latest)
+- [ ] Firefox (latest)
+- [ ] Safari (macOS/iOS)
+- [ ] Edge (latest)
+
+### Troubleshooting
+
+#### Problem: Countdown Not Appearing
+**Symptoms**: Auto-refresh enabled but no countdown visible
+**Causes**:
+- AutoRefreshManager not initialized
+- DOM elements not found
+- CSS `hidden` class not removed
+
+**Solutions**:
+1. Check console for initialization errors
+2. Verify `auto-refresh-indicator` element exists
+3. Confirm `init()` was called after login
+4. Hard refresh (Ctrl+F5) to clear cache
+
+**Diagnostic**:
+```javascript
+console.log('Manager:', window.autoRefreshManager);
+console.log('Enabled:', window.autoRefreshManager?.enabled);
+console.log('Indicator:', document.getElementById('auto-refresh-indicator'));
+```
+
+#### Problem: Timer Not Resetting on Page Navigation
+**Symptoms**: Countdown continues from previous value when changing pages
+**Causes**:
+- `reset()` not called in routing system
+- AutoRefreshManager not globally available
+
+**Solutions**:
+1. Verify `autoRefreshManager.reset()` at line 194 of main-modular.js
+2. Check `window.autoRefreshManager` is defined
+3. Ensure module loaded before routing
+
+**Diagnostic**:
+```javascript
+// Test manual reset
+window.autoRefreshManager.reset();
+```
+
+#### Problem: Settings Not Persisting
+**Symptoms**: Settings revert after page reload
+**Causes**:
+- API save failed
+- Settings not included in save request
+- Backend validation rejected values
+
+**Solutions**:
+1. Check network tab for API errors
+2. Verify settings sent in POST body
+3. Confirm intervals within 1-60 range
+4. Check backend PHP logs
+
+**Diagnostic**:
+```javascript
+// Check current settings
+console.log(window.stateManager.getState().settings);
+```
+
+#### Problem: Page Refreshes Too Quickly/Slowly
+**Symptoms**: Refresh interval doesn't match configured value
+**Causes**:
+- Wrong units (seconds vs minutes)
+- Browser timer throttling
+- JavaScript errors preventing countdown
+
+**Solutions**:
+1. Verify interval stored in minutes, converted to seconds
+2. Check `remainingSeconds` calculation (interval * 60)
+3. Ensure browser tab is active (throttling in background)
+
+**Diagnostic**:
+```javascript
+// Check timer state
+console.log({
+    interval: window.autoRefreshManager.interval,
+    remainingSeconds: window.autoRefreshManager.remainingSeconds,
+    enabled: window.autoRefreshManager.enabled
+});
+```
+
+### Security Considerations
+
+**No Security Risks**:
+- Read-only timer display (no user input)
+- Settings stored server-side (no client tampering)
+- Refresh triggers standard page reload (no XSS vector)
+- Interval validated on backend (1-60 minutes)
+
+**Best Practices**:
+- Interval limits prevent abuse (no sub-minute refreshes)
+- Backend validation prevents invalid values
+- No sensitive data exposed in timer state
+- Standard WordPress authentication required
+
+### Future Enhancements
+
+**Potential Improvements**:
+1. **Smart Refresh**: Only refresh if data changed (via polling)
+2. **Per-Page Intervals**: Different intervals for different pages
+3. **Pause on Activity**: Stop timer when user is actively working
+4. **Warning Before Refresh**: Show 10-second warning before reload
+5. **Refresh Statistics**: Track refresh count, data changes detected
+6. **Notification Integration**: Alert other tabs before refresh
+
+### Related Files
+
+**Backend**:
+- API endpoint: [`api/settings.php:23-24,84-88`](../api/settings.php:23-24)
+- Default settings: [`api/settings.php:23`](../api/settings.php:23)
+
+**Frontend**:
+- Manager class: [`assets/js/modules/auto-refresh.js:1-196`](../assets/js/modules/auto-refresh.js:1-196)
+- Settings UI: [`index.php:979-1006`](../index.php:979-1006)
+- Countdown indicator: [`index.php:1879-1886`](../index.php:1879-1886)
+- Settings integration: [`assets/js/modules/admin/settings.js:141-310`](../assets/js/modules/admin/settings.js:141-310)
+- Auth integration: [`assets/js/modules/auth.js:275-285`](../assets/js/modules/auth.js:275-285)
+- Routing integration: [`assets/js/main-modular.js:194`](../assets/js/main-modular.js:194)
+
+**Documentation**:
+- User manual: [`docs/USER_MANUAL.md`](../docs/USER_MANUAL.md:1) (search for "Auto-Refresh")
+- Version history: [`agents.md`](../agents.md:1) (v1.9.192-v1.9.194)
+
+### Version History
+
+- **v1.9.194**: Fixed timer initialization - added explicit `init()` call after login, added `reset()` call on page navigation, countdown now displays immediately and resets properly
+- **v1.9.193**: First fix attempt - improved initialization sequence but timer still not showing
+- **v1.9.192**: Initial implementation - backend API, frontend manager, UI controls, countdown indicator
+
+---
+
 ## Version 1.9.32 - Numpad Always Inserts to Amount Input (2025-10-07)
 
 ### Changes

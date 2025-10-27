@@ -1504,6 +1504,252 @@ While there are no dedicated shortcuts for adjusting UI scale:
 - Use **Arrow Keys** (← →) to adjust scale when slider is focused
 - Use **Enter** to save settings when Save button is focused
 
+### Auto-Refresh (New in v1.9.194)
+
+The Auto-Refresh feature automatically reloads the POS interface at regular intervals to ensure you always see the most current data. This is especially useful when multiple users are working in the system, or when stock levels and prices change frequently.
+
+#### What is Auto-Refresh?
+
+Auto-Refresh keeps your POS interface up-to-date by automatically reloading the page at intervals you choose. This means:
+- You'll always see current stock levels
+- Price changes appear immediately
+- New products show up automatically
+- No need to manually refresh the browser
+
+#### How to Enable Auto-Refresh
+
+1. **Open Settings**
+   - Click the menu button (☰) in the top-left corner
+   - Select **Settings** from the menu
+   - Click the **General** tab
+
+2. **Find Auto-Refresh Settings**
+   - Scroll to the "Auto-Refresh Settings" section
+   - You'll see an enable checkbox and interval configuration
+
+3. **Enable Auto-Refresh**
+   - Check the **"Enable Auto-Refresh"** checkbox
+   - The interface will start refreshing automatically
+
+4. **Set Refresh Interval**
+   - Choose how often the page should refresh (1-60 minutes)
+   - **Type a Custom Value**: Enter any number between 1 and 60 minutes
+   - **Use Quick Presets**: Click one of the preset buttons (1, 5, 10, or 30 minutes)
+
+5. **Save Your Settings**
+   - Click **Save Settings** at the bottom
+   - Auto-refresh starts immediately
+   - A countdown indicator appears at the bottom-left of your screen
+
+#### Understanding the Countdown Indicator
+
+When auto-refresh is enabled, you'll see a small indicator at the bottom-left corner of every page:
+
+**What It Shows:**
+- 🔄 **Refresh Icon**: Shows auto-refresh is active
+- **Countdown Timer**: Displays time remaining until next refresh (MM:SS format)
+- **Example**: "Auto-refresh in: 05:00" means 5 minutes remaining
+
+**Where It Appears:**
+- Visible on ALL pages (POS, Orders, Products, Reports, etc.)
+- Always at bottom-left corner
+- Stays visible while you work
+- Updates every second
+
+**What Happens When Timer Reaches 0:00:**
+1. You'll see a brief notification: "Auto-refreshing..."
+2. The page reloads automatically after 0.5 seconds
+3. You're returned to the same page you were on
+4. The countdown starts again from your chosen interval
+
+#### Recommended Refresh Intervals
+
+**Every 1 Minute** (Aggressive):
+- ✅ Best for: Multiple users making frequent changes
+- ✅ Use when: Stock levels change rapidly
+- ⚠️ Note: Most aggressive setting, reloads often
+
+**Every 5 Minutes** (Standard - Default):
+- ✅ Best for: Normal POS operations
+- ✅ Use when: Occasional updates needed
+- ✅ Balanced between freshness and convenience
+
+**Every 10 Minutes** (Relaxed):
+- ✅ Best for: Stable inventory with few changes
+- ✅ Use when: You prefer fewer interruptions
+- ✅ Good for single-user environments
+
+**Every 30 Minutes** (Extended):
+- ✅ Best for: Very stable environments
+- ✅ Use when: Data rarely changes
+- ✅ Minimal interruption to workflow
+
+**Custom Interval:**
+- Type any value from 1 to 60 minutes
+- Fine-tune to match your specific needs
+- Consider your data update frequency
+
+#### Tips for Using Auto-Refresh
+
+1. **Start with 5 Minutes**: The default setting works well for most stores
+2. **Adjust Based on Usage**: Increase frequency if data changes often
+3. **Watch for Interruptions**: If refreshes are disruptive, increase the interval
+4. **Multi-User Stores**: Use shorter intervals (1-5 minutes) when multiple users are active
+5. **Single User**: Longer intervals (10-30 minutes) work fine for solo operations
+6. **Save Your Work First**: The system refreshes automatically - complete actions before countdown ends
+
+#### When Auto-Refresh Occurs
+
+**Timer Resets When:**
+- ✅ You navigate to a different page (full interval starts over)
+- ✅ You log in (timer starts fresh)
+- ✅ You change the interval setting (new interval applied)
+
+**Timer Continues When:**
+- You add items to cart
+- You edit products
+- You view orders
+- You make sales
+- Timer keeps counting down during all normal operations
+
+#### Disabling Auto-Refresh
+
+If you prefer manual control:
+
+1. Open **Settings**
+2. Find **Auto-Refresh Settings**
+3. **Uncheck** "Enable Auto-Refresh"
+4. Click **Save Settings**
+5. Countdown indicator disappears
+6. Use browser refresh (F5) or page refresh buttons when needed
+
+#### How It Works with Different Pages
+
+Auto-refresh works seamlessly across all pages:
+
+**POS Page:**
+- Products reload with current stock levels
+- Cart contents preserved (not cleared)
+- Current transaction continues
+
+**Products Page:**
+- Product list refreshes
+- Filters and search remain applied
+- Current selections maintained
+
+**Orders Page:**
+- Order list updates with latest orders
+- Filters remain active
+- Pagination position maintained
+
+**Reports Page:**
+- Report data refreshes
+- Selected date range preserved
+- Charts update with new data
+
+**All Pages:**
+- You stay on the same page after refresh
+- URL parameters maintained
+- Your login session continues
+
+#### Troubleshooting Auto-Refresh
+
+**Problem: Countdown indicator not showing**
+- **Check**: Ensure "Enable Auto-Refresh" is checked in Settings
+- **Solution**: Save settings and hard refresh browser (Ctrl+F5)
+- **Verify**: Version 1.9.194 or higher is loaded
+
+**Problem: Timer doesn't reset when changing pages**
+- **Check**: Ensure you're on version 1.9.194 or higher
+- **Solution**: Hard refresh browser (Ctrl+F5) to clear cache
+- **Expected**: Timer should restart with full interval on every page change
+
+**Problem: Page refreshes too often/not often enough**
+- **Check**: Verify interval setting in Settings page
+- **Solution**: Adjust interval to match your needs (1-60 minutes)
+- **Save**: Don't forget to click "Save Settings"
+
+**Problem: Timer appears after login but not immediately**
+- **Solution**: Fixed in v1.9.194 - timer now shows immediately
+- **Check**: Hard refresh to get latest version
+- **Verify**: Timer should display within 1 second of login
+
+**Problem: Settings don't save**
+- **Check**: Look for success message after clicking Save
+- **Try**: Save again and wait for confirmation
+- **Verify**: Reload settings page to confirm settings persisted
+
+**Problem: Timer stops counting**
+- **Check**: Ensure browser tab is active (browsers throttle inactive tabs)
+- **Solution**: Keep POS tab active or click to reactivate
+- **Note**: Timer slows in background tabs but resumes when active
+
+**Problem: Refresh interrupts my work**
+- **Solution 1**: Increase refresh interval to reduce interruptions
+- **Solution 2**: Disable auto-refresh and use manual refresh (F5)
+- **Solution 3**: Time your work to complete before countdown ends
+
+#### Common Questions
+
+**Q: Will auto-refresh clear my cart?**
+A: No, your cart contents are preserved through the refresh.
+
+**Q: Does it work on all pages?**
+A: Yes, the countdown appears on every page and refreshes work everywhere.
+
+**Q: Can I see how much time is left?**
+A: Yes, the countdown indicator shows remaining time in MM:SS format.
+
+**Q: What happens if I'm in the middle of typing?**
+A: The page will refresh when the timer hits zero. Save your work or increase the interval.
+
+**Q: Does this use more data/battery?**
+A: Minimal impact - only a full page reload at your chosen interval.
+
+**Q: Can different users have different intervals?**
+A: Yes, settings are per-user and saved to your account.
+
+**Q: Will it log me out?**
+A: No, your session persists through refreshes. You stay logged in.
+
+**Q: Can I temporarily disable it without changing settings?**
+A: No, you need to uncheck "Enable Auto-Refresh" and save. Re-enable later.
+
+**Q: Does it work offline?**
+A: No, page refresh requires internet connection.
+
+**Q: What if I have a slow connection?**
+A: Page takes longer to load after refresh, but countdown waits until fully loaded.
+
+#### Best Practices
+
+**For Busy Stores:**
+- Use 1-5 minute intervals
+- Ensures data stays current
+- Multiple users see each other's changes
+
+**For Quiet Stores:**
+- Use 10-30 minute intervals
+- Less interruption to workflow
+- Still keeps data reasonably fresh
+
+**For Single-User Stores:**
+- Consider disabling auto-refresh
+- Use manual refresh (F5) when needed
+- Avoids unnecessary reloads
+
+**For Training Sessions:**
+- Disable auto-refresh temporarily
+- Prevents interruptions during learning
+- Re-enable for normal operations
+
+**General Tips:**
+- Monitor the countdown indicator
+- Complete actions before timer expires
+- Adjust interval based on experience
+- Use longer intervals if refreshes are annoying
+- Disable if you prefer full manual control
+
 ### Receipt Settings
 Configure receipt appearance and content:
 - Company information

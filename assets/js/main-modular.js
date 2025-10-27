@@ -190,6 +190,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 }
 
+                // Reset auto-refresh timer to full interval on every page navigation
+                // This prevents the timer from expiring during active use
+                if (window.autoRefreshManager) {
+                    window.autoRefreshManager.reset();
+                }
+
                 // Load page-specific data
                 switch (pageId) {
                     case 'orders-page':

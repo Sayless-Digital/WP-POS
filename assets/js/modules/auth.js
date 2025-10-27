@@ -276,7 +276,26 @@ class AuthManager {
         
         // Load settings and initialize other managers
         if (window.settingsManager) {
+            console.log('📥 Loading receipt settings...');
             await window.settingsManager.loadReceiptSettings();
+            console.log('✓ Receipt settings loaded');
+            
+            // CRITICAL: Initialize auto-refresh manager after settings are loaded
+            // The init() method will internally call loadSettings() to read from state
+            if (window.autoRefreshManager && this.stateManager) {
+                // Give state a moment to update after async settings load
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                console.log('🔧 Initializing auto-refresh manager...');
+                // Initialize the auto-refresh system (this internally calls loadSettings())
+                const initSuccess = window.autoRefreshManager.init();
+                
+                if (initSuccess) {
+                    console.log('✅ Auto-refresh manager initialized successfully');
+                } else {
+                    console.log('ℹ️ Auto-refresh manager initialized (disabled or inactive)');
+                }
+            }
         }
         
         // Fetch product data and render
