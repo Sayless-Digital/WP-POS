@@ -425,7 +425,27 @@ class CartManager {
             
             const itemInfo = document.createElement('div');
             itemInfo.className = 'flex-grow truncate';
-            itemInfo.innerHTML = `<span class="font-semibold text-slate-100 truncate block" title="${item.name}">${item.name}</span><span class="text-slate-400 font-mono block">$${parseFloat(item.price).toFixed(2)}</span>`;
+            
+            // Check if this is a return item with original discount
+            const originalDiscount = this.state.getState('returns.originalDiscount');
+            const originalFee = this.state.getState('returns.originalFee');
+            const isReturnItem = item.qty < 0;
+            const hasOriginalDiscount = isReturnItem && (originalDiscount || originalFee);
+            
+            let priceDisplay = `$${parseFloat(item.price).toFixed(2)}`;
+            if (hasOriginalDiscount) {
+                // Calculate what the customer actually paid
+                let adjustedPrice = parseFloat(item.price);
+                if (originalDiscount && originalDiscount.amount && originalDiscount.amountType === 'percentage') {
+                    adjustedPrice = adjustedPrice * (1 - parseFloat(originalDiscount.amount) / 100);
+                }
+                if (originalFee && originalFee.amount && originalFee.amountType === 'percentage') {
+                    adjustedPrice = adjustedPrice * (1 + parseFloat(originalFee.amount) / 100);
+                }
+                priceDisplay = `<span class="text-slate-400 line-through">$${parseFloat(item.price).toFixed(2)}</span> <span class="text-amber-400 font-semibold">$${adjustedPrice.toFixed(2)}</span>`;
+            }
+            
+            itemInfo.innerHTML = `<span class="font-semibold text-slate-100 truncate block" title="${item.name}">${item.name}</span><span class="font-mono block">${priceDisplay}</span>`;
             
             const qtyControls = document.createElement('div');
             qtyControls.className = 'flex items-center gap-1 flex-shrink-0';

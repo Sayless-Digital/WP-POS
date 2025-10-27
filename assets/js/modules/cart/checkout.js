@@ -116,6 +116,24 @@ class CheckoutManager {
             }
         }
         
+        // Show/hide apply discount checkbox based on return items with original discount
+        const applyDiscountContainer = document.getElementById('apply-discount-container');
+        const applyDiscountCheckbox = document.getElementById('apply-discount-checkbox');
+        if (applyDiscountContainer) {
+            const originalDiscount = this.state.getState('returns.originalDiscount');
+            const originalFee = this.state.getState('returns.originalFee');
+            
+            if (hasReturnItems && (originalDiscount || originalFee)) {
+                applyDiscountContainer.classList.remove('hidden');
+                // Reset to checked by default
+                if (applyDiscountCheckbox) {
+                    applyDiscountCheckbox.checked = true;
+                }
+            } else {
+                applyDiscountContainer.classList.add('hidden');
+            }
+        }
+        
         // Setup initial payment splits
         if (hasReturnItems && refundCredit > 0) {
             // Return/Exchange: Pre-fill refund credit first
@@ -335,15 +353,17 @@ class CheckoutManager {
             netAmount -= Math.abs(discountVal);
         }
         
-        // Apply original order discount/fee to RETURN CREDIT ONLY
+        // Apply original order discount/fee to RETURN CREDIT ONLY (if checkbox is checked)
         const originalDiscount = this.state.getState('returns.originalDiscount');
         const originalFee = this.state.getState('returns.originalFee');
+        const applyDiscountCheckbox = document.getElementById('apply-discount-checkbox');
+        const shouldApplyDiscount = applyDiscountCheckbox ? applyDiscountCheckbox.checked : true; // Default to true for backward compatibility
         
         if (returnItemsTotal > 0) {
             // Calculate what the return credit should be based on original discount/fee
             let adjustedReturnCredit = returnItemsTotal;
             
-            if (originalDiscount && originalDiscount.amount) {
+            if (shouldApplyDiscount && originalDiscount && originalDiscount.amount) {
                 let originalDiscountVal = 0;
                 if (originalDiscount.amountType === 'percentage') {
                     // Apply original discount percentage to return items
@@ -356,7 +376,7 @@ class CheckoutManager {
                 adjustedReturnCredit -= originalDiscountVal;
             }
             
-            if (originalFee && originalFee.amount) {
+            if (shouldApplyDiscount && originalFee && originalFee.amount) {
                 let originalFeeVal = 0;
                 if (originalFee.amountType === 'percentage') {
                     // Apply original fee percentage to return items
@@ -384,8 +404,8 @@ class CheckoutManager {
                 // Exchange - show adjusted refund credit
                 let displayCredit = actualRefundCredit > 0 ? actualRefundCredit : returnItemsTotal;
                 
-                // If we have original discount/fee, show the adjustment
-                if (originalDiscount || originalFee) {
+                // If we have original discount/fee and checkbox is checked, show the adjustment
+                if (shouldApplyDiscount && (originalDiscount || originalFee)) {
                     let adjustedCredit = returnItemsTotal;
                     if (originalDiscount && originalDiscount.amount && originalDiscount.amountType === 'percentage') {
                         adjustedCredit -= (returnItemsTotal * (parseFloat(originalDiscount.amount) / 100));
@@ -406,14 +426,14 @@ class CheckoutManager {
                             <span>Return Credit:</span>
                             <span class="text-amber-400">-$${displayCredit.toFixed(2)}</span>
                         </div>
-                        ${(originalDiscount || originalFee) ? '<div class="text-xs text-slate-400">(Adjusted for original discount/fee)</div>' : ''}
+                        ${(shouldApplyDiscount && (originalDiscount || originalFee)) ? '<div class="text-xs text-slate-400">(Adjusted for original discount/fee)</div>' : ''}
                     </div>
                 `;
             } else if (returnItemsTotal > 0) {
                 // Return only - show adjusted refund credit
                 let displayCredit = actualRefundCredit > 0 ? actualRefundCredit : returnItemsTotal;
                 
-                if (originalDiscount || originalFee) {
+                if (shouldApplyDiscount && (originalDiscount || originalFee)) {
                     let adjustedCredit = returnItemsTotal;
                     if (originalDiscount && originalDiscount.amount && originalDiscount.amountType === 'percentage') {
                         adjustedCredit -= (returnItemsTotal * (parseFloat(originalDiscount.amount) / 100));

@@ -1662,6 +1662,13 @@ require_once __DIR__ . '/../wp-load.php';
       </div>
       <p class="text-xs text-slate-400 mt-1 ml-7">When checked, returned items will be added back to inventory</p>
     </div>
+    <div id="apply-discount-container" class="hidden bg-slate-700/50 rounded-lg p-3 mb-4">
+      <div class="flex items-center gap-3">
+        <input type="checkbox" id="apply-discount-checkbox" class="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500 cursor-pointer" checked>
+        <label for="apply-discount-checkbox" class="text-sm font-medium text-slate-300 cursor-pointer">Apply original discount to return credit</label>
+      </div>
+      <p class="text-xs text-slate-400 mt-1 ml-7">When checked, return credit will be adjusted based on the original order's discount/fee</p>
+    </div>
     <div class="flex justify-between gap-2">
       <button id="split-payment-reset" class="px-4 py-2 bg-amber-600 rounded-lg hover:bg-amber-500 text-white flex items-center gap-2" title="Reset to initial state">
         <i class="fas fa-undo"></i> Reset
