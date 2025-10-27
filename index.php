@@ -17,7 +17,7 @@ require_once __DIR__ . '/../wp-load.php';
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- Custom JSON syntax highlighting -->
     
-    <!-- WP POS v1.9.185 - Refund Receipt Button in Orders -->
+    <!-- WP POS v1.9.192 - Added Optional Stock Restoration for Refunds/Exchanges -->
     
     <!-- Core Modules - Load First -->
     <script src="assets/js/modules/state.js?v=1.9.72&t=<?php echo time(); ?>"></script>
@@ -34,12 +34,12 @@ require_once __DIR__ . '/../wp-load.php';
     
     <!-- Cart Modules -->
     <script src="assets/js/modules/cart/cart.js?v=1.9.174&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/cart/checkout.js?v=1.9.184&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/cart/checkout.js?v=1.9.192&t=<?php echo time(); ?>"></script>
     <script src="assets/js/modules/cart/held-carts.js?v=1.9.72&t=<?php echo time(); ?>"></script>
     
     <!-- Orders & Receipts Modules -->
-    <script src="assets/js/modules/orders/orders.js?v=1.9.185&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/orders/receipts.js?v=1.9.184&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/orders/orders.js?v=1.9.187&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/orders/receipts.js?v=1.9.191&t=<?php echo time(); ?>"></script>
     
     <!-- Financial Modules -->
     <script src="assets/js/modules/financial/drawer.js?v=1.9.72&t=<?php echo time(); ?>"></script>
@@ -574,7 +574,7 @@ require_once __DIR__ . '/../wp-load.php';
                         <div class="col-span-1 flex items-center">
                             <input type="checkbox" id="select-all-orders" class="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500 cursor-pointer">
                         </div>
-                        <div class="col-span-2">Order #</div><div class="col-span-2">Date</div><div class="col-span-1">Source</div><div class="col-span-1">Status</div><div class="col-span-1 text-center">Items</div><div class="col-span-2 text-right">Total</div><div class="col-span-2 text-right">Actions</div>
+                        <div class="col-span-2">Order #</div><div class="col-span-2">Date</div><div class="col-span-1">Source</div><div class="col-span-1">Status</div><div class="col-span-1 text-center">Items</div><div class="col-span-1 text-right">Total</div><div class="col-span-3 text-right">Actions</div>
                     </div>
                     <div id="order-list" class="flex-grow p-2 space-y-2"></div>
                  </main>
@@ -1622,6 +1622,13 @@ require_once __DIR__ . '/../wp-load.php';
         <span class="text-slate-300">Change</span>
         <span id="split-payment-change" class="font-medium text-blue-400">$0.00</span>
       </div>
+    </div>
+    <div id="restore-stock-container" class="hidden bg-slate-700/50 rounded-lg p-3 mb-4">
+      <div class="flex items-center gap-3">
+        <input type="checkbox" id="restore-stock-checkbox" class="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500 cursor-pointer" checked>
+        <label for="restore-stock-checkbox" class="text-sm font-medium text-slate-300 cursor-pointer">Restore stock for returned items</label>
+      </div>
+      <p class="text-xs text-slate-400 mt-1 ml-7">When checked, returned items will be added back to inventory</p>
     </div>
     <div class="flex justify-between gap-2">
       <button id="split-payment-reset" class="px-4 py-2 bg-amber-600 rounded-lg hover:bg-amber-500 text-white flex items-center gap-2" title="Reset to initial state">

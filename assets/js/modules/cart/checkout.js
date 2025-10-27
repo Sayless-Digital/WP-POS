@@ -72,6 +72,8 @@ class CheckoutManager {
         const totalEl = document.getElementById('split-payment-total');
         const numpad = document.getElementById('split-payment-numpad');
         const applyBtn = document.getElementById('split-payment-apply');
+        const restoreStockContainer = document.getElementById('restore-stock-container');
+        const restoreStockCheckbox = document.getElementById('restore-stock-checkbox');
         
         // Payment methods including Return/Refund Credit (at end)
         const paymentMethods = [
@@ -86,24 +88,42 @@ class CheckoutManager {
         const cartItems = this.state.getState('cart.items') || [];
         let splits = [];
         
-        // Calculate refund credit from cart items with negative quantities
+        // Calculate refund credit and new items total from cart items
         let refundCredit = 0;
+        let newItemsTotal = 0;
         let hasReturnItems = false;
+        
         cartItems.forEach(item => {
+            const itemTotal = (parseFloat(item.price) || 0) * item.qty;
             if (item.qty < 0) {
                 hasReturnItems = true;
-                refundCredit += Math.abs((parseFloat(item.price) || 0) * item.qty);
+                refundCredit += Math.abs(itemTotal);
+            } else if (item.qty > 0) {
+                newItemsTotal += itemTotal;
             }
         });
+        
+        // Show/hide restore stock checkbox based on whether there are return items
+        if (restoreStockContainer) {
+            if (hasReturnItems) {
+                restoreStockContainer.classList.remove('hidden');
+                // Reset to checked by default
+                if (restoreStockCheckbox) {
+                    restoreStockCheckbox.checked = true;
+                }
+            } else {
+                restoreStockContainer.classList.add('hidden');
+            }
+        }
         
         // Setup initial payment splits
         if (hasReturnItems && refundCredit > 0) {
             // Return/Exchange: Pre-fill refund credit first
             splits.push({ method: 'Return/Refund Credit', amount: refundCredit });
             
-            // If cart total exceeds credit, add second payment method for remainder
-            if (cartTotal > refundCredit) {
-                splits.push({ method: 'Cash', amount: cartTotal - refundCredit });
+            // If new items total exceeds credit, add second payment method for remainder
+            if (newItemsTotal > refundCredit) {
+                splits.push({ method: 'Cash', amount: newItemsTotal - refundCredit });
             }
         } else {
             // Regular checkout: Default to Cash
@@ -558,11 +578,16 @@ class CheckoutManager {
             throw new Error('Security token not found for refund');
         }
         
+        // Get restore stock checkbox value
+        const restoreStockCheckbox = document.getElementById('restore-stock-checkbox');
+        const restoreStock = restoreStockCheckbox ? restoreStockCheckbox.checked : true;
+        
         const payload = {
             original_order_id: originalOrderId,
             refund_items: refund_items,
             new_sale_items: new_sale_items,
             payment_method: splits[0].method,
+            restore_stock: restoreStock,
             nonce: refundNonce
         };
         

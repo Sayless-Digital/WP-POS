@@ -20,6 +20,7 @@ $original_order_id = absint($data['original_order_id'] ?? 0);
 $refund_items = $data['refund_items'] ?? [];
 $payment_method_title = sanitize_text_field($data['payment_method'] ?? 'Cash');
 $new_sale_items = $data['new_sale_items'] ?? [];
+$restore_stock = isset($data['restore_stock']) ? (bool)$data['restore_stock'] : true; // Default to true for backward compatibility
 
 if (empty($original_order_id) || (empty($refund_items) && empty($new_sale_items))) {
     wp_send_json_error(['message' => 'Original Order ID and items are required.'], 400);
@@ -67,7 +68,7 @@ try {
         'order_id' => $original_order_id,
         'line_items' => $line_items_to_refund,
         'refund_payment' => false,
-        'restock_items' => true,
+        'restock_items' => $restore_stock,
     ]);
 
     if (is_wp_error($refund)) {

@@ -35,6 +35,12 @@ class ReceiptsManager {
         let itemsHTML = '';
         
         (data.items || []).forEach((item, index) => {
+            // Format item total - handle negative values properly
+            const itemTotal = parseFloat(item.total) || 0;
+            const formattedTotal = itemTotal < 0
+                ? `-$${Math.abs(itemTotal).toFixed(2)}`
+                : `$${itemTotal.toFixed(2)}`;
+            
             itemsHTML += `
                 <div class="grid grid-cols-12 gap-2 py-1 border-t border-dashed border-gray-400">
                     <div class="col-span-1">${index + 1}</div>
@@ -43,7 +49,7 @@ class ReceiptsManager {
                         <span class="text-xs text-gray-500">SKU: ${item.sku || 'N/A'}</span>
                     </div>
                     <div class="col-span-2 text-center">${item.quantity}</div>
-                    <div class="col-span-3 text-right">$${parseFloat(item.total).toFixed(2)}</div>
+                    <div class="col-span-3 text-right">${formattedTotal}</div>
                 </div>
             `;
         });
@@ -265,91 +271,130 @@ class ReceiptsManager {
         
         if (!modal || !content) return;
         
-        // Get store name from state or use default
-        const storeName = this.state.getState('settings.receipt.store_name') || 'Store';
+        // Get settings
+        let settings = this.state.getState('settings') || {};
+        if (settings.data) {
+            settings = settings.data;
+        }
+        
         const isExchange = data.transaction_type === 'EXCHANGE';
         
-        // Build receipt HTML
-        let html = `
-            <div style="font-family: monospace; text-align: center;">
-                <h2 style="margin: 0; font-size: 1.5em;">${storeName}</h2>
-                <p style="margin: 5px 0; font-size: 1.2em; font-weight: bold; color: ${isExchange ? '#f59e0b' : '#ef4444'};">
-                    ${data.transaction_type} RECEIPT
-                </p>
-                <p style="margin: 5px 0;">Original Order: #${data.original_order_number}</p>
-                <p style="margin: 5px 0;">${isExchange ? 'Exchange' : 'Refund'} ID: #${data.refund_id}</p>
-                <p style="margin: 5px 0;">${new Date(data.date_created).toLocaleString()}</p>
-                ${data.customer_name ? `<p style="margin: 5px 0;">Customer: ${data.customer_name}</p>` : ''}
-                <hr style="border: 1px dashed #000; margin: 10px 0;">
-                
-                <h3 style="text-align: left; margin: 10px 0; font-weight: bold;">RETURNED ITEMS:</h3>
-        `;
-        
-        // Add returned items
-        data.returned_items.forEach(item => {
-            html += `
-                <div style="display: flex; justify-content: space-between; margin: 5px 0;">
-                    <span>${item.quantity}x ${item.name}</span>
-                    <span style="color: #ef4444;">-$${Math.abs(item.total).toFixed(2)}</span>
+        // Build returned items HTML using grid layout like regular receipt
+        let returnedItemsHTML = '';
+        data.returned_items.forEach((item, index) => {
+            returnedItemsHTML += `
+                <div class="grid grid-cols-12 gap-2 py-1 border-t border-dashed border-gray-400">
+                    <div class="col-span-1">${index + 1}</div>
+                    <div class="col-span-6">
+                        ${item.name}<br>
+                        <span class="text-xs text-gray-500">SKU: ${item.sku || 'N/A'}</span>
+                    </div>
+                    <div class="col-span-2 text-center">${item.quantity}</div>
+                    <div class="col-span-3 text-right text-red-600">-$${Math.abs(item.total).toFixed(2)}</div>
                 </div>
-                ${item.sku ? `<div style="font-size: 0.85em; color: #666; margin-left: 20px;">SKU: ${item.sku}</div>` : ''}
             `;
         });
         
-        html += `
-                <hr style="border: 1px dashed #000; margin: 10px 0;">
-                <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 1.1em;">
-                    <span>REFUND CREDIT:</span>
-                    <span style="color: #10b981;">$${data.refund_amount.toFixed(2)}</span>
-                </div>
-        `;
-        
-        // Add new items if exchange
+        // Build new items HTML if exchange
+        let newItemsHTML = '';
         if (isExchange && data.new_items && data.new_items.length > 0) {
-            html += `
-                <hr style="border: 1px dashed #000; margin: 10px 0;">
-                <h3 style="text-align: left; margin: 10px 0; font-weight: bold;">NEW ITEMS:</h3>
-            `;
-            
-            data.new_items.forEach(item => {
-                html += `
-                    <div style="display: flex; justify-content: space-between; margin: 5px 0;">
-                        <span>${item.quantity}x ${item.name}</span>
-                        <span style="color: #10b981;">$${item.total.toFixed(2)}</span>
+            data.new_items.forEach((item, index) => {
+                newItemsHTML += `
+                    <div class="grid grid-cols-12 gap-2 py-1 border-t border-dashed border-gray-400">
+                        <div class="col-span-1">${index + 1}</div>
+                        <div class="col-span-6">
+                            ${item.name}<br>
+                            <span class="text-xs text-gray-500">SKU: ${item.sku || 'N/A'}</span>
+                        </div>
+                        <div class="col-span-2 text-center">${item.quantity}</div>
+                        <div class="col-span-3 text-right">$${item.total.toFixed(2)}</div>
                     </div>
-                    ${item.sku ? `<div style="font-size: 0.85em; color: #666; margin-left: 20px;">SKU: ${item.sku}</div>` : ''}
                 `;
             });
-            
-            html += `
-                <hr style="border: 1px dashed #000; margin: 10px 0;">
-                <div style="display: flex; justify-content: space-between; font-weight: bold;">
-                    <span>New Order Total:</span>
-                    <span>$${data.exchange_total.toFixed(2)}</span>
-                </div>
-                <div style="font-size: 0.9em; margin: 5px 0;">
-                    New Order: #${data.exchange_order_number}
-                </div>
-            `;
         }
         
-        // Net amount (refund due or payment due)
-        html += `
-                <hr style="border: 2px solid #000; margin: 10px 0;">
-                <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 1.3em;">
-                    <span>${data.net_amount < 0 ? 'REFUND DUE:' : 'PAYMENT DUE:'}</span>
-                    <span style="color: ${data.net_amount < 0 ? '#10b981' : '#ef4444'};">
-                        $${Math.abs(data.net_amount).toFixed(2)}
-                    </span>
+        // Ensure logo URL is absolute
+        const logoUrl = settings.logo_url ?
+            (settings.logo_url.startsWith('http')
+                ? settings.logo_url
+                : window.location.origin + settings.logo_url) :
+            '';
+        
+        content.innerHTML = `
+            <div class="text-center space-y-1 mb-4">
+                ${logoUrl ? `<img src="${logoUrl}" alt="Logo" class="w-24 h-auto mx-auto" onerror="this.style.display='none';">` : ''}
+                <p class="font-bold text-lg">${settings.name || 'Your Store'}</p>
+                <p class="font-bold ${isExchange ? 'text-amber-600' : 'text-red-600'}">${data.transaction_type} RECEIPT</p>
+            </div>
+            <div class="space-y-1 border-t border-dashed border-gray-400 pt-2">
+                <p>Original Order: #${data.original_order_number}</p>
+                <p>${isExchange ? 'Exchange' : 'Refund'} ID: #${data.refund_id}</p>
+                <p>Date: ${this.ui.formatDateTime(data.date_created)}</p>
+                ${data.customer_name ? `<p>Customer: ${data.customer_name}</p>` : ''}
+            </div>
+            
+            <div class="mt-2">
+                <p class="font-bold py-1">RETURNED ITEMS</p>
+                <div class="grid grid-cols-12 gap-2 font-bold py-1">
+                    <div class="col-span-1">#</div>
+                    <div class="col-span-6">Item</div>
+                    <div class="col-span-2 text-center">Qty</div>
+                    <div class="col-span-3 text-right">Amount</div>
                 </div>
-                <hr style="border: 2px solid #000; margin: 10px 0;">
+                ${returnedItemsHTML}
+            </div>
+            
+            <div class="mt-2 pt-2 border-t border-dashed border-gray-400 space-y-1">
+                <div class="flex justify-between font-bold">
+                    <p>Refund Credit:</p>
+                    <p class="text-green-600">$${data.refund_amount.toFixed(2)}</p>
+                </div>
+            </div>
+            
+            ${isExchange && data.new_items && data.new_items.length > 0 ? `
+                <div class="mt-2">
+                    <p class="font-bold py-1 border-t border-dashed border-gray-400 pt-2">NEW ITEMS</p>
+                    <div class="grid grid-cols-12 gap-2 font-bold py-1">
+                        <div class="col-span-1">#</div>
+                        <div class="col-span-6">Item</div>
+                        <div class="col-span-2 text-center">Qty</div>
+                        <div class="col-span-3 text-right">Amount</div>
+                    </div>
+                    ${newItemsHTML}
+                </div>
                 
-                <p style="margin: 10px 0;">Payment Method: ${data.payment_method}</p>
-                <p style="margin: 20px 0; font-size: 0.9em;">Thank you for your business!</p>
+                <div class="mt-2 pt-2 border-t border-dashed border-gray-400 space-y-1">
+                    <div class="flex justify-between font-bold">
+                        <p>New Order Total:</p>
+                        <p>$${data.exchange_total.toFixed(2)}</p>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <p>New Order:</p>
+                        <p>#${data.exchange_order_number}</p>
+                    </div>
+                </div>
+            ` : ''}
+            
+            <div class="mt-2 pt-2 border-t border-solid border-gray-400">
+                <div class="flex justify-between font-bold text-lg">
+                    <p>${data.net_amount < 0 ? (isExchange ? 'NET REFUND:' : 'AMOUNT REFUNDED:') : 'ADDITIONAL PAYMENT:'}</p>
+                    <p class="${data.net_amount < 0 ? 'text-green-600' : 'text-red-600'}">$${Math.abs(data.net_amount).toFixed(2)}</p>
+                </div>
+            </div>
+            
+            <div class="mt-2 pt-2 border-t border-dashed border-gray-400">
+                <div class="flex justify-between">
+                    <p>Payment Method:</p>
+                    <p>${data.payment_method}</p>
+                </div>
+            </div>
+            
+            <div class="text-center mt-4 pt-2 border-t border-dashed border-gray-400 space-y-1">
+                <p>${settings.footer_message_1 || 'Thank you for your business!'}</p>
+                <p class="text-xs">${settings.footer_message_2 || ''}</p>
             </div>
         `;
         
-        content.innerHTML = html;
         modal.classList.remove('hidden');
     }
 

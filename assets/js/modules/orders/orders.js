@@ -156,12 +156,12 @@ class OrdersManager {
                 <div class="col-span-1 font-semibold ${sourceColor} text-xs">${order.source}</div>
                 <div class="col-span-1 font-semibold ${statusColors[order.status] || 'text-slate-300'}">${order.status.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>
                 <div class="col-span-1 text-center">${order.item_count}</div>
-                <div class="col-span-2 text-right font-mono">$${order.total}</div>
-                <div class="col-span-2 text-right flex gap-2 justify-end">
-                    <button class="view-receipt-btn px-3 py-1 bg-indigo-600 text-xs rounded hover:bg-indigo-500" data-order-id="${order.id}">Receipt</button>
-                    ${order.has_refunds ? `<button class="view-refund-receipt-btn px-3 py-1 bg-purple-600 text-xs rounded hover:bg-purple-500" data-order-id="${order.id}">Refund Receipt</button>` : ''}
-                    ${order.status === 'completed' ? `<button class="return-order-btn px-3 py-1 bg-amber-600 text-xs rounded hover:bg-amber-500" data-order-id="${order.id}">Return</button>` : ''}
-                    <button class="delete-order-btn px-3 py-1 bg-red-600 text-xs rounded hover:bg-red-500" data-order-id="${order.id}" data-order-number="${order.order_number}">Delete</button>
+                <div class="col-span-1 text-right font-mono">$${order.total}</div>
+                <div class="col-span-3 text-right flex gap-1 justify-end flex-wrap">
+                    ${order.has_refunds ? `<button class="view-refund-receipt-btn px-2 py-1 bg-purple-600 text-xs rounded hover:bg-purple-500 whitespace-nowrap" data-order-id="${order.id}">Refund Receipt</button>` : ''}
+                    <button class="view-receipt-btn px-2 py-1 bg-indigo-600 text-xs rounded hover:bg-indigo-500 whitespace-nowrap" data-order-id="${order.id}">Receipt</button>
+                    ${order.status === 'completed' ? `<button class="return-order-btn px-2 py-1 bg-amber-600 text-xs rounded hover:bg-amber-500 whitespace-nowrap" data-order-id="${order.id}">Return</button>` : ''}
+                    <button class="delete-order-btn px-2 py-1 bg-red-600 text-xs rounded hover:bg-red-500 whitespace-nowrap" data-order-id="${order.id}" data-order-number="${order.order_number}">Delete</button>
                 </div>
             `;
             
