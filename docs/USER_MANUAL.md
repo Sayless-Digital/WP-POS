@@ -1,5 +1,80 @@
 ## Latest Updates
 
+### v1.9.199 - FIXED: Discounts & Fees Now Show on Past Order Receipts (2025-10-27)
+
+**Important Update** - Receipts viewed from the Orders page now correctly display discounts and fees!
+
+**What Was the Problem:**
+
+Previously, there was an inconsistency:
+- ✅ Receipt shown RIGHT AFTER checkout displayed discounts/fees correctly
+- ❌ Receipt viewed LATER from Orders page was missing discount/fee lines
+
+This made it confusing to review past orders because you couldn't see what discounts or fees were applied!
+
+**What's Fixed:**
+- ✅ **Past order receipts now complete** - Opening a receipt from Orders page shows all discount/fee information
+- ✅ **Matches checkout receipts** - Same format and detail as the receipt shown after checkout
+- ✅ **All discount types work** - Both percentage (30%) and flat dollar ($5) amounts display correctly
+- ✅ **All fee types work** - Service fees, delivery fees, etc. now visible on past receipts
+- ✅ **Proper labels** - Shows the discount/fee name you entered (e.g., "30% Discount", "Delivery Fee")
+
+**How to See the Fix:**
+
+**Viewing Receipts from Orders Page:**
+1. Go to "Orders" page
+2. Find an order that had a discount or fee applied
+3. Click "View Receipt" button
+4. **NEW:** Receipt now shows complete breakdown:
+   ```
+   Subtotal:           $100.00
+   30% Discount:       -$30.00
+   ───────────────────────────
+   Total:              $70.00
+   ```
+
+**Example Comparison:**
+
+**Before This Fix:**
+```
+Order #123 Receipt
+─────────────────
+Item 1:      $50.00
+Item 2:      $50.00
+─────────────────
+Total:       $70.00  ❓ Why $70 when items are $100?
+```
+
+**After This Fix:**
+```
+Order #123 Receipt
+─────────────────
+Item 1:      $50.00
+Item 2:      $50.00
+─────────────────
+Subtotal:   $100.00
+30% Discount: -$30.00  ✅ Now you can see the discount!
+─────────────────
+Total:       $70.00  ✅ Makes sense now!
+```
+
+**What This Means for You:**
+- Complete order history with full pricing details
+- Easy to verify what discounts were applied to past orders
+- Proper documentation for accounting and customer inquiries
+- Receipts printed from Orders page now match checkout receipts exactly
+- No more confusion about why order totals differ from item subtotals
+
+**Both Fixes Working Together:**
+
+This completes the discount/fee functionality:
+- **v1.9.198** (earlier today): Fixed discounts/fees actually being applied to new orders
+- **v1.9.199** (this fix): Fixed viewing discounts/fees on past order receipts
+
+Now the entire discount/fee workflow works perfectly from start to finish! 🎉
+
+---
+
 ### v1.9.198 - FIXED: Discounts & Fees Now Apply to Orders (2025-10-27)
 
 **Important Bug Fix** - Your discounts and fees now correctly apply to checkout orders and appear on receipts!

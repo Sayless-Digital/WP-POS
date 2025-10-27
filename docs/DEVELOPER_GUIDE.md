@@ -2,6 +2,159 @@
 
 ## Latest Updates
 
+### v1.9.199 - Fixed Discounts & Fees Not Showing on Receipts from Orders Page (2025-10-27)
+
+**Issue**: When viewing a receipt from the Orders page, discounts and fees that were applied during checkout were not displayed, even though they appeared correctly on the receipt immediately after checkout.
+
+**User Impact**:
+- Receipts viewed from Orders page showed incorrect totals breakdown
+- Missing discount/fee line items made receipts look incomplete
+- Users couldn't verify what discounts/fees were applied to past orders
+- This created confusion about order pricing
+
+**Root Cause**:
+
+The Orders API at [`api/orders.php:194-219`](../api/orders.php:194-219) was not extracting and including fee/discount information when fetching order data. The response only included:
+
+```php
+// OLD - Missing fee/discount data
+$response_data[] = [
+    'id' => $order->get_id(),
+    'order_number' => $order->get_order_number(),
+    'total' => wc_format_decimal($order->get_total(), 2),
+    'items' => [...],
+    'payment_method' => $order->get_payment_method_title(),
+    // Missing: fee, discount, fees
+];
+```
+
+**Why This Happened**:
+1. WooCommerce stores discounts/fees as `WC_Order_Item_Fee` objects attached to orders
+2. These fee items are retrieved via `$order->get_items('fee')`
+3. The Orders API was NOT calling this method
+4. Receipt display code at [`receipts.js:74-125`](../assets/js/modules/orders/receipts.js:74-125) expects `data.fee`, `data.discount`, and `data.fees` fields
+5. Without these fields, the receipt couldn't display the discount/fee information
+
+**Comparison**:
+- **Checkout API** ([`checkout.php:289-291`](../api/checkout.php:289-291)): DOES include fee/discount in response ✅
+- **Orders API** ([`orders.php`](../api/orders.php)): Did NOT include fee/discount ❌
+
+**Solution (v1.9.199)**:
+
+Updated the Orders API to extract and include fee/discount data from WooCommerce orders:
+
+**1. Initialize Data Structures** (Lines 195-207):
+```php
+$fee_data = [
+    'type' => 'fee',
+    'amount' => '',
+    'label' => '',
+    'amountType' => 'flat',
+];
+$discount_data = [
+    'type' => 'discount',
+    'amount' => '',
+    'label' => '',
+    'amountType' => 'flat',
+];
+$fees_array = [];
+```
+
+**2. Extract Fee Items from Order** (Lines 210-264):
+```php
+// Get all fee items (WC_Order_Item_Fee objects)
+foreach ($order->get_items('fee') as $fee_item) {
+    $fee_name = $fee_item->get_name();
+    $fee_total = floatval($fee_item->get_total());
+    
+    // Add to fees array for display
+    $fees_array[] = [
+        'name' => $fee_name,
+        'total' => wc_format_decimal($fee_total, 2),
+    ];
+    
+    // Determine if fee or discount based on sign
+    if ($fee_total < 0) {
+        // Negative = Discount
+        $amount_value = abs($fee_total);
+        
+        // Try to extract percentage from name (e.g., "30% Discount")
+        if (preg_match('/(\d+(?:\.\d+)?)\s*%/', $fee_name, $matches)) {
+            $discount_data = [
+                'type' => 'discount',
+                'amount' => $matches[1],  // Original percentage value
+                'label' => $fee_name,
+                'amountType' => 'percentage',
+            ];
+        } else {
+            // Flat dollar discount
+            $discount_data = [
+                'type' => 'discount',
+                'amount' => (string)$amount_value,
+                'label' => $fee_name,
+                'amountType' => 'flat',
+            ];
+        }
+    } else if ($fee_total > 0) {
+        // Positive = Fee (same logic)
+        // ... similar code for fees
+    }
+}
+```
+
+**3. Include in API Response** (Lines 291-293):
+```php
+$response_data[] = [
+    // ... existing fields ...
+    'fee'          => $fee_data,
+    'discount'     => $discount_data,
+    'fees'         => $fees_array,
+];
+```
+
+**Key Technical Details**:
+
+**Fee Item Identification Logic**:
+- WooCommerce stores fees as line items with type 'fee'
+- Amount sign determines if it's a fee or discount:
+  - `$fee_total < 0` = Discount (negative)
+  - `$fee_total > 0` = Fee (positive)
+
+**Percentage Extraction**:
+- When checkout creates a percentage discount/fee, the name includes the % (e.g., "Discount - 30%")
+- Regex pattern: `/(\d+(?:\.\d+)?)\s*%/` extracts the number before %
+- This allows receipt to display "30%" instead of calculating back from dollar amount
+
+**Data Structure Consistency**:
+- Matches the structure created by [`checkout.php:134-152`](../api/checkout.php:134-152)
+- Ensures receipt display code works identically for both scenarios:
+  - Viewing receipt immediately after checkout
+  - Viewing receipt from Orders page
+
+**Receipt Display Flow**:
+1. User clicks "View Receipt" button in Orders page
+2. [`orders.js:191-196`](../assets/js/modules/orders/orders.js:191-196) passes order data to `receiptsManager.showReceipt()`
+3. [`receipts.js:74-125`](../assets/js/modules/orders/receipts.js:74-125) checks for `data.fee` and `data.discount`
+4. **Now works**: Data is present because Orders API included it ✅
+
+**Testing Scenarios**:
+- ✅ View receipt with 30% discount from Orders page
+- ✅ View receipt with $10 flat discount from Orders page
+- ✅ View receipt with 5% fee from Orders page
+- ✅ View receipt with $5 flat fee from Orders page
+- ✅ Discount/fee displays with correct label and amount
+- ✅ Total calculation matches WooCommerce order total
+
+**Files Changed**:
+- [`api/orders.php:194-294`](../api/orders.php:194-294) - Added fee/discount extraction logic
+
+**Related Code**:
+- Fee Storage: [`checkout.php:154-172`](../api/checkout.php:154-172) - How fees are saved to orders
+- Receipt Display: [`receipts.js:74-125`](../assets/js/modules/orders/receipts.js:74-125) - How fees are rendered
+- Orders Rendering: [`orders.js:185-198`](../assets/js/modules/orders/orders.js:185-198) - Receipt button handler
+
+---
+
 ### v1.9.198 - Fixed Discount & Fee Not Applying to Checkout Orders (2025-10-27)
 
 **Issue**: When users applied discounts (e.g., 30%) or fees to the cart and proceeded to checkout, the discount/fee was displayed correctly in the UI but was NOT saved to the WooCommerce order and did NOT appear on the receipt.

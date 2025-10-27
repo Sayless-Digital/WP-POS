@@ -1791,6 +1791,70 @@ class WP-POS_Cache_Manager {
         }
     }
 }
+## Version 1.9.199 (2025-10-27)
+**FIXED: Discounts & Fees Not Showing on Receipts from Orders Page**
+
+**Problem:**
+- When viewing a receipt from the Orders page, discounts and fees were missing
+- The receipt after checkout showed discounts/fees correctly
+- But opening the same order later from Orders page showed no discount/fee lines
+
+**Root Cause:**
+The Orders API ([`orders.php:194-219`](api/orders.php:194-219)) was not including fee/discount data in the response. It only returned basic order info (id, number, status, total, items, etc.) but was missing:
+- `fee` field
+- `discount` field  
+- `fees` array
+
+The receipt display code ([`receipts.js:74-125`](assets/js/modules/orders/receipts.js:74-125)) checks for these fields, but they weren't being provided by the Orders API.
+
+**Fix Applied:**
+Updated Orders API ([`orders.php:194-264`](api/orders.php:194-264)) to extract and include fee/discount data:
+
+1. **Loops through fee items** (Line 210): `$order->get_items('fee')` gets all WooCommerce fee items
+2. **Identifies type by amount sign** (Lines 223-263):
+   - Negative amount = Discount
+   - Positive amount = Fee
+3. **Extracts percentage values** (Lines 228, 248): Uses regex to extract percentage from fee names like "30% Discount"
+4. **Builds proper data structures** (Lines 195-206, 229-242, 249-262):
+   - Creates `$fee_data` and `$discount_data` with type, amount, label, amountType
+   - Builds `$fees_array` with name and total for each fee item
+5. **Includes in response** (Lines 291-293): Adds fee, discount, and fees to order response
+
+**Technical Implementation:**
+```php
+// Extract fee items from WooCommerce order
+foreach ($order->get_items('fee') as $fee_item) {
+    $fee_name = $fee_item->get_name();
+    $fee_total = floatval($fee_item->get_total());
+    
+    // Build fees array
+    $fees_array[] = ['name' => $fee_name, 'total' => wc_format_decimal($fee_total, 2)];
+    
+    // Determine type based on sign
+    if ($fee_total < 0) {
+        // Negative = Discount
+        // Extract percentage if name contains % (e.g., "30% Discount")
+        if (preg_match('/(\d+(?:\.\d+)?)\s*%/', $fee_name, $matches)) {
+            $discount_data = ['type' => 'discount', 'amount' => $matches[1], 'amountType' => 'percentage'];
+        }
+    } else if ($fee_total > 0) {
+        // Positive = Fee
+        if (preg_match('/(\d+(?:\.\d+)?)\s*%/', $fee_name, $matches)) {
+            $fee_data = ['type' => 'fee', 'amount' => $matches[1], 'amountType' => 'percentage'];
+        }
+    }
+}
+```
+
+**Result:**
+- ✅ Receipts from Orders page now show discounts/fees
+- ✅ Matches checkout receipt format exactly
+- ✅ Works for both percentage and flat amounts
+- ✅ Properly extracts original percentage values from fee names
+
+**Files Modified:**
+- [`api/orders.php:194-294`](api/orders.php:194-294) - Added fee/discount extraction and response fields
+
 ## Version 1.9.198 (2025-10-27)
 **FIXED: Discount & Fee Not Applying to Checkout Orders**
 
