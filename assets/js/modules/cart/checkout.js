@@ -335,16 +335,33 @@ class CheckoutManager {
             }
         }
         
-        // Update the Return/Refund Credit split amount
-        const refundSplit = splits.find(s => s.method === 'Return/Refund Credit');
-        if (refundSplit) {
+        // Ensure Return/Refund Credit split exists and update its amount
+        let refundSplit = splits.find(s => s.method === 'Return/Refund Credit');
+        if (!refundSplit) {
+            // Add Return/Refund Credit split if it doesn't exist
+            refundSplit = { method: 'Return/Refund Credit', amount: adjustedReturnCredit };
+            splits.push(refundSplit);
+        } else {
+            // Update existing Return/Refund Credit amount
             refundSplit.amount = adjustedReturnCredit;
-            
-            // Update other payment method amounts if needed
-            const otherSplit = splits.find(s => s.method !== 'Return/Refund Credit');
-            if (otherSplit && newItemsTotal > adjustedReturnCredit) {
-                otherSplit.amount = newItemsTotal - adjustedReturnCredit;
+        }
+        
+        // Update other payment method amounts
+        const otherSplits = splits.filter(s => s.method !== 'Return/Refund Credit');
+        const remainingAmount = newItemsTotal - adjustedReturnCredit;
+        
+        if (remainingAmount > 0) {
+            // Need additional payment
+            if (otherSplits.length === 0) {
+                // Add Cash payment method
+                splits.push({ method: 'Cash', amount: remainingAmount });
+            } else {
+                // Update existing other payment method
+                otherSplits[0].amount = remainingAmount;
             }
+        } else if (remainingAmount <= 0 && otherSplits.length > 0) {
+            // Remove other payment methods if not needed
+            splits.splice(splits.indexOf(otherSplits[0]), 1);
         }
         
         // Save updated splits
