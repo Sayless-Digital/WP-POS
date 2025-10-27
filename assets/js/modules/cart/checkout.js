@@ -300,14 +300,81 @@ class CheckoutManager {
      * @private
      */
     handleDiscountCheckboxChange() {
+        // Get current splits
+        const splits = this.state.getState('checkout.splits') || [];
+        
+        // Recalculate refund credit based on checkbox state
+        const applyDiscountCheckbox = document.getElementById('apply-discount-checkbox');
+        const shouldApplyDiscount = applyDiscountCheckbox ? applyDiscountCheckbox.checked : true;
+        
+        const cartItems = this.state.getState('cart.items') || [];
+        const originalDiscount = this.state.getState('returns.originalDiscount');
+        const originalFee = this.state.getState('returns.originalFee');
+        
+        let returnItemsTotal = 0;
+        let newItemsTotal = 0;
+        
+        // Calculate totals
+        cartItems.forEach(item => {
+            const itemTotal = (parseFloat(item.price) || 0) * Math.abs(item.qty || 0);
+            if (item.qty < 0) {
+                returnItemsTotal += itemTotal;
+            } else {
+                newItemsTotal += itemTotal;
+            }
+        });
+        
+        // Calculate adjusted return credit if discount should be applied
+        let adjustedReturnCredit = returnItemsTotal;
+        if (shouldApplyDiscount && (originalDiscount || originalFee)) {
+            if (originalDiscount && originalDiscount.amount && originalDiscount.amountType === 'percentage') {
+                adjustedReturnCredit -= (returnItemsTotal * (parseFloat(originalDiscount.amount) / 100));
+            }
+            if (originalFee && originalFee.amount && originalFee.amountType === 'percentage') {
+                adjustedReturnCredit += (returnItemsTotal * (parseFloat(originalFee.amount) / 100));
+            }
+        }
+        
+        // Update the Return/Refund Credit split amount
+        const refundSplit = splits.find(s => s.method === 'Return/Refund Credit');
+        if (refundSplit) {
+            refundSplit.amount = adjustedReturnCredit;
+            
+            // Update other payment method amounts if needed
+            const otherSplit = splits.find(s => s.method !== 'Return/Refund Credit');
+            if (otherSplit && newItemsTotal > adjustedReturnCredit) {
+                otherSplit.amount = newItemsTotal - adjustedReturnCredit;
+            }
+        }
+        
+        // Save updated splits
+        this.state.updateState('checkout.splits', splits);
+        
+        // Re-render the split rows with updated amounts
+        const list = document.getElementById('split-payment-methods-list');
+        if (list) {
+            list.innerHTML = ''; // Clear existing
+            
+            // Get payment methods
+            const paymentMethods = [
+                { label: 'Cash', value: 'Cash' },
+                { label: 'Card', value: 'Card' },
+                { label: 'Other', value: 'Other' },
+                { label: 'Return/Refund Credit', value: 'Return/Refund Credit' }
+            ];
+            
+            let inputFirstFocus = [];
+            this.renderSplitRows(splits, paymentMethods, list, inputFirstFocus, () => {});
+        }
+        
         // Trigger cart update to recalculate totals
         if (window.cartManager) {
             window.cartManager.updateCartDisplay();
         }
         
-        // Trigger checkout recalculation
+        // Trigger checkout recalculation with updated splits
         this.updateTotal(
-            this.state.getState('checkout.splits') || [],
+            splits,
             this.getCartTotal(),
             document.getElementById('split-payment-total'),
             document.getElementById('split-payment-apply')
