@@ -83,50 +83,90 @@ if ($action === 'get_details') {
     }
 
     $updated_count = 0;
+    $errors = [];
+    
     foreach ($variations_data as $v_data) {
         $variation_id = absint($v_data['id']);
-        if (!$variation_id) continue;
+        if (!$variation_id) {
+            $errors[] = "Invalid variation ID in data";
+            continue;
+        }
 
         $variation = wc_get_product($variation_id);
-        if (!$variation || $variation->get_parent_id() !== $parent_id) {
+        if (!$variation) {
+            $errors[] = "Variation ID {$variation_id} not found";
+            continue;
+        }
+        
+        if ($variation->get_parent_id() !== $parent_id) {
+            $errors[] = "Variation ID {$variation_id} does not belong to parent product {$parent_id}";
             continue;
         }
 
         $changes_made = false;
 
+        // Update SKU if provided and different
         if (isset($v_data['sku']) && $variation->get_sku() !== $v_data['sku']) {
             $variation->set_sku(sanitize_text_field($v_data['sku']));
             $changes_made = true;
         }
 
-        $new_price = wc_format_decimal($v_data['price'], 2);
-        if ($variation->get_price() !== $new_price) {
-            $variation->set_price($new_price);
-            $variation->set_regular_price($new_price);
-            $changes_made = true;
+        // Update price if provided and different
+        if (isset($v_data['price'])) {
+            $new_price = wc_format_decimal($v_data['price'], 2);
+            if ($variation->get_price() !== $new_price) {
+                $variation->set_price($new_price);
+                $variation->set_regular_price($new_price);
+                $changes_made = true;
+            }
         }
 
-        // Handle stock quantity - enable stock management if stock_quantity is provided
-        if (isset($v_data['stock_quantity']) && $v_data['stock_quantity'] !== '' && $v_data['stock_quantity'] !== null) {
-            $new_stock_qty = wc_stock_amount($v_data['stock_quantity']);
-            $current_stock_qty = $variation->get_stock_quantity();
+        // Handle stock management checkbox - set manage_stock based on checkbox value
+        if (isset($v_data['manage_stock'])) {
+            $new_manage_stock = $v_data['manage_stock'] === true || $v_data['manage_stock'] === 'true' || $v_data['manage_stock'] === 1 || $v_data['manage_stock'] === '1';
+            $current_manage_stock = $variation->get_manage_stock();
             
-            // Enable stock management if it's not already enabled
+            if ($current_manage_stock !== $new_manage_stock) {
+                $variation->set_manage_stock($new_manage_stock);
+                $changes_made = true;
+                
+                // If disabling stock management, clear stock quantity
+                if (!$new_manage_stock) {
+                    $variation->set_stock_quantity(null);
+                }
+            }
+        }
+
+        // Handle stock quantity - only if manage_stock is enabled
+        if (isset($v_data['manage_stock']) && ($v_data['manage_stock'] === true || $v_data['manage_stock'] === 'true' || $v_data['manage_stock'] === 1 || $v_data['manage_stock'] === '1')) {
+            if (isset($v_data['stock_quantity']) && $v_data['stock_quantity'] !== '' && $v_data['stock_quantity'] !== null) {
+                $new_stock_qty = absint($v_data['stock_quantity']); // Use absint for consistency
+                
+                // Always update stock quantity when provided (ensures it's saved even if same value)
+                // WooCommerce will auto-calculate stock_status based on quantity when manage_stock is true
+                $variation->set_stock_quantity($new_stock_qty);
+                $changes_made = true;
+            }
+        } elseif (isset($v_data['stock_quantity']) && $v_data['stock_quantity'] !== '' && $v_data['stock_quantity'] !== null) {
+            // Legacy support: if stock_quantity is provided but manage_stock is not explicitly set,
+            // enable stock management (backward compatibility)
+            $new_stock_qty = absint($v_data['stock_quantity']);
             if (!$variation->get_manage_stock()) {
                 $variation->set_manage_stock(true);
                 $changes_made = true;
             }
-            
-            // Update stock quantity if it has changed
-            if ($current_stock_qty !== $new_stock_qty) {
-                $variation->set_stock_quantity($new_stock_qty);
-                $changes_made = true;
-            }
+            $variation->set_stock_quantity($new_stock_qty);
+            $changes_made = true;
         }
         
+        // Always save if changes were made to ensure persistence
         if ($changes_made) {
-            $variation->save();
-            $updated_count++;
+            $save_result = $variation->save();
+            if ($save_result && !is_wp_error($save_result)) {
+                $updated_count++;
+            } else {
+                $errors[] = "Failed to save variation ID {$variation_id}";
+            }
         }
     }
 
@@ -136,7 +176,17 @@ if ($action === 'get_details') {
         $parent_product->save();
     }
 
-    wp_send_json_success(['message' => "$updated_count variations updated successfully."]);
+    // Build response message
+    $message = "$updated_count variations updated successfully.";
+    if (!empty($errors)) {
+        $message .= " " . count($errors) . " error(s): " . implode(", ", $errors);
+    }
+    
+    if ($updated_count > 0) {
+        wp_send_json_success(['message' => $message, 'updated_count' => $updated_count, 'errors' => $errors]);
+    } else {
+        wp_send_json_error(['message' => 'No variations were updated. ' . (empty($errors) ? 'No changes detected.' : implode(", ", $errors)), 'errors' => $errors], 400);
+    }
 
 } else {
     wp_send_json_error(['message' => 'Invalid action.'], 400);

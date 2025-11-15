@@ -17,7 +17,7 @@ require_once __DIR__ . '/../wp-load.php';
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- Custom JSON syntax highlighting -->
     
-    <!-- WP POS v1.9.4 - Fix checkbox to keep Return/Refund Credit payment method visible -->
+    <!-- WP POS v1.9.204 - Cache-busting for always fresh order data -->
     
     <!-- Core Modules - Load First -->
     <script src="assets/js/modules/state.js?v=1.9.72&t=<?php echo time(); ?>"></script>
@@ -33,13 +33,13 @@ require_once __DIR__ . '/../wp-load.php';
     <script src="assets/js/modules/products/product-editor.js?v=1.9.182&t=<?php echo time(); ?>"></script>
     
     <!-- Cart Modules -->
-    <script src="assets/js/modules/cart/cart.js?v=1.9.174&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/cart/checkout.js?v=1.9.200&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/cart/cart.js?v=1.9.203&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/cart/checkout.js?v=1.9.204&t=<?php echo time(); ?>"></script>
     <script src="assets/js/modules/cart/held-carts.js?v=1.9.72&t=<?php echo time(); ?>"></script>
     
     <!-- Orders & Receipts Modules -->
-    <script src="assets/js/modules/orders/orders.js?v=1.9.200&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/orders/receipts.js?v=1.9.191&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/orders/orders.js?v=1.9.204&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/orders/receipts.js?v=1.9.204&t=<?php echo time(); ?>"></script>
     
     <!-- Financial Modules -->
     <script src="assets/js/modules/financial/drawer.js?v=1.9.72&t=<?php echo time(); ?>"></script>
@@ -1664,13 +1664,6 @@ require_once __DIR__ . '/../wp-load.php';
         <label for="restore-stock-checkbox" class="text-sm font-medium text-slate-300 cursor-pointer">Restore stock for returned items</label>
       </div>
       <p class="text-xs text-slate-400 mt-1 ml-7">When checked, returned items will be added back to inventory</p>
-    </div>
-    <div id="apply-discount-container" class="hidden bg-slate-700/50 rounded-lg p-3 mb-4">
-      <div class="flex items-center gap-3">
-        <input type="checkbox" id="apply-discount-checkbox" class="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500 cursor-pointer" checked>
-        <label for="apply-discount-checkbox" class="text-sm font-medium text-slate-300 cursor-pointer">Apply original discount to return credit</label>
-      </div>
-      <p class="text-xs text-slate-400 mt-1 ml-7">When checked, return credit will be adjusted based on the original order's discount/fee</p>
     </div>
     </div>
     <div class="p-6 flex-shrink-0 border-t border-slate-600">

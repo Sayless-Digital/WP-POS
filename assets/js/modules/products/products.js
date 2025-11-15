@@ -82,14 +82,25 @@ class ProductsManager {
             const variationId = row.dataset.variationId;
             const sku = row.dataset.sku || '';
             const price = parseFloat(row.dataset.price) || 0;
-            const stockInput = row.querySelector('input[type="number"]');
+            const manageStockCheckbox = row.querySelector('.manage-stock-checkbox');
+            const stockInput = row.querySelector('.stock-quantity-input');
             
-            if (stockInput && variationId) {
+            if (variationId) {
+                const manageStock = manageStockCheckbox ? manageStockCheckbox.checked : false;
+                let stockQuantity = null;
+                
+                // Only include stock quantity if manage stock is enabled
+                if (manageStock && stockInput) {
+                    const stockValue = stockInput.value.trim();
+                    stockQuantity = stockValue === '' ? 0 : parseInt(stockValue, 10) || 0;
+                }
+                
                 variations.push({
                     id: parseInt(variationId),
                     sku: sku,
                     price: price,
-                    stock_quantity: parseInt(stockInput.value) || 0
+                    manage_stock: manageStock,
+                    stock_quantity: stockQuantity
                 });
             }
         });
@@ -202,21 +213,48 @@ class ProductsManager {
                     .map(v => v.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()))
                     .join(', ');
                 
+                const managesStock = variation.manages_stock || false;
+                const stockQty = variation.stock_quantity || 0;
+                
                 row.innerHTML = `
-                    <div class="col-span-4 font-semibold">${attrText}</div>
-                    <div class="col-span-3 text-slate-400 text-sm">SKU: ${variation.sku || 'N/A'}</div>
+                    <div class="col-span-3 font-semibold">${attrText}</div>
+                    <div class="col-span-2 text-slate-400 text-sm">SKU: ${variation.sku || 'N/A'}</div>
+                    <div class="col-span-1 flex items-center">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" 
+                                   class="manage-stock-checkbox w-4 h-4 rounded border-slate-600 bg-slate-700 text-green-600 focus:ring-green-500"
+                                   ${managesStock ? 'checked' : ''}>
+                            <span class="text-xs text-slate-300">Manage Stock</span>
+                        </label>
+                    </div>
                     <div class="col-span-2 text-right">
                         <input type="number"
-                               value="${variation.stock_quantity || 0}"
+                               value="${stockQty}"
                                min="0"
-                               class="w-full form-input text-sm py-1 px-2 text-right">
+                               class="stock-quantity-input w-full form-input text-sm py-1 px-2 text-right"
+                               ${!managesStock ? 'disabled' : ''}>
                     </div>
-                    <div class="col-span-3 text-right text-sm">
-                        <span class="${(variation.stock_quantity || 0) > 5 ? 'text-green-400' : 'text-orange-400'}">
-                            Current: ${variation.stock_quantity || 0}
+                    <div class="col-span-2 text-right text-sm">
+                        <span class="${stockQty > 5 ? 'text-green-400' : 'text-orange-400'}">
+                            Current: ${stockQty}
                         </span>
                     </div>
+                    <div class="col-span-2 text-xs text-slate-400">
+                        ${managesStock ? 'Stock managed' : 'Stock not managed'}
+                    </div>
                 `;
+                
+                // Add event listener to enable/disable stock quantity input based on checkbox
+                const checkbox = row.querySelector('.manage-stock-checkbox');
+                const stockInput = row.querySelector('.stock-quantity-input');
+                if (checkbox && stockInput) {
+                    checkbox.addEventListener('change', (e) => {
+                        stockInput.disabled = !e.target.checked;
+                        if (!e.target.checked) {
+                            stockInput.value = '0';
+                        }
+                    });
+                }
                 
                 list.appendChild(row);
             });
