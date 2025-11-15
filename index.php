@@ -17,7 +17,7 @@ require_once __DIR__ . '/../wp-load.php';
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- Custom JSON syntax highlighting -->
     
-    <!-- WP POS v1.9.204 - Cache-busting for always fresh order data -->
+    <!-- WP POS v1.9.205 - Added Manage Stock checkbox to variation stock editor -->
     
     <!-- Core Modules - Load First -->
     <script src="assets/js/modules/state.js?v=1.9.72&t=<?php echo time(); ?>"></script>
@@ -29,7 +29,7 @@ require_once __DIR__ . '/../wp-load.php';
     <script src="assets/js/modules/keyboard.js?v=1.9.125&t=<?php echo time(); ?>"></script>
     
     <!-- Products Modules -->
-    <script src="assets/js/modules/products/products.js?v=1.9.165&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/products/products.js?v=1.9.205&t=<?php echo time(); ?>"></script>
     <script src="assets/js/modules/products/product-editor.js?v=1.9.182&t=<?php echo time(); ?>"></script>
     
     <!-- Cart Modules -->

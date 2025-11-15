@@ -1,4 +1,4 @@
-// WP POS v1.9.165 - Products Manager Module
+// WP POS v1.9.205 - Products Manager Module - Added Manage Stock checkbox to variation stock editor
 // Handles product display, variations, barcode scanning, and stock management
 // Added: Toast notifications showing "Updating products..." during refresh
 
