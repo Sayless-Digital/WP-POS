@@ -106,9 +106,19 @@ if ($action === 'get_details') {
             $changes_made = true;
         }
 
-        if ($variation->get_manage_stock() && isset($v_data['stock_quantity'])) {
+        // Handle stock quantity - enable stock management if stock_quantity is provided
+        if (isset($v_data['stock_quantity']) && $v_data['stock_quantity'] !== '' && $v_data['stock_quantity'] !== null) {
             $new_stock_qty = wc_stock_amount($v_data['stock_quantity']);
-            if ($variation->get_stock_quantity() !== $new_stock_qty) {
+            $current_stock_qty = $variation->get_stock_quantity();
+            
+            // Enable stock management if it's not already enabled
+            if (!$variation->get_manage_stock()) {
+                $variation->set_manage_stock(true);
+                $changes_made = true;
+            }
+            
+            // Update stock quantity if it has changed
+            if ($current_stock_qty !== $new_stock_qty) {
                 $variation->set_stock_quantity($new_stock_qty);
                 $changes_made = true;
             }
