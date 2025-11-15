@@ -433,7 +433,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (orderDateFilter) {
             orderDateFilter.addEventListener('change', (e) => {
                 state.updateState('orders.filters.date', e.target.value);
-                ordersManager.fetchOrders();
+                state.updateState('orders.pagination.page', 1);
+                ordersManager.fetchOrders(1);
             });
         }
         
@@ -441,7 +442,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (orderSourceFilter) {
             orderSourceFilter.addEventListener('change', (e) => {
                 state.updateState('orders.filters.source', e.target.value);
-                ordersManager.fetchOrders();
+                state.updateState('orders.pagination.page', 1);
+                ordersManager.fetchOrders(1);
             });
         }
         
@@ -449,15 +451,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (orderStatusFilter) {
             orderStatusFilter.addEventListener('change', (e) => {
                 state.updateState('orders.filters.status', e.target.value);
-                ordersManager.fetchOrders();
+                state.updateState('orders.pagination.page', 1);
+                ordersManager.fetchOrders(1);
             });
         }
         
         const orderIdSearch = document.getElementById('order-id-search');
         if (orderIdSearch) {
+            let debounceTimer;
             orderIdSearch.addEventListener('input', (e) => {
-                state.updateState('orders.filters.orderId', e.target.value);
-                ordersManager.renderOrders();
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => {
+                    state.updateState('orders.filters.orderId', e.target.value);
+                    // Reset to page 1 when search changes
+                    state.updateState('orders.pagination.page', 1);
+                    ordersManager.fetchOrders(1);
+                }, 300); // 300ms debounce for better performance
             });
         }
         

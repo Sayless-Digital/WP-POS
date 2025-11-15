@@ -72,7 +72,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Only proceed with GET orders if not a POST delete request
-$limit = 100; // Limit the number of orders returned for performance
+// Pagination parameters
+$page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+$per_page = isset($_GET['per_page']) ? max(1, min(500, intval($_GET['per_page']))) : 50; // Default 50, max 500
+$offset = ($page - 1) * $per_page;
 
 // Base SQL with conditional JPOS filter
 $sql = "SELECT p.ID FROM {$wpdb->prefix}posts as p
@@ -139,8 +142,52 @@ if (isset($_GET['customer_filter']) && !empty($_GET['customer_filter']) && $_GET
     $sql_params[] = $customer_id;
 }
 
-$sql .= " ORDER BY p.post_date DESC LIMIT %d";
-$sql_params[] = $limit;
+// --- Append Order ID Search Filter ---
+if (isset($_GET['order_id_search']) && !empty($_GET['order_id_search'])) {
+    $order_search = sanitize_text_field($_GET['order_id_search']);
+    // Remove # prefix if present
+    $order_search = ltrim($order_search, '#');
+    
+    // Try to match as integer (order ID - in WooCommerce, order number is typically the post ID)
+    if (is_numeric($order_search)) {
+        $order_id = intval($order_search);
+        // Search by post ID (which is the order number in standard WooCommerce)
+        // Also check for custom order numbers in postmeta if they exist
+        $sql .= " AND (p.ID = %d OR EXISTS (
+            SELECT 1 FROM {$wpdb->prefix}postmeta pm
+            WHERE pm.post_id = p.ID 
+            AND pm.meta_key IN ('_order_number', '_alg_wc_full_custom_order_number')
+            AND (
+                CAST(pm.meta_value AS UNSIGNED) = %d
+                OR pm.meta_value LIKE %s
+            )
+        ))";
+        $sql_params[] = $order_id;
+        $sql_params[] = $order_id;
+        $sql_params[] = '%' . $wpdb->esc_like($order_search) . '%';
+    } else {
+        // If not numeric, search by order number as string (partial match in postmeta)
+        $sql .= " AND EXISTS (
+            SELECT 1 FROM {$wpdb->prefix}postmeta pm
+            WHERE pm.post_id = p.ID 
+            AND pm.meta_key IN ('_order_number', '_alg_wc_full_custom_order_number')
+            AND pm.meta_value LIKE %s
+        )";
+        $sql_params[] = '%' . $wpdb->esc_like($order_search) . '%';
+    }
+}
+
+// Get total count for pagination (before applying ORDER BY and LIMIT)
+// Build count query by replacing SELECT p.ID with SELECT COUNT(*)
+$count_sql = str_replace("SELECT p.ID", "SELECT COUNT(*)", $sql);
+// Use a copy of params for count query (before adding pagination params)
+$count_params = $sql_params;
+$total_orders = intval($wpdb->get_var($wpdb->prepare($count_sql, $count_params)));
+
+// Apply pagination (ORDER BY and LIMIT)
+$sql .= " ORDER BY p.post_date DESC LIMIT %d OFFSET %d";
+$sql_params[] = $per_page;
+$sql_params[] = $offset;
 
 // Execute the query to get order IDs
 $order_ids = $wpdb->get_col($wpdb->prepare($sql, $sql_params));
@@ -263,6 +310,15 @@ if (!empty($order_ids)) {
             }
         }
         
+        // Calculate order-level discount/fee total to distribute across items
+        $order_level_adjustment = 0;
+        foreach ($order->get_items('fee') as $fee_item) {
+            $order_level_adjustment += floatval($fee_item->get_total());
+        }
+        
+        // Get order subtotal to calculate proportions
+        $order_subtotal = floatval($order->get_subtotal());
+        
         $response_data[] = [
             'id'           => $order->get_id(),
             'order_number' => $order->get_order_number(),
@@ -275,12 +331,24 @@ if (!empty($order_ids)) {
             'customer_id'  => $customer_id,
             'customer_name' => $customer_name,
             'has_refunds'  => $has_refunds,
-            'items'        => array_map(function($item) {
+            'items'        => array_map(function($item) use ($order_level_adjustment, $order_subtotal) {
                 $product = $item->get_product();
+                $item_subtotal = floatval($item->get_total());
+                
+                // Calculate this item's share of order-level discount/fee
+                $item_adjustment = 0;
+                if ($order_subtotal > 0 && $order_level_adjustment != 0) {
+                    $proportion = $item_subtotal / $order_subtotal;
+                    $item_adjustment = $order_level_adjustment * $proportion;
+                }
+                
+                // Actual price paid = line total + proportional adjustment
+                $actual_total = $item_subtotal + $item_adjustment;
+                
                 return [
                     'name'      => $item->get_name(),
                     'quantity'  => $item->get_quantity(),
-                    'total'     => wc_format_decimal($item->get_total(), 2),
+                    'total'     => wc_format_decimal($actual_total, 2),
                     'sku'       => $product ? $product->get_sku() : 'N/A',
                     'id'        => $item->get_variation_id() ?: $item->get_product_id(),
                 ];
@@ -295,4 +363,13 @@ if (!empty($order_ids)) {
     }
 }
 
-wp_send_json_success($response_data);
+// Return data with pagination metadata
+wp_send_json_success([
+    'orders' => $response_data,
+    'pagination' => [
+        'page' => $page,
+        'per_page' => $per_page,
+        'total' => intval($total_orders),
+        'total_pages' => ceil($total_orders / $per_page)
+    ]
+]);

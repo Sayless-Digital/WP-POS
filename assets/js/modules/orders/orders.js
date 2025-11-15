@@ -1,5 +1,6 @@
-// WP POS v1.9.0 - Orders Management Module
+// WP POS v1.9.204 - Orders Management Module
 // Handles order fetching, rendering, filtering, and return processing
+// Added: Cache-busting for always fresh order data
 
 class OrdersManager {
     constructor(state, uiHelpers) {
@@ -81,24 +82,50 @@ class OrdersManager {
     }
 
     /**
-     * Fetch orders from API with current filters
+     * Fetch orders from API with current filters and pagination
+     * @param {number} page - Page number to fetch (defaults to current page)
      * @returns {Promise<void>}
      */
-    async fetchOrders() {
+    async fetchOrders(page = null) {
         const container = document.getElementById('order-list');
         container.innerHTML = this.ui.getSkeletonLoaderHtml('list-rows', 20);
         
-        const filters = this.state.getState('orders.filters') || { date: 'all', status: 'all', source: 'all', customer: '' };
-        const params = `date_filter=${filters.date}&status_filter=${filters.status}&source_filter=${filters.source}&customer_filter=${filters.customer}`;
+        const filters = this.state.getState('orders.filters') || { date: 'all', status: 'all', source: 'all', customer: '', orderId: '' };
+        const pagination = this.state.getState('orders.pagination') || { page: 1, per_page: 50 };
+        
+        // Use provided page or current page from state
+        const currentPage = page !== null ? page : pagination.page;
+        
+        const params = new URLSearchParams({
+            date_filter: filters.date || 'all',
+            status_filter: filters.status || 'all',
+            source_filter: filters.source || 'all',
+            customer_filter: filters.customer || 'all',
+            page: currentPage.toString(),
+            per_page: pagination.per_page.toString()
+        });
+        
+        // Add order ID search if provided
+        if (filters.orderId && filters.orderId.trim()) {
+            params.append('order_id_search', filters.orderId.trim());
+        }
+        
+        // Add cache-busting timestamp to always fetch fresh data
+        params.append('_t', Date.now().toString());
         
         try {
-            const response = await fetch(`/wp-pos/api/orders.php?${params}`);
+            const response = await fetch(`/wp-pos/api/orders.php?${params.toString()}`);
             if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
             
             const result = await response.json();
-            if (!result.success) throw new Error(result.data.message);
+            if (!result.success) throw new Error(result.data?.message || 'Failed to fetch orders');
             
-            this.state.updateState('orders.all', result.data || []);
+            // Handle new response structure with pagination
+            const orders = result.data?.orders || result.data || [];
+            const paginationData = result.data?.pagination || { page: 1, per_page: 50, total: orders.length, total_pages: 1 };
+            
+            this.state.updateState('orders.all', orders);
+            this.state.updateState('orders.pagination', paginationData);
             this.renderOrders();
         } catch (error) {
             console.error("Error in fetchOrders:", error);
@@ -114,23 +141,16 @@ class OrdersManager {
         container.innerHTML = '';
         
         const orders = this.state.getState('orders.all') || [];
-        let filteredOrders = orders;
         
-        // Apply order ID filter
-        const filters = this.state.getState('orders.filters') || { orderId: '' };
-        if (filters.orderId) {
-            const search = filters.orderId.replace(/^#/, '').toLowerCase();
-            filteredOrders = orders.filter(o =>
-                o.order_number.toString().toLowerCase().includes(search)
-            );
-        }
+        // Note: Order ID search is now handled server-side via API
+        // No client-side filtering needed for order ID
         
-        if (filteredOrders.length === 0) {
+        if (orders.length === 0) {
             container.innerHTML = `<div class="p-10 text-center text-slate-400 col-span-12">No orders match criteria.</div>`;
             return;
         }
         
-        filteredOrders.forEach(order => {
+        orders.forEach(order => {
             const row = document.createElement('div');
             row.className = 'grid grid-cols-12 gap-4 items-center bg-slate-800 hover:bg-slate-700/50 p-3 rounded-lg text-sm';
             row.dataset.orderId = order.id;
@@ -219,6 +239,72 @@ class OrdersManager {
                 this.openDeleteOrderModal(orderId, orderNumber);
             });
         });
+        
+        // Render pagination controls
+        this.renderPagination();
+    }
+    
+    /**
+     * Render pagination controls
+     */
+    renderPagination() {
+        const pagination = this.state.getState('orders.pagination') || { page: 1, per_page: 50, total: 0, total_pages: 1 };
+        const container = document.getElementById('order-list');
+        
+        // Remove existing pagination if any
+        const existingPagination = container.parentElement.querySelector('.orders-pagination');
+        if (existingPagination) {
+            existingPagination.remove();
+        }
+        
+        // Don't show pagination if there's only one page or no orders
+        if (pagination.total_pages <= 1) {
+            return;
+        }
+        
+        const paginationEl = document.createElement('div');
+        paginationEl.className = 'orders-pagination flex items-center justify-between p-4 bg-slate-800/50 border-t border-slate-700';
+        
+        const start = (pagination.page - 1) * pagination.per_page + 1;
+        const end = Math.min(pagination.page * pagination.per_page, pagination.total);
+        
+        paginationEl.innerHTML = `
+            <div class="text-sm text-slate-400">
+                Showing ${start}-${end} of ${pagination.total} orders
+            </div>
+            <div class="flex items-center gap-2">
+                <button class="pagination-btn px-3 py-1 rounded bg-slate-700 hover:bg-slate-600 text-sm disabled:opacity-50 disabled:cursor-not-allowed" 
+                        data-page="1" ${pagination.page === 1 ? 'disabled' : ''}>
+                    First
+                </button>
+                <button class="pagination-btn px-3 py-1 rounded bg-slate-700 hover:bg-slate-600 text-sm disabled:opacity-50 disabled:cursor-not-allowed" 
+                        data-page="${pagination.page - 1}" ${pagination.page === 1 ? 'disabled' : ''}>
+                    Previous
+                </button>
+                <span class="px-3 py-1 text-sm text-slate-300">
+                    Page ${pagination.page} of ${pagination.total_pages}
+                </span>
+                <button class="pagination-btn px-3 py-1 rounded bg-slate-700 hover:bg-slate-600 text-sm disabled:opacity-50 disabled:cursor-not-allowed" 
+                        data-page="${pagination.page + 1}" ${pagination.page >= pagination.total_pages ? 'disabled' : ''}>
+                    Next
+                </button>
+                <button class="pagination-btn px-3 py-1 rounded bg-slate-700 hover:bg-slate-600 text-sm disabled:opacity-50 disabled:cursor-not-allowed" 
+                        data-page="${pagination.total_pages}" ${pagination.page >= pagination.total_pages ? 'disabled' : ''}>
+                    Last
+                </button>
+            </div>
+        `;
+        
+        // Attach event listeners
+        paginationEl.querySelectorAll('.pagination-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                if (e.target.disabled) return;
+                const page = parseInt(e.target.dataset.page);
+                this.fetchOrders(page);
+            });
+        });
+        
+        container.parentElement.appendChild(paginationEl);
     }
 
     /**
@@ -320,7 +406,9 @@ class OrdersManager {
                 
                 // Refresh orders list
                 console.log('Refreshing orders list...');
-                await this.fetchOrders();
+                // Reset to page 1 after deletion
+                this.state.updateState('orders.pagination.page', 1);
+                await this.fetchOrders(1);
                 
                 // If stock was restored, also refresh products to show updated stock quantities
                 if (restoreStock && window.productsManager) {
@@ -454,14 +542,18 @@ class OrdersManager {
                 );
 
                 if (originalItem) {
-                    // Find full product info to get image_url
+                    // Find full product info to get image
                     const products = this.state.getState('products.all') || [];
                     const fullProductInfo = products.find(p => p.id === originalItem.id) ||
                         (products.find(p => p.variations && p.variations.find(v => v.id === originalItem.id))?.variations.find(v => v.id === originalItem.id));
                     
+                    // Use the ACTUAL PRICE PAID from the original order (item.total / quantity)
+                    // This already includes all discounts/fees that were applied
+                    const actualPricePaid = parseFloat(row.dataset.price);
+                    
                     const itemDataForCart = {
                         ...originalItem,
-                        price: parseFloat(row.dataset.price),
+                        price: actualPricePaid,
                         image_url: fullProductInfo ? fullProductInfo.image_url : '',
                         qty: -quantity
                     };
@@ -556,7 +648,9 @@ class OrdersManager {
         
         if (clearBtn) clearBtn.classList.remove('hidden');
         this.hideCustomerFilterResults();
-        this.fetchOrders();
+        // Reset to page 1 when filters change
+        this.state.updateState('orders.pagination.page', 1);
+        this.fetchOrders(1);
     }
 
     /**
@@ -571,7 +665,9 @@ class OrdersManager {
         if (clearBtn) clearBtn.classList.add('hidden');
         
         this.hideCustomerFilterResults();
-        this.fetchOrders();
+        // Reset to page 1 when filters change
+        this.state.updateState('orders.pagination.page', 1);
+        this.fetchOrders(1);
     }
     
     /**
@@ -741,7 +837,9 @@ class OrdersManager {
             if (modal) modal.classList.add('hidden');
             
             // Refresh orders list
-            await this.fetchOrders();
+            // Reset to page 1 after bulk deletion
+            this.state.updateState('orders.pagination.page', 1);
+            await this.fetchOrders(1);
             
             // If stock was restored, refresh products
             if (restoreStock && window.productsManager) {
