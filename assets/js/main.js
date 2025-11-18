@@ -304,13 +304,26 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 const nameIcon = document.getElementById('search-icon-name');
                 const skuIcon = document.getElementById('search-icon-sku');
+                const searchInput = document.getElementById('search-input');
                 
                 if (newType === 'sku') {
                     nameIcon.classList.add('hidden');
                     skuIcon.classList.remove('hidden');
+                    if (searchInput) searchInput.placeholder = 'Search by SKU...';
                 } else {
                     nameIcon.classList.remove('hidden');
                     skuIcon.classList.add('hidden');
+                    if (searchInput) searchInput.placeholder = 'Search...';
+                }
+                
+                // Clear barcode buffer when switching away from SKU mode
+                if (newType === 'name' && typeof barcodeDetection !== 'undefined' && barcodeDetection.reset) {
+                    barcodeDetection.reset();
+                }
+                
+                // Re-render products after mode change
+                if (productsManager) {
+                    productsManager.renderProductGrid();
                 }
             });
         }
@@ -382,6 +395,168 @@ document.addEventListener('DOMContentLoaded', async () => {
                 productsManager.renderProductGrid();
             });
         }
+        
+        // Global barcode detection for SKU mode (works even when input is not focused)
+        // These variables are in closure scope, accessible to event listeners
+        const barcodeDetection = {
+            buffer: '',
+            timer: null,
+            startTime: null,
+            reset: function() {
+                this.buffer = '';
+                this.startTime = null;
+                if (this.timer) {
+                    clearTimeout(this.timer);
+                    this.timer = null;
+                }
+            }
+        };
+        
+        // Listen for paste events globally when in SKU mode
+        document.addEventListener('paste', (e) => {
+            const searchType = state.getState('filters.searchType');
+            if (searchType === 'sku' && searchInput) {
+                // Only handle if not already focused on an input/textarea
+                const activeElement = document.activeElement;
+                const isInputFocused = activeElement && (
+                    activeElement.tagName === 'INPUT' || 
+                    activeElement.tagName === 'TEXTAREA' ||
+                    activeElement.isContentEditable
+                );
+                
+                if (!isInputFocused) {
+                    e.preventDefault();
+                    // Get pasted text from clipboard
+                    const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+                    if (pastedText && pastedText.trim()) {
+                        // Mark input to skip keyboard auto-show
+                        searchInput.dataset.skipKeyboard = 'true';
+                        searchInput.focus();
+                        searchInput.value = pastedText.trim();
+                        // Trigger search after a short delay
+                        setTimeout(() => {
+                            if (window.productsManager) {
+                                window.productsManager.handleBarcodeInput(pastedText.trim());
+                                searchInput.value = '';
+                            }
+                            // Remove skip flag and blur after search
+                            setTimeout(() => {
+                                searchInput.dataset.skipKeyboard = 'false';
+                                searchInput.blur();
+                            }, 100);
+                        }, 50);
+                    }
+                }
+            }
+        });
+        
+        // Listen for fast typing (barcode scanners type very quickly)
+        document.addEventListener('keydown', (e) => {
+            const searchType = state.getState('filters.searchType');
+            if (searchType === 'sku' && searchInput) {
+                // Only handle if not already focused on an input/textarea/contenteditable
+                const activeElement = document.activeElement;
+                const isInputFocused = activeElement && (
+                    activeElement.tagName === 'INPUT' || 
+                    activeElement.tagName === 'TEXTAREA' ||
+                    activeElement.isContentEditable
+                );
+                
+                // Skip if input is focused (let normal input handling work)
+                if (isInputFocused) {
+                    // Reset buffer if user is typing manually
+                    barcodeDetection.reset();
+                    return;
+                }
+                
+                // Skip special keys that shouldn't be part of barcode
+                if (e.key === 'Tab' || e.key === 'Escape' || e.key === 'F1' || e.key === 'F2' || 
+                    e.key === 'F3' || e.key === 'F4' || e.key === 'F5' || e.key === 'F6' ||
+                    e.key === 'F7' || e.key === 'F8' || e.key === 'F9' || e.key === 'F10' ||
+                    e.key === 'F11' || e.key === 'F12' || e.ctrlKey || e.altKey || e.metaKey) {
+                    return;
+                }
+                
+                // If Enter is pressed, check if we have a barcode buffer
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (barcodeDetection.buffer.trim().length > 0) {
+                        const scannedValue = barcodeDetection.buffer.trim();
+                        // Mark input to skip keyboard auto-show
+                        searchInput.dataset.skipKeyboard = 'true';
+                        searchInput.focus();
+                        searchInput.value = scannedValue;
+                        // Trigger search
+                        if (window.productsManager) {
+                            setTimeout(() => {
+                                window.productsManager.handleBarcodeInput(scannedValue);
+                                searchInput.value = '';
+                                // Remove skip flag and blur after search
+                                setTimeout(() => {
+                                    searchInput.dataset.skipKeyboard = 'false';
+                                    searchInput.blur();
+                                }, 100);
+                            }, 50);
+                        }
+                        // Clear buffer
+                        barcodeDetection.reset();
+                    }
+                    return;
+                }
+                
+                // Record the character and start timing
+                if (!barcodeDetection.startTime) {
+                    barcodeDetection.startTime = Date.now();
+                    barcodeDetection.buffer = '';
+                }
+                
+                // Add character to buffer (handle special cases)
+                if (e.key.length === 1) {
+                    // Regular character
+                    barcodeDetection.buffer += e.key;
+                } else if (e.key === 'Backspace' && barcodeDetection.buffer.length > 0) {
+                    // Handle backspace
+                    barcodeDetection.buffer = barcodeDetection.buffer.slice(0, -1);
+                }
+                
+                // Clear existing timer
+                if (barcodeDetection.timer) {
+                    clearTimeout(barcodeDetection.timer);
+                }
+                
+                // Set timer - if no more input for 200ms, assume barcode is complete
+                barcodeDetection.timer = setTimeout(() => {
+                    const timeElapsed = Date.now() - (barcodeDetection.startTime || Date.now());
+                    const bufferValue = barcodeDetection.buffer.trim();
+                    
+                    // Check if this looks like a barcode scan:
+                    // - At least 2 characters
+                    // - Typed quickly (< 500ms total)
+                    // - Or has a reasonable length (> 3 chars)
+                    if (bufferValue.length >= 2 && (timeElapsed < 500 || bufferValue.length > 3)) {
+                        // Mark input to skip keyboard auto-show
+                        searchInput.dataset.skipKeyboard = 'true';
+                        searchInput.focus();
+                        searchInput.value = bufferValue;
+                        // Trigger search
+                        if (window.productsManager) {
+                            setTimeout(() => {
+                                window.productsManager.handleBarcodeInput(bufferValue);
+                                searchInput.value = '';
+                                // Remove skip flag and blur after search
+                                setTimeout(() => {
+                                    searchInput.dataset.skipKeyboard = 'false';
+                                    searchInput.blur();
+                                }, 100);
+                            }, 50);
+                        }
+                    }
+                    
+                    // Reset buffer
+                    barcodeDetection.reset();
+                }, 200);
+            }
+        });
         
         // Products list filter
         const productsListFilter = document.getElementById('products-list-filter');

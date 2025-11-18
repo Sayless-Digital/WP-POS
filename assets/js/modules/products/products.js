@@ -1,4 +1,4 @@
-// WP POS v1.9.205 - Products Manager Module - Added Manage Stock checkbox to variation stock editor
+// WP POS v1.9.206 - Products Manager Module - Added Manage Stock checkbox to variation stock editor
 // Handles product display, variations, barcode scanning, and stock management
 // Added: Toast notifications showing "Updating products..." during refresh
 
@@ -217,30 +217,28 @@ class ProductsManager {
                 const stockQty = variation.stock_quantity || 0;
                 
                 row.innerHTML = `
-                    <div class="col-span-3 font-semibold">${attrText}</div>
+                    <div class="col-span-3 font-semibold text-slate-200">${attrText}</div>
                     <div class="col-span-2 text-slate-400 text-sm">SKU: ${variation.sku || 'N/A'}</div>
-                    <div class="col-span-1 flex items-center">
-                        <label class="flex items-center gap-2 cursor-pointer">
+                    <div class="col-span-2 flex items-center gap-2">
+                        <label class="flex items-center gap-2 cursor-pointer hover:opacity-80">
                             <input type="checkbox" 
-                                   class="manage-stock-checkbox w-4 h-4 rounded border-slate-600 bg-slate-700 text-green-600 focus:ring-green-500"
-                                   ${managesStock ? 'checked' : ''}>
-                            <span class="text-xs text-slate-300">Manage Stock</span>
+                                   class="manage-stock-checkbox w-5 h-5 rounded border-2 border-slate-500 bg-slate-700 text-green-600 focus:ring-2 focus:ring-green-500 focus:ring-offset-1 cursor-pointer"
+                                   ${managesStock ? 'checked' : ''}
+                                   style="accent-color: #16a34a;">
+                            <span class="text-sm text-slate-300 font-medium">Manage Stock</span>
                         </label>
                     </div>
                     <div class="col-span-2 text-right">
                         <input type="number"
                                value="${stockQty}"
                                min="0"
-                               class="stock-quantity-input w-full form-input text-sm py-1 px-2 text-right"
+                               class="stock-quantity-input w-full form-input text-sm py-1 px-2 text-right bg-slate-600 border-slate-500"
                                ${!managesStock ? 'disabled' : ''}>
                     </div>
-                    <div class="col-span-2 text-right text-sm">
+                    <div class="col-span-3 text-right text-sm">
                         <span class="${stockQty > 5 ? 'text-green-400' : 'text-orange-400'}">
                             Current: ${stockQty}
                         </span>
-                    </div>
-                    <div class="col-span-2 text-xs text-slate-400">
-                        ${managesStock ? 'Stock managed' : 'Stock not managed'}
                     </div>
                 `;
                 
@@ -336,8 +334,56 @@ class ProductsManager {
         
         // Filter products based on current filters
         const filteredProducts = products.filter(p => {
-            if (filters.searchType === 'sku') return true;
+            // SKU search mode
+            if (filters.searchType === 'sku') {
+                const searchValue = (filters.search || '').trim();
+                
+                // If no search value, show all products
+                if (!searchValue) {
+                    // Still apply other filters (category, tag, stock)
+                    const categoryMatch = filters.category === 'all' || (p.category_ids || []).includes(parseInt(filters.category));
+                    const tagMatch = filters.tag === 'all' || (p.tag_ids || []).includes(parseInt(filters.tag));
+                    
+                    let stockMatch;
+                    if (filters.stock === 'private') {
+                        stockMatch = p.post_status === 'private';
+                    } else {
+                        stockMatch = filters.stock === 'all' || p.stock_status === filters.stock;
+                    }
+                    
+                    return categoryMatch && tagMatch && stockMatch;
+                }
+                
+                // Search by SKU - check product SKU and variation SKUs
+                const skuMatch = p.sku && String(p.sku).trim().toLowerCase() === searchValue.toLowerCase();
+                
+                // Check variation SKUs
+                let variationSkuMatch = false;
+                if (p.variations && p.variations.length > 0) {
+                    variationSkuMatch = p.variations.some(v => 
+                        v.sku && String(v.sku).trim().toLowerCase() === searchValue.toLowerCase()
+                    );
+                }
+                
+                // If SKU matches, still apply other filters
+                if (skuMatch || variationSkuMatch) {
+                    const categoryMatch = filters.category === 'all' || (p.category_ids || []).includes(parseInt(filters.category));
+                    const tagMatch = filters.tag === 'all' || (p.tag_ids || []).includes(parseInt(filters.tag));
+                    
+                    let stockMatch;
+                    if (filters.stock === 'private') {
+                        stockMatch = p.post_status === 'private';
+                    } else {
+                        stockMatch = filters.stock === 'all' || p.stock_status === filters.stock;
+                    }
+                    
+                    return categoryMatch && tagMatch && stockMatch;
+                }
+                
+                return false;
+            }
             
+            // Name search mode (default)
             const searchLower = (filters.search || '').toLowerCase();
             const categoryMatch = filters.category === 'all' || (p.category_ids || []).includes(parseInt(filters.category));
             const tagMatch = filters.tag === 'all' || (p.tag_ids || []).includes(parseInt(filters.tag));
@@ -755,17 +801,77 @@ class ProductsManager {
 
     /**
      * Handle barcode input/scanning
-     * @param {String} barcode - Scanned barcode
+     * @param {String} barcode - Scanned barcode (usually SKU)
      */
     async handleBarcodeInput(barcode) {
+        if (!barcode || !barcode.trim()) {
+            console.log('handleBarcodeInput: Empty barcode');
+            return;
+        }
+        
+        const barcodeValue = barcode.trim();
+        console.log('handleBarcodeInput: Searching for:', barcodeValue);
+        
         const products = this.state.getState('products.all') || [];
-        const foundProduct = products.find(p =>
-            p.sku === barcode || (p.variations && p.variations.some(v => v.sku === barcode))
-        );
+        console.log('handleBarcodeInput: Total products:', products.length);
+        
+        // Search by SKU first (most common), then barcode
+        // Normalize comparison - trim whitespace and handle null/undefined
+        const foundProduct = products.find(p => {
+            // Check product SKU (most common use case)
+            if (p.sku && String(p.sku).trim() === barcodeValue) {
+                console.log('Found by product SKU:', p.name, p.sku);
+                return true;
+            }
+            
+            // Check product barcode
+            if (p.barcode && String(p.barcode).trim() === barcodeValue) {
+                console.log('Found by product barcode:', p.name, p.barcode);
+                return true;
+            }
+            
+            // Check variation SKUs and barcodes
+            if (p.variations && p.variations.length > 0) {
+                const matchingVariation = p.variations.find(v => {
+                    const skuMatch = v.sku && String(v.sku).trim() === barcodeValue;
+                    const barcodeMatch = v.barcode && String(v.barcode).trim() === barcodeValue;
+                    return skuMatch || barcodeMatch;
+                });
+                
+                if (matchingVariation) {
+                    console.log('Found by variation:', p.name, matchingVariation.sku || matchingVariation.barcode);
+                    return true;
+                }
+            }
+            
+            return false;
+        });
         
         if (foundProduct) {
-            await this.handleProductClick(foundProduct.id, barcode);
+            console.log('handleBarcodeInput: Product found:', foundProduct.name, foundProduct.id);
+            
+            // Find the matching variation SKU if this is a variable product
+            let matchingVariationSku = null;
+            if (foundProduct.variations && foundProduct.variations.length > 0) {
+                const matchingVariation = foundProduct.variations.find(v => {
+                    const skuMatch = v.sku && String(v.sku).trim() === barcodeValue;
+                    const barcodeMatch = v.barcode && String(v.barcode).trim() === barcodeValue;
+                    return skuMatch || barcodeMatch;
+                });
+                
+                if (matchingVariation) {
+                    matchingVariationSku = matchingVariation.sku ? String(matchingVariation.sku).trim() : barcodeValue;
+                    console.log('handleBarcodeInput: Matching variation SKU:', matchingVariationSku);
+                }
+            }
+            
+            // Handle the product click
+            await this.handleProductClick(foundProduct.id, matchingVariationSku || barcodeValue);
         } else {
+            console.log('handleBarcodeInput: Product not found for:', barcodeValue);
+            // Debug: show first few products with SKUs for debugging
+            const sampleProducts = products.slice(0, 5).map(p => ({ name: p.name, sku: p.sku }));
+            console.log('Sample products (first 5):', sampleProducts);
             this.ui.showToast('Product not found');
         }
     }
@@ -776,10 +882,37 @@ class ProductsManager {
      * @returns {Object|null} Product object or null
      */
     findProductByBarcode(barcode) {
+        if (!barcode || !barcode.trim()) return null;
+        
+        const barcodeValue = barcode.trim();
         const products = this.state.getState('products.all') || [];
-        return products.find(p =>
-            p.sku === barcode || (p.variations && p.variations.some(v => v.sku === barcode))
-        ) || null;
+        
+        return products.find(p => {
+            // Check product barcode
+            if (p.barcode === barcodeValue) return true;
+            
+            // Check product SKU
+            if (p.sku === barcodeValue) return true;
+            
+            // Check variation barcodes and SKUs
+            if (p.variations && p.variations.length > 0) {
+                return p.variations.some(v => 
+                    v.barcode === barcodeValue || v.sku === barcodeValue
+                );
+            }
+            
+            return false;
+        }) || null;
+    }
+
+    /**
+     * Handle search input event
+     * @param {Event} e - Input event
+     */
+    handleSearch(e) {
+        const searchValue = e.target ? e.target.value : e;
+        this.state.updateState('filters.search', searchValue);
+        this.renderProductGrid();
     }
 
     /**

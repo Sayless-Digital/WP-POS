@@ -259,7 +259,13 @@ class OnScreenKeyboard {
             if (modal) return;
             
             // Create bound handler for this input
-            const focusHandler = () => this.show(input);
+            const focusHandler = () => {
+                // Don't show keyboard if this is a programmatic focus from barcode scanning
+                if (input.dataset.skipKeyboard === 'true') {
+                    return;
+                }
+                this.show(input);
+            };
             const blurHandler = (e) => {
                 // Don't hide if keyboard is being actively used or clicking on keyboard
                 setTimeout(() => {

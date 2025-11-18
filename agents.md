@@ -1791,6 +1791,764 @@ class WP-POS_Cache_Manager {
         }
     }
 }
+## Version 1.9.209 (2025-01-XX)
+**FIXED: Virtual Keyboard Appearing During Barcode Scanning**
+
+**User Report:**
+> "when i scan the keyboard comes up"
+
+**Problem:**
+When barcodes were scanned in SKU mode, the virtual keyboard auto-show feature was triggering because the search input was being programmatically focused. This caused the keyboard to appear even though the user was scanning (not manually typing).
+
+**Solution:**
+
+### 1. **Added Skip Flag for Programmatic Focus** ([`assets/js/modules/keyboard.js:262-268`](assets/js/modules/keyboard.js:262-268))
+- Updated keyboard auto-show focus handler to check for `data-skip-keyboard="true"` attribute
+- When this flag is set, keyboard auto-show is skipped (prevents keyboard from appearing during barcode scans)
+
+### 2. **Set Skip Flag Before Barcode Focus** ([`assets/js/main.js:432-446,485-499,537-550`](assets/js/main.js:432-446,485-499,537-550))
+- Added `searchInput.dataset.skipKeyboard = 'true'` before programmatically focusing the input during barcode scanning
+- Applied to all three barcode detection scenarios:
+  - Paste-based scanners (global paste handler)
+  - Enter-terminated keyboard scanners
+  - Timeout-based fast typing detection
+- After search completes, removes the flag and blurs the input to restore normal behavior
+
+**Results:**
+- ✅ Virtual keyboard no longer appears when scanning barcodes
+- ✅ Keyboard still auto-shows when user manually clicks on input field
+- ✅ Normal typing behavior unaffected
+- ✅ Works for all barcode scanner types (paste-based, keyboard-emulation)
+
+**User Experience:**
+1. User switches to SKU mode
+2. User scans barcode (anywhere on page)
+3. System detects scan, focuses input, searches product
+4. Virtual keyboard does NOT appear ✅
+5. Product is found and modal opens or item is added to cart
+
+## Version 1.9.208 (2025-01-XX)
+**ENHANCED: Global Barcode Scanning in SKU Mode - Works Without Focusing Input**
+
+**Feature Request:**
+> "could you make it that just scanning without being in the input will paste into the input once in barcode mode"
+
+**Solution:**
+
+### 1. **Global Paste Event Listener** ([`assets/js/main.js:415-428`](assets/js/main.js:415-428))
+- Added document-level paste event listener that activates only in SKU mode
+- When a barcode is pasted (common barcode scanner behavior) and no input field is focused, automatically:
+  - Focuses the search input field
+  - Pastes the scanned value
+  - Triggers barcode search
+- Prevents interference with normal paste operations when user is typing in input fields
+
+### 2. **Global Fast Typing Detection** ([`assets/js/main.js:430-531`](assets/js/main.js:430-531))
+- Added document-level keydown listener that detects fast typing (barcode scanner behavior)
+- When in SKU mode and no input field is focused:
+  - Captures keystrokes into a buffer
+  - Detects barcode scans by timing (characters typed quickly, < 500ms total)
+  - On Enter key or 200ms timeout, automatically:
+    - Focuses the search input
+    - Inserts the scanned value
+    - Triggers barcode search
+- Ignores special keys (F-keys, Ctrl/Alt combinations) that aren't part of barcodes
+- Respects when user is manually typing (doesn't interfere if input field is focused)
+
+### 3. **Buffer Management** ([`assets/js/main.js:399-413`](assets/js/main.js:399-413))
+- Created `barcodeDetection` object to manage scanning state
+- Automatically resets buffer when:
+  - Switching away from SKU mode
+  - User manually focuses an input field
+  - After successful scan
+
+**Results:**
+- ✅ Can scan barcodes without clicking in search input first
+- ✅ Works with both paste-based scanners and keyboard-emulation scanners
+- ✅ Doesn't interfere with normal typing or input field usage
+- ✅ Automatically focuses search input when scan detected
+- ✅ Only active when in SKU mode (doesn't interfere with name search mode)
+- ✅ Handles both Enter-terminated scans and timeout-based scans
+
+**User Experience:**
+1. User switches to SKU mode via toggle button
+2. User scans barcode anywhere on page (no need to click input first)
+3. System automatically:
+   - Detects the scan
+   - Focuses search input
+   - Inserts scanned value
+   - Searches for product
+   - Opens product modal or adds to cart
+
+## Version 1.9.207 (2025-01-XX)
+**FIXED: POS SKU Search Not Working**
+
+**Problem:**
+When users switched to SKU search mode using the search toggle button, the system was showing all products instead of filtering by SKU. The `renderProductGrid()` method in ProductsManager was returning `true` for all products when `searchType === 'sku'`, completely ignoring any search input.
+
+**Solution:**
+
+### 1. **Fixed SKU Search Filtering Logic** ([`assets/js/modules/products/products.js:336-401`](assets/js/modules/products/products.js:336-401))
+- Updated `renderProductGrid()` to properly search by SKU when in SKU mode
+- Added logic to check both product SKU and variation SKUs
+- When no search value is entered in SKU mode, shows all products (still respecting other filters)
+- When a search value is entered, filters products that match the SKU (case-insensitive)
+- Maintains compatibility with other filters (category, tag, stock) even in SKU mode
+
+### 2. **Added Missing `handleSearch` Method** ([`assets/js/modules/products/products.js:912-916`](assets/js/modules/products/products.js:912-916))
+- Added `handleSearch()` method to ProductsManager that was being called from `main-modular.js` but didn't exist
+- Method accepts event object or string value and updates search filter state
+
+### 3. **Improved Search Toggle UX** ([`assets/js/main.js:297-324`](assets/js/main.js:297-324))
+- Updated search toggle button handler to update placeholder text when switching modes
+- Placeholder now shows "Search by SKU..." in SKU mode and "Search..." in name mode
+- Added re-render call after mode change to ensure UI updates immediately
+
+**Results:**
+- ✅ SKU search now properly filters products by SKU
+- ✅ Works with both product SKUs and variation SKUs
+- ✅ Real-time filtering as user types
+- ✅ Visual feedback via placeholder text
+- ✅ All filters (category, tag, stock) still work in SKU mode
+
+## Version 1.9.204 (2025-10-27)
+**FIXED: Refund/Exchange Receipts - Show All Payment Methods & Improved Clarity**
+
+**User Report:**
+> "the return and refund receipt s do not show both payment methons on ly the refund exhcnage credit payment method. and receipt itself is a but confusing"
+
+**Problems:**
+1. Refund/exchange receipts only showed first payment method, not all split payments
+2. Receipt layout was confusing and hard to understand the transaction flow
+3. No visual distinction between returned items and new items
+4. Transaction summary wasn't clear
+
+**Solution:**
+
+### 1. **Pass Split Payments to Refund API** ([`checkout.js:618-624`](assets/js/modules/cart/checkout.js:618-624))
+```javascript
+// Add split payments if multiple payment methods used
+if (splits.length > 1) {
+    payload.split_payments = splits.map(s => ({
+        method: s.method,
+        amount: parseFloat(s.amount) || 0
+    }));
+}
+```
+
+### 2. **Store Split Payments in Exchange Order** ([`api/refund.php:24, 95-98, 112`](api/refund.php:24))
+```php
+// Receive split_payments from frontend
+$split_payments = $data['split_payments'] ?? [];
+
+// Save to exchange order metadata
+if (!empty($split_payments) && is_array($split_payments) && count($split_payments) > 1) {
+    $exchange_order->add_meta_data('_jpos_split_payments', json_encode($split_payments), true);
+}
+
+// Include in receipt data
+$receipt_data = [
+    // ...
+    'split_payments' => !empty($split_payments) ? $split_payments : null,
+];
+```
+
+### 3. **Display Split Payments on Receipt** ([`receipts.js:386-400`](assets/js/modules/orders/receipts.js:386-400))
+```javascript
+${data.split_payments && data.split_payments.length > 1 ? `
+    <p class="font-semibold mb-1">Payment Methods:</p>
+    ${data.split_payments.map(sp => `
+        <div class="flex justify-between text-sm">
+            <span>${sp.method}</span>
+            <span>$${parseFloat(sp.amount).toFixed(2)}</span>
+        </div>
+    `).join('')}
+` : `
+    <div class="flex justify-between">
+        <p>Payment Method:</p>
+        <p>${data.payment_method}</p>
+    </div>
+`}
+```
+
+### 4. **Improved Receipt Clarity** ([`receipts.js:323-394`](assets/js/modules/orders/receipts.js:323-394))
+
+**Header Improvements:**
+- Larger transaction type display (REFUND/EXCHANGE)
+- All order numbers grouped together at top
+- Bold labels for easy scanning
+
+**Section Headers with Color Coding:**
+```javascript
+// Returned Items Section
+<p class="font-bold py-1 bg-red-100 px-2 border-l-4 border-red-600">ITEMS RETURNED</p>
+
+// New Items Section (Exchange only)
+<p class="font-bold py-1 bg-green-100 px-2 border-l-4 border-green-600">NEW ITEMS PURCHASED</p>
+```
+
+**Transaction Summary Box (Exchange):**
+```javascript
+<div class="mt-4 pt-3 border-t-2 border-gray-400 bg-blue-50 p-3">
+    <p class="font-bold mb-2 text-center">TRANSACTION SUMMARY</p>
+    <div class="flex justify-between text-sm">
+        <p>New Items Total:</p>
+        <p>$${data.exchange_total.toFixed(2)}</p>
+    </div>
+    <div class="flex justify-between text-sm">
+        <p>Less Return Credit:</p>
+        <p class="text-green-600">-$${data.refund_amount.toFixed(2)}</p>
+    </div>
+    <div class="flex justify-between font-bold text-lg mt-2 pt-2 border-t border-gray-400">
+        <p>${data.net_amount < 0 ? 'NET REFUND:' : 'BALANCE DUE:'}</p>
+        <p class="${data.net_amount < 0 ? 'text-green-600' : 'text-red-600'}">$${Math.abs(data.net_amount).toFixed(2)}</p>
+    </div>
+</div>
+```
+
+**Result:**
+- ✅ All payment methods now displayed on refund/exchange receipts
+- ✅ Clear visual sections with color coding (red for returns, green for new items)
+- ✅ Transaction summary box shows the math clearly
+- ✅ Better labels: "Return Credit" instead of "Amount", "Balance Due" vs "Net Refund"
+- ✅ Highlights important totals with larger text and colored backgrounds
+- ✅ Professional appearance matching modern receipt design
+
+**Files Modified:**
+- [`assets/js/modules/cart/checkout.js:618-624`](assets/js/modules/cart/checkout.js:618-624) - Send split_payments to refund API
+- [`api/refund.php:24, 95-98, 112`](api/refund.php:24) - Receive and store split_payments
+- [`assets/js/modules/orders/receipts.js:1-3, 323-400`](assets/js/modules/orders/receipts.js:1-3) - Display split payments, improved layout
+- [`index.php:42`](index.php:42) - Updated receipts.js version to v1.9.204
+
+**Version Updates:**
+- receipts.js: v1.9.191 → v1.9.204
+- Version parameters updated in index.php to force cache refresh
+
+---
+
+**ALSO IN v1.9.204: Checkout Incorrectly Calling Refund API for Regular Orders**
+
+**User Report:**
+> "when placing an order with a fee or dicount i get this erro in the console and a toast saying erro: /wp-pos/api/refund.php:1 Failed to load resource: the server responded with a status of 500"
+
+**Problem:**
+When placing a **regular order** (not a return/exchange), the system was incorrectly calling the refund API instead of the checkout API. This happened because `returns.fromOrderId` was persisting in state even after refunds were completed, causing the system to misidentify regular orders as refunds.
+
+**Root Cause:**
+The logic in `handlePayment()` only checked if `returns.fromOrderId` exists:
+```javascript
+// BUGGY CODE:
+const returnFromOrderId = this.state.getState('returns.fromOrderId');
+if (returnFromOrderId) {
+    await this.processRefund(splits);  // ❌ Called even for regular orders!
+} else {
+    await this.processCheckout(splits);
+}
+```
+
+If this state wasn't cleared properly, ALL subsequent orders would try to process as refunds and fail.
+
+**Solution:**
+
+1. **More Robust Check** ([`checkout.js:512-522`](assets/js/modules/cart/checkout.js:512-522)):
+```javascript
+// Check if this is a return/exchange by looking for negative quantity items
+const cartItems = this.state.getState('cart.items') || [];
+const hasReturnItems = cartItems.some(item => item.qty < 0);
+const returnFromOrderId = this.state.getState('returns.fromOrderId');
+
+// Only process as refund if we have BOTH return items AND an original order ID
+if (hasReturnItems && returnFromOrderId) {
+    await this.processRefund(splits);
+} else {
+    await this.processCheckout(splits);  // ✅ Regular orders always go here now
+}
+```
+
+2. **Properly Clear Return State** ([`checkout.js:638-643`](assets/js/modules/cart/checkout.js:638-643)):
+```javascript
+// Clear return state after successful refund
+this.state.updateState('returns.fromOrderId', null);
+this.state.updateState('returns.items', null);
+this.state.updateState('returns.originalDiscount', null);
+this.state.updateState('returns.originalFee', null);
+sessionStorage.removeItem('jpos_return_discount');
+```
+
+**Why This Works:**
+- **Regular orders**: No items with negative qty → `hasReturnItems = false` → calls `processCheckout()` ✅
+- **Returns/Exchanges**: Has items with negative qty → `hasReturnItems = true` → calls `processRefund()` ✅
+- **After refund**: All return state cleared properly for next transaction ✅
+
+**Result:**
+- ✅ Regular orders with fees/discounts now work correctly
+- ✅ No more 500 errors from refund.php
+- ✅ Refunds/exchanges still work as expected
+- ✅ State properly cleaned up after each transaction
+
+**Files Modified:**
+- [`assets/js/modules/cart/checkout.js:1-3, 512-522, 638-643`](assets/js/modules/cart/checkout.js:1-3) - Fixed checkout routing logic, proper state cleanup
+- [`index.php:37`](index.php:37) - Updated checkout.js version to v1.9.204
+
+**Version Updates:**
+- checkout.js: v1.9.203 → v1.9.204
+- Version parameters updated in index.php to force cache refresh
+
+---
+
+**ALSO IN v1.9.204: Cache-Busting for Orders API - Always Fetch Fresh Data**
+
+**User Request:**
+> "let it burst cahc eevery time the sit reloads"
+
+**Problem:**
+After fixing the Orders API to return correct discounted prices, users were still seeing old cached data because the browser was caching the API responses. When testing returns, they would see the old $195 price instead of the corrected $185 price.
+
+**Solution:**
+Added cache-busting timestamp parameter to the Orders API calls to ensure fresh data is always fetched.
+
+**Implementation** ([`orders.js:95-99`](assets/js/modules/orders/orders.js:95-99)):
+
+```javascript
+// BEFORE (cached):
+const response = await fetch(`/wp-pos/api/orders.php?${params}`);
+
+// AFTER (cache-busted):
+const cacheBuster = `&_t=${Date.now()}`;
+const response = await fetch(`/wp-pos/api/orders.php?${params}${cacheBuster}`);
+```
+
+**How It Works:**
+- Adds unique timestamp parameter (`&_t=1234567890`) to every API call
+- Browser treats each request as unique due to different URL
+- Forces server to process fresh request instead of returning cached response
+- Ensures users always see latest order data with correct discounted prices
+
+**Result:**
+- ✅ Orders page always shows fresh data on reload
+- ✅ Returns now show correct discounted prices ($185 instead of $195)
+- ✅ No more stale cache issues when testing changes
+- ✅ Immediate visibility of API fixes without manual cache clearing
+
+**Files Modified:**
+- [`assets/js/modules/orders/orders.js:1-3, 95-99`](assets/js/modules/orders/orders.js:1-3) - Added cache-busting timestamp
+- [`index.php:20, 41`](index.php:20) - Updated version to v1.9.204
+
+**Version Updates:**
+- System version: v1.9.203 → v1.9.204  
+- orders.js: v1.9.203 → v1.9.204
+- Version parameters updated in index.php to force cache refresh
+
+## Version 1.9.203 (2025-10-27)  
+**FIXED: Use Historical Order Prices for Returns - Simplest & Most Accurate Approach**
+
+**Problem:**
+Previous versions (v1.9.201-v1.9.202) tried to recalculate discounts by:
+1. Fetching current product price
+2. Manually applying original discount percentage/flat amount
+3. This was complex and buggy - didn't handle flat discounts properly
+4. User reported: "if there is a product being returned for 195 with a 10 discount applied from the original order it should say 185 not 195 but it says 195 still"
+
+**Root Cause:**
+The code was only handling **percentage discounts**, not **flat discounts** like "$10 off". When trying to apply a $10 flat discount to an individual item in a multi-item order, the calculation was impossible without knowing the original order total and how the discount was proportionally distributed.
+
+**The Simple Solution:**
+WooCommerce's `item.total` field **already contains the final price** after ALL discounts and fees were applied. Instead of trying to recalculate:
+- `item.total / item.quantity` = **exactly what customer paid per unit**
+- This works for percentage discounts, flat discounts, fees, coupons, everything!
+- No complex recalculation needed
+
+**Implementation:**
+
+1. **Use Historical Price from Order** ([`orders.js:463-465`](assets/js/modules/orders/orders.js:463-465)):
+```javascript
+// Use the ACTUAL PRICE PAID from the original order (item.total / quantity)
+// This already includes all discounts/fees that were applied
+const actualPricePaid = parseFloat(row.dataset.price);
+
+const itemDataForCart = {
+    ...originalItem,
+    price: actualPricePaid,  // ← Historical price (what they paid)
+    qty: -quantity
+};
+```
+
+2. **Removed All Discount Recalculation Logic** ([`cart.js:461-467, 499-516`](assets/js/modules/cart/cart.js:461-467)):
+```javascript
+// BEFORE (v1.9.202 - BUGGY):
+if (originalDiscount && originalDiscount.amount && originalDiscount.amountType === 'percentage') {
+    itemPrice = itemPrice * (1 - parseFloat(originalDiscount.amount) / 100);
+}
+// ❌ Only worked for percentage, failed for flat discounts
+
+// AFTER (v1.9.203 - SIMPLE):
+const itemPrice = parseFloat(item.price) || 0;
+// ✅ Price is already correct from order, no calculation needed
+```
+
+3. **Simplified Display** ([`cart.js:461-467`](assets/js/modules/cart/cart.js:461-467)):
+```javascript
+// For return items, the price is already the actual amount paid (no adjustment needed)
+const isReturnItem = item.qty < 0;
+let priceDisplay = `$${parseFloat(item.price).toFixed(2)}`;
+if (isReturnItem) {
+    // Show in amber color to indicate it's a return credit
+    priceDisplay = `<span class="text-amber-400 font-semibold">$${parseFloat(item.price).toFixed(2)}</span>`;
+}
+```
+
+4. **Simplified Checkout** ([`checkout.js:92-109, 297-313`](assets/js/modules/cart/checkout.js:92-109)):
+```javascript
+// Return item prices are already correct (what customer paid), no adjustment needed
+cartItems.forEach(item => {
+    const itemPrice = parseFloat(item.price) || 0;
+    const itemTotal = Math.abs(itemPrice * itemQty);
+    
+    if (itemQty < 0) {
+        returnItemsTotal += itemTotal;  // ← Already correct!
+    }
+});
+```
+
+**Example - How It Works:**
+
+```
+Original Order:
+- Product base price: $195
+- $10 flat discount applied to order
+- Customer paid: $185 per item
+- WooCommerce stores: item.total = $185
+
+Return Process (v1.9.203):
+- Load item from order: item.total / quantity = $185 ✅
+- Add to cart with price: $185 ✅
+- Display: $185 (in amber) ✅
+- Return Credit: $185 ✅
+- NO recalculation, NO bugs, WORKS FOR ALL DISCOUNT TYPES!
+```
+
+**Why This Works Better:**
+
+1. ✅ **Handles ALL discount types**: Percentage, flat, coupons, bundledeals - everything
+2. ✅ **Accurate**: Uses WooCommerce's actual stored price (what customer paid)
+3. ✅ **Simple**: No complex recalculation logic
+4. ✅ **No bugs**: Can't make calculation errors when you don't calculate!
+5. ✅ **Future-proof**: Works with any future WooCommerce discount features
+
+**Files Modified:**
+- [`index.php:20, 36-37, 41`](index.php:20) - Updated version to v1.9.203, updated script versions
+- [`assets/js/modules/orders/orders.js:1-3, 463-465`](assets/js/modules/orders/orders.js:1-3) - Use historical price directly
+- [`assets/js/modules/cart/cart.js:1-3, 461-467, 499-516`](assets/js/modules/cart/cart.js:1-3) - Removed discount recalculation, simplified display
+- [`assets/js/modules/cart/checkout.js:1-3, 92-109, 297-313, 360-384`](assets/js/modules/cart/checkout.js:1-3) - Removed discount recalculation, simplified totals
+
+**Breaking Changes:**
+None - This is how it should have worked from the start
+
+**Version Updates:**
+- System version: v1.9.202 → v1.9.203
+- cart.js: v1.9.202 → v1.9.203
+- checkout.js: v1.9.202 → v1.9.203
+- orders.js: v1.9.202 → v1.9.203
+- Version parameters updated in index.php to force cache refresh
+
+## Version 1.9.202 (2025-10-27)
+**SIMPLIFIED: Removed Checkbox - Always Apply Original Discount/Fee to Return Credits** (DEPRECATED - Approach was flawed, replaced by v1.9.203)
+
+**User Request:**
+> "remove th chckbox feature to disable appylin g or not applying and just always apply the discount or refund to the refuind orders"
+
+**Changes Made:**
+
+1. **Removed Checkbox UI** ([`index.php:1661-1667`](index.php:1661-1667)):
+   - Deleted the "Apply original discount/fee to return credit" checkbox container
+   - Simplified checkout modal to only show "Restore stock" checkbox
+
+2. **Simplified Checkout Logic** ([`checkout.js:1-3, 93-119, 307-335, 382-413`](assets/js/modules/cart/checkout.js:1-3)):
+   - Removed all checkbox state checks
+   - Removed sessionStorage preference handling
+   - Removed checkbox event listeners
+   - **Always apply** original discount/fee adjustment to return credits automatically
+   - Kept the adjustment note display for transparency
+
+3. **Simplified Cart Display** ([`cart.js:1-3, 461-478, 510-537`](assets/js/modules/cart/cart.js:1-3)):
+   - Removed sessionStorage preference checks
+   - **Always apply** adjusted pricing to return items
+   - Always show strikethrough original price and adjusted price for returns
+
+4. **Updated Orders Module** ([`orders.js:1-3`](assets/js/modules/orders/orders.js:1-3)):
+   - Version update to v1.9.202
+   - No logic changes (already uses current product price correctly)
+
+**Result:**
+- ✅ Return credits **always** reflect what customer actually paid (discounted amount)
+- ✅ Simpler, more predictable behavior
+- ✅ No user confusion from checkbox options
+- ✅ Fair refund calculation enforced automatically
+- ✅ Cleaner UI with one less checkbox
+
+**How It Works Now:**
+
+```
+Original Order:
+- Product: $100
+- 30% discount applied
+- Customer paid: $70
+
+Return Process:
+- Item added to cart: $100 (current product price)
+- Adjustment applied automatically: $100 - 30% = $70
+- Display shows: ~~$100~~ $70 (always, no checkbox)
+- Return Credit: $70 (what they actually paid) ✅
+```
+
+**Files Modified:**
+- [`index.php:20, 1661-1667, 36-37, 41`](index.php:20) - Removed checkbox HTML, updated version to v1.9.202, updated script versions
+- [`assets/js/modules/cart/checkout.js:1-3, 93-134, 307-335, 382-413`](assets/js/modules/cart/checkout.js:1-3) - Removed checkbox logic, always apply adjustments
+- [`assets/js/modules/cart/cart.js:1-3, 461-478, 510-537`](assets/js/modules/cart/cart.js:1-3) - Removed sessionStorage checks, always apply adjustments
+- [`assets/js/modules/orders/orders.js:1-3`](assets/js/modules/orders/orders.js:1-3) - Version update only
+
+**Breaking Changes:**
+None - The checkbox defaulted to checked anyway, so this just enforces that behavior
+
+**Version Updates:**
+- System version: v1.9.201 → v1.9.202
+- cart.js: v1.9.201 → v1.9.202
+- checkout.js: v1.9.201 → v1.9.202
+- orders.js: v1.9.201 → v1.9.202
+- Version parameters updated in index.php to force cache refresh
+
+## Version 1.9.201 (2025-10-27)
+**ADDED: "Apply Original Discount to Return Credit" Checkbox - User Control for Return Calculations** (DEPRECATED - Removed in v1.9.202)
+
+**Problem:**
+- Return credits were ALWAYS adjusted for original discount/fee (hardcoded behavior from v1.9.200)
+- Users had no control over whether to apply the original discount to return credits
+- Cart totals, checkout modal totals, and refund amounts didn't update properly when items were added
+- Page refresh would lose context about whether to apply adjustments
+- No visual feedback about what calculation was being used
+
+**User Request:**
+> "We need to update the item in the cart, the carts of total and total, and then on a click process refund, the return credits and refund due amounts are all wrong. They show the total course of the item and not the course of the item after the discounted or the fee or discounted is applied. So this is if we are processing a return or refund or exchange. Please review why all of these and what they are missing and make sure that all of them have the full context of what's going on and so that you can actually show the accurate number. And then we still have to consider the apply original discount to return credit checkbox in the checkout dialogue, which should decide whether or not when checking out to apply the previous fee or discount that was attached to the order that is now being returned refunded and exchanged. And that should update the sub-total and total of the checkout dialogue immediately as well. Of course, all of this should also work if we refresh the page and it shouldn't only apply when we first add the item to do the refund or exchange."
+
+**Solution Implemented:**
+
+### 1. **Added UI Checkbox** ([`index.php:1668-1674`](index.php:1668-1674))
+Created new checkbox in checkout modal:
+- **Label**: "Apply original discount/fee to return credit"
+- **Help Text**: "When checked, return credit will reflect the discounted price actually paid by the customer"
+- **Default State**: Checked (to maintain fair refund behavior)
+- **Visibility**: Only shown when processing returns with original discounts/fees
+- **Styling**: Matches existing "Restore stock" checkbox design
+
+### 2. **Checkout Modal Logic** ([`checkout.js:119-155`](assets/js/modules/cart/checkout.js:119-155))
+Implemented checkbox visibility and state management:
+```javascript
+// Show/hide based on return items with original adjustments
+const hasOriginalAdjustments = hasReturnItems && (originalDiscount || originalFee);
+
+if (applyOriginalDiscountContainer) {
+    if (hasOriginalAdjustments) {
+        applyOriginalDiscountContainer.classList.remove('hidden');
+        // Load saved preference from sessionStorage, default to checked
+        const savedPreference = sessionStorage.getItem('jpos_apply_original_discount');
+        if (applyOriginalDiscountCheckbox) {
+            applyOriginalDiscountCheckbox.checked = savedPreference !== null ? savedPreference === 'true' : true;
+        }
+    } else {
+        applyOriginalDiscountContainer.classList.add('hidden');
+    }
+}
+
+// Add event listener for immediate updates
+newCheckbox.addEventListener('change', () => {
+    // Save preference
+    sessionStorage.setItem('jpos_apply_original_discount', newCheckbox.checked);
+    // Update totals immediately
+    this.updateTotal(splits, cartTotal, totalEl, applyBtn);
+    // Also trigger cart re-render to update display
+    if (this.cart && typeof this.cart.renderCart === 'function') {
+        this.cart.renderCart();
+    }
+});
+```
+
+### 3. **Fixed Return Credit Calculation** ([`checkout.js:328-360`](assets/js/modules/cart/checkout.js:328-360))
+Updated `updateTotal()` method to respect checkbox state:
+```javascript
+// Check if we should apply original discount/fee adjustments
+const applyOriginalDiscountCheckbox = document.getElementById('apply-original-discount-checkbox');
+const shouldApplyOriginalAdjustments = !applyOriginalDiscountCheckbox || applyOriginalDiscountCheckbox.checked;
+
+// Calculate subtotal - separate returns from new items
+cartItems.forEach(item => {
+    let itemPrice = parseFloat(item.price) || 0;
+    const itemQty = item.qty || 0;
+    
+    if (itemQty < 0) {
+        // For return items, apply original discount/fee adjustment if checkbox is checked
+        if (shouldApplyOriginalAdjustments && (originalDiscount || originalFee)) {
+            // Calculate adjusted price (what customer actually paid)
+            if (originalDiscount && originalDiscount.amount && originalDiscount.amountType === 'percentage') {
+                itemPrice = itemPrice * (1 - parseFloat(originalDiscount.amount) / 100);
+            }
+            if (originalFee && originalFee.amount && originalFee.amountType === 'percentage') {
+                itemPrice = itemPrice * (1 + parseFloat(originalFee.amount) / 100);
+            }
+        }
+        returnItemsTotal += Math.abs(itemPrice * itemQty);
+    } else {
+        newItemsTotal += itemPrice * itemQty;
+    }
+});
+```
+
+### 4. **Updated Cart Display** ([`cart.js:460-482, 514-540`](assets/js/modules/cart/cart.js:460-482))
+Cart now respects checkbox state for both item display and total calculations:
+```javascript
+// Check if we should apply original discount/fee adjustments
+const savedPreference = sessionStorage.getItem('jpos_apply_original_discount');
+const shouldApplyOriginalAdjustments = savedPreference !== null ? savedPreference === 'true' : true;
+
+// Show adjusted price only if checkbox is checked
+const hasOriginalDiscount = isReturnItem && shouldApplyOriginalAdjustments && (originalDiscount || originalFee);
+
+if (hasOriginalDiscount) {
+    // Calculate what the customer actually paid
+    let adjustedPrice = parseFloat(item.price);
+    if (originalDiscount && originalDiscount.amount && originalDiscount.amountType === 'percentage') {
+        adjustedPrice = adjustedPrice * (1 - parseFloat(originalDiscount.amount) / 100);
+    }
+    if (originalFee && originalFee.amount && originalFee.amountType === 'percentage') {
+        adjustedPrice = adjustedPrice * (1 + parseFloat(originalFee.amount) / 100);
+    }
+    priceDisplay = `<span class="text-slate-400 line-through">$${parseFloat(item.price).toFixed(2)}</span> <span class="text-amber-400 font-semibold">$${adjustedPrice.toFixed(2)}</span>`;
+}
+```
+
+### 5. **SessionStorage Persistence** 
+Checkbox state persists across:
+- Page refreshes
+- Modal close/reopen
+- Multiple return transactions in same session
+- Key: `jpos_apply_original_discount`
+- Default: `true` (apply adjustments for fairness)
+
+### 6. **Simplified Display Logic** ([`checkout.js:407-438`](assets/js/modules/cart/checkout.js:407-438))
+Removed duplicate calculation in display - now uses pre-calculated adjusted amounts:
+```javascript
+// returnItemsTotal is already adjusted based on checkbox state, so just display it
+if (returnItemsTotal > 0 && newItemsTotal > 0) {
+    // Exchange - show new items and return credit
+    const showAdjustmentNote = shouldApplyOriginalAdjustments && (originalDiscount || originalFee);
+    
+    subtotalEl.innerHTML = `
+        <div class="text-xs space-y-1 w-full">
+            <div class="flex justify-between">
+                <span>New Items:</span>
+                <span class="text-green-400">$${newItemsTotal.toFixed(2)}</span>
+            </div>
+            <div class="flex justify-between">
+                <span>Return Credit:</span>
+                <span class="text-amber-400">-$${returnItemsTotal.toFixed(2)}</span>
+            </div>
+            ${showAdjustmentNote ? '<div class="text-xs text-slate-400">(Adjusted for original discount/fee)</div>' : ''}
+        </div>
+    `;
+}
+```
+
+**Results:**
+- ✅ Cart items show correct adjusted prices immediately
+- ✅ Cart totals update properly when items are added/changed
+- ✅ Checkout modal shows accurate return credit amounts
+- ✅ Refund due amounts calculated correctly
+- ✅ Checkbox toggles update all calculations instantly
+- ✅ Page refresh maintains checkbox state and calculations
+- ✅ Clear visual feedback with adjustment notes
+- ✅ All displays (cart, checkout, totals) stay perfectly in sync
+
+**Example Calculation:**
+```
+Original Order:
+- Item: $100
+- Discount: 30%
+- Customer paid: $70
+
+Return with Checkbox CHECKED (Default):
+- Return Credit: $70 (adjusted - what they actually paid) ✅
+- Fair to both customer and business
+
+Return with Checkbox UNCHECKED:
+- Return Credit: $100 (full price - store's choice to be generous)
+- Business decision to absorb the discount cost
+```
+
+**User Experience:**
+1. Add return items to cart → Prices show adjusted/original based on checkbox
+2. Click checkout → Checkbox appears if original discount/fee exists
+3. Toggle checkbox → All amounts update instantly (no delay)
+4. Complete transaction → Correct amounts applied
+5. Refresh page → Checkbox state and calculations preserved
+
+**Critical Bug Fix (Applied After Initial Implementation):**
+
+The initial implementation had a critical bug where `item.total / item.quantity` from the order API was being used as the product price. However, `item.total` is **already the discounted amount** from the original order. This caused the system to apply the discount twice!
+
+**Example of the Bug:**
+```
+Original Order:
+- Product: $100
+- 30% discount applied
+- item.total stored in order: $70
+
+Return Process (BUGGY):
+- Price set as: $70 (from item.total / quantity)
+- Discount applied again: $70 - 30% = $49 ❌ WRONG!
+- Customer only paid $70, not $49!
+```
+
+**Fix Applied** ([`orders.js:457-463`](assets/js/modules/orders/orders.js:457-463)):
+Changed to use **current product price** from products state instead of historical order price:
+
+```javascript
+// OLD (WRONG):
+price: parseFloat(row.dataset.price), // This was item.total / quantity = already discounted
+
+// NEW (CORRECT):
+const fullProductInfo = products.find(p => p.id === originalItem.id) || ...;
+const currentPrice = fullProductInfo ? parseFloat(fullProductInfo.price) : parseFloat(row.dataset.price);
+price: currentPrice, // Use current base product price
+```
+
+**Correct Flow Now:**
+```
+Original Order:
+- Product: $100
+- 30% discount applied
+- Customer paid: $70
+
+Return Process (FIXED):
+- Price set as: $100 (current product price)
+- Checkbox CHECKED: $100 - 30% = $70 ✅ CORRECT!
+- Checkbox UNCHECKED: $100 ✅ CORRECT (full refund)
+```
+
+**Files Modified:**
+- [`index.php:20, 1668-1674, 41`](index.php:20) - Added checkbox HTML, updated versions to v1.9.6, updated orders.js version
+- [`assets/js/modules/cart/checkout.js:1-3, 91-155, 328-360, 407-438`](assets/js/modules/cart/checkout.js:1-3) - Checkbox logic, calculation fixes, immediate updates
+- [`assets/js/modules/cart/cart.js:1-3, 460-482, 509-540`](assets/js/modules/cart/cart.js:1-3) - Display updates, total calculations with checkbox state
+- [`assets/js/modules/orders/orders.js:1-3, 457-463`](assets/js/modules/orders/orders.js:1-3) - **CRITICAL FIX**: Use current product price, not historical discounted price
+
+**Breaking Changes:**
+None - checkbox defaults to checked, maintaining the fair refund behavior from v1.9.200
+
+**Version Updates:**
+- System version: v1.9.6 → v1.9.201
+- cart.js: v1.9.0 → v1.9.201
+- checkout.js: v1.9.0 → v1.9.201
+- orders.js: v1.9.200 → v1.9.201
+- Version parameters updated in index.php to force cache refresh
+
 ## Version 1.9.200 (2025-10-27)
 **FIXED: Exchange Discount Logic - Apply Original Discount Only to Return Credit**
 
@@ -2077,10 +2835,10 @@ WP POS is a modern, enterprise-grade point-of-sale system built on WordPress. Th
 ## Current System Status
 
 **Status**: ✅ PRODUCTION READY
-**Last Updated**: October 7, 2025
-**Version**: 1.9.196
+**Last Updated**: January 2025
+**Version**: 1.9.209
 **All Phases Completed**: Security, Architecture, Performance, Quality & Monitoring
-**Latest Update**: WP POS v1.9.196 - Completely Fixed Auto-Refresh Timer Initialization and Reset System - resolved critical issue where auto-refresh countdown timer was not showing on page load or after first timeout, root cause was settings not being properly loaded into state before auto-refresh initialization, modified [`auth.js:275-291`](assets/js/modules/auth.js:275-291) to add 100ms delay after `loadReceiptSettings()` ensuring state is updated before calling `autoRefreshManager.loadSettings()` and `autoRefreshManager.init()`, simplified page navigation reset in [`main-modular.js:193-197`](assets/js/main-modular.js:193-197) to call `autoRefreshManager.reset()` which restarts timer with full interval, timer now displays countdown immediately on login when auto-refresh is enabled, resets properly after timeout expires and page reloads, resets on every page navigation preventing premature expiration during active use, provides reliable automatic refresh functionality for keeping POS data current in real-time environments
+**Latest Update**: WP POS v1.9.209 - Fixed Virtual Keyboard Appearing During Barcode Scanning - keyboard no longer shows when scanning barcodes, added skip flag mechanism to prevent auto-show during programmatic focus from barcode detection
 
 ## Architecture
 
