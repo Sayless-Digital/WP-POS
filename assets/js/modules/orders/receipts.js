@@ -1,5 +1,6 @@
-// WP POS v1.9.0 - Receipts Management Module
+// WP POS v1.9.211 - Receipts Management Module
 // Handles receipt display, formatting, and printing
+// Updated: Show split payments on refund/exchange receipts, improved clarity
 
 class ReceiptsManager {
     constructor(state, uiHelpers) {
@@ -134,7 +135,6 @@ class ReceiptsManager {
         // Payment methods and change
         let paymentHTML = '';
         let totalPaid = 0;
-        let paymentBreakdown = { cash: 0, card: 0, credit: 0, other: 0 };
         
         if (data.split_payments && Array.isArray(data.split_payments) && data.split_payments.length > 1) {
             paymentHTML = `<div class='flex flex-col gap-1 mt-2'><p class='font-semibold'>Payment Methods:</p>`;
@@ -142,18 +142,6 @@ class ReceiptsManager {
                 let method = sp.method === 'Other' ? 'Other' : sp.method;
                 let amount = parseFloat(sp.amount) || 0;
                 totalPaid += amount;
-                
-                // Track payment breakdown
-                const methodLower = method.toLowerCase();
-                if (methodLower === 'cash') {
-                    paymentBreakdown.cash += amount;
-                } else if (methodLower === 'card') {
-                    paymentBreakdown.card += amount;
-                } else if (methodLower.includes('return') || methodLower.includes('refund') || methodLower.includes('credit')) {
-                    paymentBreakdown.credit += amount;
-                } else {
-                    paymentBreakdown.other += amount;
-                }
                 
                 paymentHTML += `
                     <div class='flex justify-between'>
@@ -163,25 +151,6 @@ class ReceiptsManager {
                 `;
             });
             paymentHTML += '</div>';
-            
-            // Count how many payment types were actually used
-            const paymentTypesUsed = (paymentBreakdown.cash > 0 ? 1 : 0) +
-                                     (paymentBreakdown.card > 0 ? 1 : 0) +
-                                     (paymentBreakdown.credit > 0 ? 1 : 0) +
-                                     (paymentBreakdown.other > 0 ? 1 : 0);
-            
-            // Only show payment breakdown summary if there are genuinely multiple payment types
-            if (paymentTypesUsed > 1) {
-                paymentHTML += `
-                    <div class='mt-2 pt-2 border-t border-dashed border-gray-400'>
-                        <p class='font-semibold text-xs mb-1'>Payment Breakdown:</p>
-                        ${paymentBreakdown.cash > 0 ? `<div class='flex justify-between text-xs'><span>Cash:</span><span>$${paymentBreakdown.cash.toFixed(2)}</span></div>` : ''}
-                        ${paymentBreakdown.card > 0 ? `<div class='flex justify-between text-xs'><span>Card:</span><span>$${paymentBreakdown.card.toFixed(2)}</span></div>` : ''}
-                        ${paymentBreakdown.credit > 0 ? `<div class='flex justify-between text-xs'><span>Return/Refund Credit:</span><span>$${paymentBreakdown.credit.toFixed(2)}</span></div>` : ''}
-                        ${paymentBreakdown.other > 0 ? `<div class='flex justify-between text-xs'><span>Other:</span><span>$${paymentBreakdown.other.toFixed(2)}</span></div>` : ''}
-                    </div>
-                `;
-            }
         } else {
             let method = data.payment_method === 'Other' ? 'Other' : data.payment_method;
             totalPaid = parseFloat(data.amount_paid || data.total) || 0;
@@ -324,69 +293,90 @@ class ReceiptsManager {
             <div class="text-center space-y-1 mb-4">
                 ${logoUrl ? `<img src="${logoUrl}" alt="Logo" class="w-24 h-auto mx-auto" onerror="this.style.display='none';">` : ''}
                 <p class="font-bold text-lg">${settings.name || 'Your Store'}</p>
-                <p class="font-bold ${isExchange ? 'text-amber-600' : 'text-red-600'}">${data.transaction_type} RECEIPT</p>
+                <p class="font-bold text-2xl ${isExchange ? 'text-amber-600' : 'text-red-600'}">${data.transaction_type}</p>
             </div>
             <div class="space-y-1 border-t border-dashed border-gray-400 pt-2">
-                <p>Original Order: #${data.original_order_number}</p>
-                <p>${isExchange ? 'Exchange' : 'Refund'} ID: #${data.refund_id}</p>
-                <p>Date: ${this.ui.formatDateTime(data.date_created)}</p>
-                ${data.customer_name ? `<p>Customer: ${data.customer_name}</p>` : ''}
+                <p><span class="font-semibold">Original Order:</span> #${data.original_order_number}</p>
+                <p><span class="font-semibold">${isExchange ? 'Exchange' : 'Refund'} ID:</span> #${data.refund_id}</p>
+                ${isExchange && data.exchange_order_number ? `<p><span class="font-semibold">New Order:</span> #${data.exchange_order_number}</p>` : ''}
+                <p><span class="font-semibold">Date:</span> ${this.ui.formatDateTime(data.date_created)}</p>
+                ${data.customer_name ? `<p><span class="font-semibold">Customer:</span> ${data.customer_name}</p>` : ''}
             </div>
             
-            <div class="mt-2">
-                <p class="font-bold py-1">RETURNED ITEMS</p>
-                <div class="grid grid-cols-12 gap-2 font-bold py-1">
+            <div class="mt-4">
+                <p class="font-bold py-1 bg-red-100 px-2 border-l-4 border-red-600">ITEMS RETURNED</p>
+                <div class="grid grid-cols-12 gap-2 font-bold py-1 text-sm bg-gray-100">
                     <div class="col-span-1">#</div>
                     <div class="col-span-6">Item</div>
                     <div class="col-span-2 text-center">Qty</div>
-                    <div class="col-span-3 text-right">Amount</div>
+                    <div class="col-span-3 text-right">Credit</div>
                 </div>
                 ${returnedItemsHTML}
-            </div>
-            
-            <div class="mt-2 pt-2 border-t border-dashed border-gray-400 space-y-1">
-                <div class="flex justify-between font-bold">
-                    <p>Refund Credit:</p>
-                    <p class="text-green-600">$${data.refund_amount.toFixed(2)}</p>
+                <div class="mt-2 pt-2 border-t border-dashed border-gray-400">
+                    <div class="flex justify-between font-bold text-base">
+                        <p>Return Credit:</p>
+                        <p class="text-green-600">$${data.refund_amount.toFixed(2)}</p>
+                    </div>
                 </div>
             </div>
             
             ${isExchange && data.new_items && data.new_items.length > 0 ? `
-                <div class="mt-2">
-                    <p class="font-bold py-1 border-t border-dashed border-gray-400 pt-2">NEW ITEMS</p>
-                    <div class="grid grid-cols-12 gap-2 font-bold py-1">
+                <div class="mt-4">
+                    <p class="font-bold py-1 bg-green-100 px-2 border-l-4 border-green-600">NEW ITEMS PURCHASED</p>
+                    <div class="grid grid-cols-12 gap-2 font-bold py-1 text-sm bg-gray-100">
                         <div class="col-span-1">#</div>
                         <div class="col-span-6">Item</div>
                         <div class="col-span-2 text-center">Qty</div>
-                        <div class="col-span-3 text-right">Amount</div>
+                        <div class="col-span-3 text-right">Price</div>
                     </div>
                     ${newItemsHTML}
+                    <div class="mt-2 pt-2 border-t border-dashed border-gray-400">
+                        <div class="flex justify-between font-bold text-base">
+                            <p>New Items Total:</p>
+                            <p>$${data.exchange_total.toFixed(2)}</p>
+                        </div>
+                    </div>
                 </div>
                 
-                <div class="mt-2 pt-2 border-t border-dashed border-gray-400 space-y-1">
-                    <div class="flex justify-between font-bold">
-                        <p>New Order Total:</p>
+                <div class="mt-4 pt-3 border-t-2 border-gray-400 bg-blue-50 p-3">
+                    <p class="font-bold mb-2 text-center">TRANSACTION SUMMARY</p>
+                    <div class="flex justify-between text-sm">
+                        <p>New Items Total:</p>
                         <p>$${data.exchange_total.toFixed(2)}</p>
                     </div>
                     <div class="flex justify-between text-sm">
-                        <p>New Order:</p>
-                        <p>#${data.exchange_order_number}</p>
+                        <p>Less Return Credit:</p>
+                        <p class="text-green-600">-$${data.refund_amount.toFixed(2)}</p>
+                    </div>
+                    <div class="flex justify-between font-bold text-lg mt-2 pt-2 border-t border-gray-400">
+                        <p>${data.net_amount < 0 ? 'NET REFUND:' : 'BALANCE DUE:'}</p>
+                        <p class="${data.net_amount < 0 ? 'text-green-600' : 'text-red-600'}">$${Math.abs(data.net_amount).toFixed(2)}</p>
                     </div>
                 </div>
-            ` : ''}
-            
-            <div class="mt-2 pt-2 border-t border-solid border-gray-400">
-                <div class="flex justify-between font-bold text-lg">
-                    <p>${data.net_amount < 0 ? (isExchange ? 'NET REFUND:' : 'AMOUNT REFUNDED:') : 'ADDITIONAL PAYMENT:'}</p>
-                    <p class="${data.net_amount < 0 ? 'text-green-600' : 'text-red-600'}">$${Math.abs(data.net_amount).toFixed(2)}</p>
+            ` : `
+                <div class="mt-4 pt-3 border-t-2 border-gray-400 bg-green-50 p-3">
+                    <div class="flex justify-between font-bold text-xl">
+                        <p>TOTAL REFUNDED:</p>
+                        <p class="text-green-600">$${Math.abs(data.net_amount).toFixed(2)}</p>
+                    </div>
                 </div>
-            </div>
+            `}
             
             <div class="mt-2 pt-2 border-t border-dashed border-gray-400">
-                <div class="flex justify-between">
-                    <p>Payment Method:</p>
-                    <p>${data.payment_method}</p>
-                </div>
+                ${data.split_payments && data.split_payments.length > 1 ? `
+                    <p class="font-semibold mb-1">Payment Methods:</p>
+                    ${data.split_payments.map(sp => `
+                        <div class="flex justify-between text-sm">
+                            <span>${sp.method}</span>
+                            <span>$${parseFloat(sp.amount).toFixed(2)}</span>
+                        </div>
+                    `).join('')}
+                ` : `
+                    <div class="flex justify-between">
+                        <p>Payment Method:</p>
+                        <p>${data.payment_method}</p>
+                    </div>
+                `}
             </div>
             
             <div class="text-center mt-4 pt-2 border-t border-dashed border-gray-400 space-y-1">

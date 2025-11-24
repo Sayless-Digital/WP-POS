@@ -369,18 +369,25 @@ class ProductEditorManager {
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-2">
                     <div>
                         <label class="block text-xs text-slate-300 mb-1">SKU</label>
-                        <input type="text" value="${variation.sku || ''}" class="w-full px-2 py-1 bg-slate-600 text-slate-200 rounded border border-slate-500 text-sm">
+                        <input type="text" value="${variation.sku || ''}" data-field="sku" class="w-full px-2 py-1 bg-slate-600 text-slate-200 rounded border border-slate-500 text-sm">
                     </div>
                     <div>
                         <label class="block text-xs text-slate-300 mb-1">Price</label>
-                        <input type="number" step="0.01" value="${variation.price || ''}" class="w-full px-2 py-1 bg-slate-600 text-slate-200 rounded border border-slate-500 text-sm">
+                        <input type="number" step="0.01" value="${variation.price || ''}" data-field="price" class="w-full px-2 py-1 bg-slate-600 text-slate-200 rounded border border-slate-500 text-sm">
                     </div>
                     <div>
                         <label class="block text-xs text-slate-300 mb-1">Stock</label>
-                        <input type="number" value="${variation.stock_quantity || ''}" class="w-full px-2 py-1 bg-slate-600 text-slate-200 rounded border border-slate-500 text-sm">
+                        <input type="number" value="${variation.stock_quantity || ''}" data-field="stock_quantity" class="w-full px-2 py-1 bg-slate-600 text-slate-200 rounded border border-slate-500 text-sm">
                     </div>
                 </div>
+                <div class="mt-2">
+                    <label class="flex items-center">
+                        <input type="checkbox" ${variation.manage_stock ? 'checked' : ''} data-field="manage_stock" class="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500">
+                        <span class="ml-2 text-xs text-slate-300">Manage stock</span>
+                    </label>
+                </div>
             `;
+            variationRow.setAttribute('data-variation-id', variation.id);
             container.appendChild(variationRow);
         });
     }
@@ -791,7 +798,13 @@ class ProductEditorManager {
                 </div>
             </div>
             
-            <div class="mt-2">
+            <div class="mt-2 flex gap-4">
+                <label class="flex items-center">
+                    <input type="checkbox"
+                           class="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500"
+                           data-variation-field="manage_stock">
+                    <span class="ml-2 text-xs text-slate-300">Manage stock</span>
+                </label>
                 <label class="flex items-center">
                     <input type="checkbox" checked
                            class="w-4 h-4 text-blue-600 bg-slate-600 border-slate-500 rounded focus:ring-blue-500"
@@ -1172,6 +1185,7 @@ class ProductEditorManager {
                     regular_price: regularPrice,
                     sale_price: variationRow.querySelector('[data-variation-field="sale_price"]').value || '',
                     stock_quantity: variationRow.querySelector('[data-variation-field="stock_quantity"]').value || '',
+                    manage_stock: variationRow.querySelector('[data-variation-field="manage_stock"]').checked,
                     enabled: variationRow.querySelector('[data-variation-field="enabled"]').checked
                 };
                 
@@ -1184,13 +1198,15 @@ class ProductEditorManager {
         if (this.currentEditingProduct?.type === 'variable') {
             document.querySelectorAll('#product-variations > div[data-variation-id]').forEach(variationDiv => {
                 const variationId = variationDiv.getAttribute('data-variation-id');
+                const manageStockCheckbox = variationDiv.querySelector('[data-field="manage_stock"]');
                 const variationData = {
                     id: parseInt(variationId),
-                    sku: variationDiv.querySelector('[data-field="sku"]').value,
-                    price: variationDiv.querySelector('[data-field="price"]').value,
-                    sale_price: variationDiv.querySelector('[data-field="sale_price"]').value,
-                    stock_quantity: variationDiv.querySelector('[data-field="stock_quantity"]').value,
-                    stock_status: variationDiv.querySelector('[data-field="stock_status"]').value
+                    sku: variationDiv.querySelector('[data-field="sku"]')?.value || '',
+                    price: variationDiv.querySelector('[data-field="price"]')?.value || '',
+                    sale_price: variationDiv.querySelector('[data-field="sale_price"]')?.value || '',
+                    stock_quantity: variationDiv.querySelector('[data-field="stock_quantity"]')?.value || '',
+                    manage_stock: manageStockCheckbox ? manageStockCheckbox.checked : false,
+                    stock_status: variationDiv.querySelector('[data-field="stock_status"]')?.value || 'instock'
                 };
                 variations.push(variationData);
             });

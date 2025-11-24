@@ -415,10 +415,20 @@ try {
                         $variation->set_sku(sanitize_text_field($new_var['sku']));
                     }
                     
-                    // Set stock
-                    if (isset($new_var['stock_quantity']) && $new_var['stock_quantity'] !== '') {
-                        $variation->set_manage_stock(true);
-                        $variation->set_stock_quantity(absint($new_var['stock_quantity']));
+                    // Handle stock management - order matters!
+                    // 1. Set manage_stock first
+                    if (isset($new_var['manage_stock'])) {
+                        $variation->set_manage_stock($new_var['manage_stock'] === true || $new_var['manage_stock'] === 'true' || $new_var['manage_stock'] === 1 || $new_var['manage_stock'] === '1');
+                    }
+                    
+                    // 2. Set stock quantity (only if manage_stock is enabled)
+                    if (isset($new_var['manage_stock']) && ($new_var['manage_stock'] === true || $new_var['manage_stock'] === 'true' || $new_var['manage_stock'] === 1 || $new_var['manage_stock'] === '1')) {
+                        if (isset($new_var['stock_quantity']) && $new_var['stock_quantity'] !== '' && $new_var['stock_quantity'] !== null) {
+                            $variation->set_stock_quantity(absint($new_var['stock_quantity']));
+                        }
+                    } else {
+                        // If manage_stock is disabled, clear stock quantity
+                        $variation->set_stock_quantity(null);
                     }
                     
                     // Set status (enabled/disabled)
@@ -427,6 +437,67 @@ try {
                     // Save variation
                     $variation_id = $variation->save();
                     $debug['created_variation'][] = $variation_id;
+                }
+            }
+            
+            // Handle existing variations updates for variable products
+            if (isset($data['variations']) && is_array($data['variations']) && $product->get_type() === 'variable') {
+                $debug['updating'][] = 'variations';
+                $debug['variations_count'] = count($data['variations']);
+                
+                foreach ($data['variations'] as $var_data) {
+                    if (!isset($var_data['id']) || empty($var_data['id'])) {
+                        $debug['skipped_variation'][] = 'Missing variation ID';
+                        continue;
+                    }
+                    
+                    $variation_id = absint($var_data['id']);
+                    $variation = wc_get_product($variation_id);
+                    
+                    if (!$variation || $variation->get_parent_id() != $product_id) {
+                        $debug['skipped_variation'][] = "Variation ID {$variation_id} not found or doesn't belong to product";
+                        continue;
+                    }
+                    
+                    // Update SKU
+                    if (isset($var_data['sku'])) {
+                        $variation->set_sku(sanitize_text_field($var_data['sku']));
+                    }
+                    
+                    // Update price
+                    if (isset($var_data['price'])) {
+                        $variation->set_regular_price(sanitize_text_field($var_data['price']));
+                    }
+                    
+                    // Update sale price
+                    if (isset($var_data['sale_price'])) {
+                        $variation->set_sale_price(sanitize_text_field($var_data['sale_price']));
+                    }
+                    
+                    // Handle stock management - order matters!
+                    // 1. Set manage_stock first
+                    if (isset($var_data['manage_stock'])) {
+                        $variation->set_manage_stock($var_data['manage_stock'] === true || $var_data['manage_stock'] === 'true' || $var_data['manage_stock'] === 1 || $var_data['manage_stock'] === '1');
+                    }
+                    
+                    // 2. Set stock quantity (only if manage_stock is enabled)
+                    if (isset($var_data['manage_stock']) && ($var_data['manage_stock'] === true || $var_data['manage_stock'] === 'true' || $var_data['manage_stock'] === 1 || $var_data['manage_stock'] === '1')) {
+                        if (isset($var_data['stock_quantity']) && $var_data['stock_quantity'] !== '' && $var_data['stock_quantity'] !== null) {
+                            $variation->set_stock_quantity(absint($var_data['stock_quantity']));
+                        }
+                    } else {
+                        // If manage_stock is disabled, clear stock quantity
+                        $variation->set_stock_quantity(null);
+                    }
+                    
+                    // Update stock status (only if NOT managing stock)
+                    if (isset($var_data['stock_status']) && !$variation->get_manage_stock()) {
+                        $variation->set_stock_status(sanitize_text_field($var_data['stock_status']));
+                    }
+                    
+                    // Save variation
+                    $variation->save();
+                    $debug['updated_variation'][] = $variation_id;
                 }
             }
             

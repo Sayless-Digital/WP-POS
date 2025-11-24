@@ -21,6 +21,7 @@ $refund_items = $data['refund_items'] ?? [];
 $payment_method_title = sanitize_text_field($data['payment_method'] ?? 'Cash');
 $new_sale_items = $data['new_sale_items'] ?? [];
 $restore_stock = isset($data['restore_stock']) ? (bool)$data['restore_stock'] : true; // Default to true for backward compatibility
+$split_payments = $data['split_payments'] ?? [];
 
 if (empty($original_order_id) || (empty($refund_items) && empty($new_sale_items))) {
     wp_send_json_error(['message' => 'Original Order ID and items are required.'], 400);
@@ -90,6 +91,12 @@ try {
         $exchange_order->set_payment_method('jpos_payment');
         $exchange_order->set_payment_method_title($payment_method_title);
         $exchange_order->add_meta_data('_created_via_jpos', '1', true);
+        
+        // Save split payments metadata if provided
+        if (!empty($split_payments) && is_array($split_payments) && count($split_payments) > 1) {
+            $exchange_order->add_meta_data('_jpos_split_payments', json_encode($split_payments), true);
+        }
+        
         $exchange_order->calculate_totals(true);
         $exchange_order->set_status('completed');
         $exchange_order->save();
@@ -108,6 +115,7 @@ try {
         'date_created' => current_time('mysql'),
         'customer_name' => $original_order->get_formatted_billing_full_name() ?: 'Guest',
         'payment_method' => $payment_method_title,
+        'split_payments' => !empty($split_payments) ? $split_payments : null,
         
         // Returned items (negative quantities for display)
         'returned_items' => array_map(function($item) {

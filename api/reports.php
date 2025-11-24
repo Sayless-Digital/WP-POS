@@ -258,6 +258,56 @@ function getOrdersForPeriod($start_date, $end_date, $limit = 100) {
         $is_pos_order = $order->get_meta('_created_via_jpos') === '1';
         $order_source = $is_pos_order ? 'POS' : 'Online';
         
+        // Normalize split payments so receipts can render multiple methods
+        $raw_split_payments = $order->get_meta('_jpos_split_payments', true);
+        $split_payments = null;
+        
+        if (!empty($raw_split_payments)) {
+            if (is_string($raw_split_payments)) {
+                $decoded = json_decode($raw_split_payments, true);
+                
+                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                    $split_payments = $decoded;
+                } else {
+                    $unserialized = maybe_unserialize($raw_split_payments);
+                    if (is_array($unserialized)) {
+                        $split_payments = $unserialized;
+                    }
+                }
+            } elseif (is_array($raw_split_payments)) {
+                $split_payments = $raw_split_payments;
+            }
+        }
+        
+        if ($split_payments && is_array($split_payments)) {
+            $split_payments = array_map(function($payment) {
+                $method = $payment['method'] ?? '';
+                $amount_raw = $payment['amount'] ?? 0;
+                
+                if (is_string($amount_raw)) {
+                    $amount_raw = preg_replace('/[^\d\.\-]/', '', $amount_raw);
+                }
+                
+                return [
+                    'method' => $method,
+                    'amount' => floatval($amount_raw)
+                ];
+            }, $split_payments);
+        } else {
+            $split_payments = null;
+        }
+        
+        $payment_method_display = ($split_payments && count($split_payments) > 1)
+            ? implode(' + ', array_map(function($payment) {
+                return ($payment['method'] ?? 'Payment') . ' ($' . number_format($payment['amount'] ?? 0, 2) . ')';
+            }, $split_payments))
+            : $order->get_payment_method_title();
+        
+        $customer_name = trim($order->get_billing_first_name() . ' ' . $order->get_billing_last_name());
+        if (empty($customer_name)) {
+            $customer_name = 'Guest';
+        }
+        
         $orders[] = [
             'id' => $order->get_id(),
             'number' => $order->get_order_number(),
@@ -267,8 +317,9 @@ function getOrdersForPeriod($start_date, $end_date, $limit = 100) {
             'source' => $order_source,
             'total' => floatval($order->get_total()),
             'item_count' => $order->get_item_count(),
-            'customer' => $order->get_billing_first_name() . ' ' . $order->get_billing_last_name(),
-            'payment_method' => $order->get_payment_method_title(),
+            'customer' => $customer_name,
+            'payment_method' => $payment_method_display,
+            'split_payments' => $split_payments,
             'items' => array_map(function($item) {
                 $product = $item->get_product();
                 return [
@@ -344,13 +395,37 @@ function getPaymentBreakdown($start_date, $end_date) {
         $total = floatval($order->get_total());
         
         // Check for split payments
-        $split_payments = $order->get_meta('_jpos_split_payments');
+        $raw_split_payments = $order->get_meta('_jpos_split_payments', true);
+        $split_payments = null;
+        
+        if (!empty($raw_split_payments)) {
+            if (is_string($raw_split_payments)) {
+                $decoded = json_decode($raw_split_payments, true);
+                
+                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                    $split_payments = $decoded;
+                } else {
+                    $unserialized = maybe_unserialize($raw_split_payments);
+                    if (is_array($unserialized)) {
+                        $split_payments = $unserialized;
+                    }
+                }
+            } elseif (is_array($raw_split_payments)) {
+                $split_payments = $raw_split_payments;
+            }
+        }
         
         if ($split_payments && is_array($split_payments)) {
             // Handle split payments
             foreach ($split_payments as $payment) {
                 $method = strtolower($payment['method'] ?? '');
-                $amount = floatval($payment['amount'] ?? 0);
+                $amount_raw = $payment['amount'] ?? 0;
+                
+                if (is_string($amount_raw)) {
+                    $amount_raw = preg_replace('/[^\d\.\-]/', '', $amount_raw);
+                }
+                
+                $amount = floatval($amount_raw);
                 
                 if ($method === 'cash') {
                     $breakdown['cash'] += $amount;

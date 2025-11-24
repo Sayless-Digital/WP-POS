@@ -1032,6 +1032,7 @@ You can now attach customer information to orders for better tracking and custom
 - Automatic receipt generation
 - Print or email receipts
 - Receipt includes transaction details and customer information
+- Split payments display once under "Payment Methods" with each method/amount listed, so there’s no duplicate breakdown section
 
 ## Order Management
 
@@ -1293,7 +1294,13 @@ Four key metrics displayed in cards:
 - **Average Order Value**: Revenue divided by number of orders
 - **Period**: Current time range being displayed
 
-#### 3. Order Details List
+#### 3. Payment Breakdown Cards
+- Three cards summarize how much revenue came from **Cash**, **Card**, and **Other** payment types.
+- Split payments are counted exactly as they were entered at checkout (e.g., $40 cash + $60 card).
+- Use these numbers to reconcile drawers or match processor deposits at the end of each shift.
+- The totals will always add up to the Total Revenue figure shown in the summary section.
+
+#### 4. Order Details List
 Comprehensive list showing all orders for the selected period:
 - **Order #**: Unique order identifier
 - **Date**: When the order was placed
@@ -1302,6 +1309,11 @@ Comprehensive list showing all orders for the selected period:
 - **Items**: Number of items in the order
 - **Total**: Order total amount
 - **Customer**: Customer name (if available)
+
+#### Viewing Receipts from Reports
+- Click the **Receipt** button on any row inside the Order Details list to open the full receipt modal.
+- The receipt shows the same payment breakdown as the Orders page, including every split payment (Cash/Card/Other/Return Credit) entered during checkout.
+- Use this when auditing historical sales so you can confirm exactly how customers paid without leaving the reports dashboard.
 
 ### Print Reports
 1. Click the **Print** button in the top navigation bar
@@ -1321,11 +1333,11 @@ Comprehensive list showing all orders for the selected period:
 - **Receipt-style formatting**: Professional layout matching POS receipts
 
 ### Custom Date Ranges
-1. Select "Custom Range" from the period dropdown
-2. Choose your start date using the date picker
-3. Choose your end date using the date picker
-4. The report will automatically update when both dates are selected
-5. Default custom range is set to the last 30 days
+1. Select **Custom Range** from the period dropdown (both date inputs default to today the first time).
+2. Pick a **Start Date** – the report will refresh immediately even if you only set this field.
+3. Optionally pick an **End Date** – leave it blank to run a single-day report (the system will reuse the start date).
+4. Your selections persist when you leave and return to the Reports page, so it’s easy to re-run the same range later.
+5. Change either date at any time and the report refreshes instantly with the updated range—no extra buttons needed.
 
 ### Troubleshooting Reports
 
@@ -1340,6 +1352,10 @@ Comprehensive list showing all orders for the selected period:
 #### **Problem**: Print button not working
 - **Solution**: Enable pop-ups for the site, or try right-click → Print
 - **Check**: Ensure JavaScript is enabled in your browser
+
+#### **Problem**: Payment cards don't match totals
+- **Solution**: Click the refresh button to reload the latest data. The payment cards pull directly from the split payment amounts saved during checkout.
+- **Check**: Verify each split payment entry (Cash/Card/Other) was saved with the correct amount when the order was completed.
 
 ## Session Management
 

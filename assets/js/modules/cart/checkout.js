@@ -1,5 +1,6 @@
-// WP POS v1.9.0 - Checkout & Transaction Processing Module
+// WP POS v1.9.204 - Checkout & Transaction Processing Module
 // Handles split payments, transaction processing, and cart total calculations
+// Fixed: Check for return items in cart, not just return order ID (prevents wrong API call)
 
 class CheckoutManager {
     constructor(state, uiHelpers, cartManager) {
@@ -89,16 +90,20 @@ class CheckoutManager {
         let splits = [];
         
         // Calculate refund credit and new items total from cart items
+        // Return item prices are already correct (what customer paid), no adjustment needed
         let refundCredit = 0;
         let newItemsTotal = 0;
         let hasReturnItems = false;
         
         cartItems.forEach(item => {
-            const itemTotal = (parseFloat(item.price) || 0) * item.qty;
-            if (item.qty < 0) {
+            const itemPrice = parseFloat(item.price) || 0;
+            const itemQty = item.qty || 0;
+            const itemTotal = Math.abs(itemPrice * itemQty);
+            
+            if (itemQty < 0) {
                 hasReturnItems = true;
-                refundCredit += Math.abs(itemTotal);
-            } else if (item.qty > 0) {
+                refundCredit += itemTotal;
+            } else if (itemQty > 0) {
                 newItemsTotal += itemTotal;
             }
         });
@@ -116,27 +121,7 @@ class CheckoutManager {
             }
         }
         
-        // Show/hide apply discount checkbox based on return items with original discount
-        const applyDiscountContainer = document.getElementById('apply-discount-container');
-        const applyDiscountCheckbox = document.getElementById('apply-discount-checkbox');
-        if (applyDiscountContainer) {
-            const originalDiscount = this.state.getState('returns.originalDiscount');
-            const originalFee = this.state.getState('returns.originalFee');
-            
-            if (hasReturnItems && (originalDiscount || originalFee)) {
-                applyDiscountContainer.classList.remove('hidden');
-                // Reset to checked by default
-                if (applyDiscountCheckbox) {
-                    applyDiscountCheckbox.checked = true;
-                    
-                    // Add event listener to trigger recalculation when checkbox changes
-                    applyDiscountCheckbox.removeEventListener('change', this.handleDiscountCheckboxChange);
-                    applyDiscountCheckbox.addEventListener('change', this.handleDiscountCheckboxChange.bind(this));
-                }
-            } else {
-                applyDiscountContainer.classList.add('hidden');
-            }
-        }
+        // No checkbox needed - original discount/fee always applied automatically
         
         // Setup initial payment splits
         if (hasReturnItems && refundCredit > 0) {
@@ -295,108 +280,6 @@ class CheckoutManager {
         }
     }
 
-    /**
-     * Handle discount checkbox change - trigger recalculation
-     * @private
-     */
-    handleDiscountCheckboxChange() {
-        // Get current splits
-        const splits = this.state.getState('checkout.splits') || [];
-        
-        // Recalculate refund credit based on checkbox state
-        const applyDiscountCheckbox = document.getElementById('apply-discount-checkbox');
-        const shouldApplyDiscount = applyDiscountCheckbox ? applyDiscountCheckbox.checked : true;
-        
-        const cartItems = this.state.getState('cart.items') || [];
-        const originalDiscount = this.state.getState('returns.originalDiscount');
-        const originalFee = this.state.getState('returns.originalFee');
-        
-        let returnItemsTotal = 0;
-        let newItemsTotal = 0;
-        
-        // Calculate totals
-        cartItems.forEach(item => {
-            const itemTotal = (parseFloat(item.price) || 0) * Math.abs(item.qty || 0);
-            if (item.qty < 0) {
-                returnItemsTotal += itemTotal;
-            } else {
-                newItemsTotal += itemTotal;
-            }
-        });
-        
-        // Calculate adjusted return credit if discount should be applied
-        let adjustedReturnCredit = returnItemsTotal;
-        if (shouldApplyDiscount && (originalDiscount || originalFee)) {
-            if (originalDiscount && originalDiscount.amount && originalDiscount.amountType === 'percentage') {
-                adjustedReturnCredit -= (returnItemsTotal * (parseFloat(originalDiscount.amount) / 100));
-            }
-            if (originalFee && originalFee.amount && originalFee.amountType === 'percentage') {
-                adjustedReturnCredit += (returnItemsTotal * (parseFloat(originalFee.amount) / 100));
-            }
-        }
-        
-        // Ensure Return/Refund Credit split exists and update its amount
-        let refundSplit = splits.find(s => s.method === 'Return/Refund Credit');
-        if (!refundSplit) {
-            // Add Return/Refund Credit split if it doesn't exist
-            refundSplit = { method: 'Return/Refund Credit', amount: adjustedReturnCredit };
-            splits.push(refundSplit);
-        } else {
-            // Update existing Return/Refund Credit amount
-            refundSplit.amount = adjustedReturnCredit;
-        }
-        
-        // Update other payment method amounts
-        const otherSplits = splits.filter(s => s.method !== 'Return/Refund Credit');
-        const remainingAmount = newItemsTotal - adjustedReturnCredit;
-        
-        if (remainingAmount > 0) {
-            // Need additional payment
-            if (otherSplits.length === 0) {
-                // Add Cash payment method
-                splits.push({ method: 'Cash', amount: remainingAmount });
-            } else {
-                // Update existing other payment method
-                otherSplits[0].amount = remainingAmount;
-            }
-        } else if (remainingAmount <= 0 && otherSplits.length > 0) {
-            // Remove other payment methods if not needed
-            splits.splice(splits.indexOf(otherSplits[0]), 1);
-        }
-        
-        // Save updated splits
-        this.state.updateState('checkout.splits', splits);
-        
-        // Re-render the split rows with updated amounts
-        const list = document.getElementById('split-payment-methods-list');
-        if (list) {
-            list.innerHTML = ''; // Clear existing
-            
-            // Get payment methods
-            const paymentMethods = [
-                { label: 'Cash', value: 'Cash' },
-                { label: 'Card', value: 'Card' },
-                { label: 'Other', value: 'Other' },
-                { label: 'Return/Refund Credit', value: 'Return/Refund Credit' }
-            ];
-            
-            let inputFirstFocus = [];
-            this.renderSplitRows(splits, paymentMethods, list, inputFirstFocus, () => {});
-        }
-        
-        // Trigger cart update to recalculate totals
-        if (window.cartManager) {
-            window.cartManager.updateCartDisplay();
-        }
-        
-        // Trigger checkout recalculation with updated splits
-        this.updateTotal(
-            splits,
-            this.getCartTotal(),
-            document.getElementById('split-payment-total'),
-            document.getElementById('split-payment-apply')
-        );
-    }
 
     /**
      * Update total display in split payment modal
@@ -412,14 +295,18 @@ class CheckoutManager {
         }, 0);
         
         // Calculate subtotal - separate returns from new items
+        // Return item prices are already correct (what customer paid), no adjustment needed
         const cartItems = this.state.getState('cart.items') || [];
         let returnItemsTotal = 0;
         let newItemsTotal = 0;
         
         cartItems.forEach(item => {
-            const itemTotal = (parseFloat(item.price) || 0) * (item.qty || 0);
-            if (item.qty < 0) {
-                returnItemsTotal += Math.abs(itemTotal);
+            const itemPrice = parseFloat(item.price) || 0;
+            const itemQty = item.qty || 0;
+            const itemTotal = Math.abs(itemPrice * itemQty);
+            
+            if (itemQty < 0) {
+                returnItemsTotal += itemTotal;
             } else {
                 newItemsTotal += itemTotal;
             }
@@ -460,69 +347,21 @@ class CheckoutManager {
             netAmount -= Math.abs(discountVal);
         }
         
-        // Apply original order discount/fee to RETURN CREDIT ONLY (if checkbox is checked)
-        const originalDiscount = this.state.getState('returns.originalDiscount');
-        const originalFee = this.state.getState('returns.originalFee');
-        const applyDiscountCheckbox = document.getElementById('apply-discount-checkbox');
-        const shouldApplyDiscount = applyDiscountCheckbox ? applyDiscountCheckbox.checked : true; // Default to true for backward compatibility
-        
+        // Subtract return credit from net amount
+        // returnItemsTotal is already adjusted for original discount/fee based on checkbox state
         if (returnItemsTotal > 0) {
-            // Calculate what the return credit should be based on original discount/fee
-            let adjustedReturnCredit = returnItemsTotal;
-            
-            if (shouldApplyDiscount && originalDiscount && originalDiscount.amount) {
-                let originalDiscountVal = 0;
-                if (originalDiscount.amountType === 'percentage') {
-                    // Apply original discount percentage to return items
-                    originalDiscountVal = returnItemsTotal * (parseFloat(originalDiscount.amount) / 100);
-                } else {
-                    // For flat discounts, calculate proportional amount
-                    // This is tricky - we'd need to know original order total to calculate proportion
-                    // For now, we'll skip flat discount adjustment on returns
-                }
-                adjustedReturnCredit -= originalDiscountVal;
-            }
-            
-            if (shouldApplyDiscount && originalFee && originalFee.amount) {
-                let originalFeeVal = 0;
-                if (originalFee.amountType === 'percentage') {
-                    // Apply original fee percentage to return items
-                    originalFeeVal = returnItemsTotal * (parseFloat(originalFee.amount) / 100);
-                } else {
-                    // For flat fees, calculate proportional amount
-                    // This is tricky - we'd need to know original order total to calculate proportion
-                    // For now, we'll skip flat fee adjustment on returns
-                }
-                adjustedReturnCredit += originalFeeVal;
-            }
-            
-            // Use adjusted return credit instead of raw return total
-            netAmount -= adjustedReturnCredit;
+            netAmount -= returnItemsTotal;
         } else {
             // No return items, just subtract actual refund credit
             netAmount -= actualRefundCredit;
         }
         const change = sum - netAmount;
         
-        // Update subtotal display - show adjusted return credit if applicable
+        // Update subtotal display
         const subtotalEl = document.getElementById('split-payment-subtotal');
         if (subtotalEl) {
             if (returnItemsTotal > 0 && newItemsTotal > 0) {
-                // Exchange - show adjusted refund credit
-                let displayCredit = actualRefundCredit > 0 ? actualRefundCredit : returnItemsTotal;
-                
-                // If we have original discount/fee and checkbox is checked, show the adjustment
-                if (shouldApplyDiscount && (originalDiscount || originalFee)) {
-                    let adjustedCredit = returnItemsTotal;
-                    if (originalDiscount && originalDiscount.amount && originalDiscount.amountType === 'percentage') {
-                        adjustedCredit -= (returnItemsTotal * (parseFloat(originalDiscount.amount) / 100));
-                    }
-                    if (originalFee && originalFee.amount && originalFee.amountType === 'percentage') {
-                        adjustedCredit += (returnItemsTotal * (parseFloat(originalFee.amount) / 100));
-                    }
-                    displayCredit = adjustedCredit;
-                }
-                
+                // Exchange - show new items and return credit
                 subtotalEl.innerHTML = `
                     <div class="text-xs space-y-1 w-full">
                         <div class="flex justify-between">
@@ -531,27 +370,13 @@ class CheckoutManager {
                         </div>
                         <div class="flex justify-between">
                             <span>Return Credit:</span>
-                            <span class="text-amber-400">-$${displayCredit.toFixed(2)}</span>
+                            <span class="text-amber-400">-$${returnItemsTotal.toFixed(2)}</span>
                         </div>
-                        ${(shouldApplyDiscount && (originalDiscount || originalFee)) ? '<div class="text-xs text-slate-400">(Adjusted for original discount/fee)</div>' : ''}
                     </div>
                 `;
             } else if (returnItemsTotal > 0) {
-                // Return only - show adjusted refund credit
-                let displayCredit = actualRefundCredit > 0 ? actualRefundCredit : returnItemsTotal;
-                
-                if (shouldApplyDiscount && (originalDiscount || originalFee)) {
-                    let adjustedCredit = returnItemsTotal;
-                    if (originalDiscount && originalDiscount.amount && originalDiscount.amountType === 'percentage') {
-                        adjustedCredit -= (returnItemsTotal * (parseFloat(originalDiscount.amount) / 100));
-                    }
-                    if (originalFee && originalFee.amount && originalFee.amountType === 'percentage') {
-                        adjustedCredit += (returnItemsTotal * (parseFloat(originalFee.amount) / 100));
-                    }
-                    displayCredit = adjustedCredit;
-                }
-                
-                subtotalEl.innerHTML = `<span class="text-amber-400">Return Credit: $${displayCredit.toFixed(2)}</span>`;
+                // Return only
+                subtotalEl.innerHTML = `<span class="text-amber-400">Return Credit: $${returnItemsTotal.toFixed(2)}</span>`;
             } else {
                 // Regular purchase
                 subtotalEl.textContent = `$${newItemsTotal.toFixed(2)}`;
@@ -684,8 +509,13 @@ class CheckoutManager {
         checkoutBtn.textContent = 'Processing...';
 
         try {
+            // Check if this is a return/exchange by looking for negative quantity items
+            const cartItems = this.state.getState('cart.items') || [];
+            const hasReturnItems = cartItems.some(item => item.qty < 0);
             const returnFromOrderId = this.state.getState('returns.fromOrderId');
-            if (returnFromOrderId) {
+            
+            // Only process as refund if we have both return items AND an original order ID
+            if (hasReturnItems && returnFromOrderId) {
                 await this.processRefund(splits);
             } else {
                 await this.processCheckout(splits);
@@ -775,6 +605,7 @@ class CheckoutManager {
         const restoreStockCheckbox = document.getElementById('restore-stock-checkbox');
         const restoreStock = restoreStockCheckbox ? restoreStockCheckbox.checked : true;
         
+        // Build payload with split payments if multiple methods used
         const payload = {
             original_order_id: originalOrderId,
             refund_items: refund_items,
@@ -783,6 +614,14 @@ class CheckoutManager {
             restore_stock: restoreStock,
             nonce: refundNonce
         };
+        
+        // Add split payments if multiple payment methods used
+        if (splits.length > 1) {
+            payload.split_payments = splits.map(s => ({
+                method: s.method,
+                amount: parseFloat(s.amount) || 0
+            }));
+        }
         
         console.log('Refund payload:', payload);
 
@@ -805,7 +644,11 @@ class CheckoutManager {
             this.ui.showToast('Refund/Exchange processed successfully!', 'success');
             this.cart.clearCart(true);
             
-            // Clear stored discount state
+            // Clear return state
+            this.state.updateState('returns.fromOrderId', null);
+            this.state.updateState('returns.items', null);
+            this.state.updateState('returns.originalDiscount', null);
+            this.state.updateState('returns.originalFee', null);
             sessionStorage.removeItem('jpos_return_discount');
             
             // Show refund/exchange receipt

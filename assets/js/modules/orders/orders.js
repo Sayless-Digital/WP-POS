@@ -245,25 +245,25 @@ class OrdersManager {
     }
     
     /**
-     * Render pagination controls
+     * Render pagination controls (fixed to bottom)
      */
     renderPagination() {
         const pagination = this.state.getState('orders.pagination') || { page: 1, per_page: 50, total: 0, total_pages: 1 };
-        const container = document.getElementById('order-list');
+        const ordersPage = document.getElementById('orders-page');
         
         // Remove existing pagination if any
-        const existingPagination = container.parentElement.querySelector('.orders-pagination');
+        const existingPagination = ordersPage?.querySelector('.orders-pagination');
         if (existingPagination) {
             existingPagination.remove();
         }
         
         // Don't show pagination if there's only one page or no orders
-        if (pagination.total_pages <= 1) {
+        if (pagination.total_pages <= 1 || !ordersPage) {
             return;
         }
         
         const paginationEl = document.createElement('div');
-        paginationEl.className = 'orders-pagination flex items-center justify-between p-4 bg-slate-800/50 border-t border-slate-700';
+        paginationEl.className = 'orders-pagination fixed bottom-0 left-0 right-0 z-40 flex items-center justify-between p-4 bg-slate-800 border-t border-slate-700 shadow-lg';
         
         const start = (pagination.page - 1) * pagination.per_page + 1;
         const end = Math.min(pagination.page * pagination.per_page, pagination.total);
@@ -304,7 +304,13 @@ class OrdersManager {
             });
         });
         
-        container.parentElement.appendChild(paginationEl);
+        ordersPage.appendChild(paginationEl);
+        
+        // Add padding to main content to prevent overlap with fixed pagination
+        const main = ordersPage.querySelector('main');
+        if (main) {
+            main.style.paddingBottom = '80px'; // Add padding to prevent content from being hidden behind pagination
+        }
     }
 
     /**

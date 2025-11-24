@@ -39,12 +39,12 @@ require_once __DIR__ . '/../wp-load.php';
     
     <!-- Orders & Receipts Modules -->
     <script src="assets/js/modules/orders/orders.js?v=1.9.204&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/orders/receipts.js?v=1.9.204&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/orders/receipts.js?v=1.9.211&t=<?php echo time(); ?>"></script>
     
     <!-- Financial Modules -->
     <script src="assets/js/modules/financial/drawer.js?v=1.9.72&t=<?php echo time(); ?>"></script>
     <script src="assets/js/modules/financial/refund-reports.js?v=1.9.142&t=<?php echo time(); ?>"></script>
-    <script src="assets/js/modules/financial/reports.js?v=1.9.164&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/modules/financial/reports.js?v=1.9.213&t=<?php echo time(); ?>"></script>
     
     <!-- Admin Modules -->
     <script src="assets/js/modules/admin/settings.js?v=1.9.197&t=<?php echo time(); ?>"></script>
@@ -55,7 +55,7 @@ require_once __DIR__ . '/../wp-load.php';
     <script src="assets/js/modules/auto-refresh.js?v=1.9.197&t=<?php echo time(); ?>"></script>
     
     <!-- Main Orchestrator - Load Last -->
-    <script src="assets/js/main.js?v=1.9.209&t=<?php echo time(); ?>"></script>
+    <script src="assets/js/main.js?v=1.9.214&t=<?php echo time(); ?>"></script>
     <style>
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }

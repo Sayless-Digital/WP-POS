@@ -980,9 +980,10 @@ WP POS uses **query parameter versioning** for cache busting:
 - Forces fresh download = users always get latest code
 
 **Current Versions (as of latest update):**
-- System Version: `v1.8.26` (in [`agents.md`](agents.md:1792))
-- Main JavaScript: `v1.8.26` (in [`index.php`](index.php:23))
-- Routing Module: `v1.5.11` (in [`index.php`](index.php:21))
+- System Version: `v1.9.214` (in [`agents.md`](agents.md:1794))
+- Main JavaScript: `v1.9.214` (in [`index.php`](index.php:58))
+- Routing Module: `v1.9.158` (in [`index.php`](index.php:24))
+- Financial Reports Module: `v1.9.213` (in [`index.php`](index.php:47))
 
 ---
 
@@ -1103,6 +1104,10 @@ WP POS uses **query parameter versioning** for cache busting:
 **Add new line to Version History section:**
 ```markdown
 ## Version History
+- **v1.9.212** (2025-11-18): Added split payment data to Sales Reports receipts - updated [`getOrdersForPeriod()`](api/reports.php:231-285) so API responses include normalized `_jpos_split_payments` arrays and formatted multi-method labels, ensuring receipts opened from reports show every payment method just like Orders page receipts
+- **v1.9.213** (2025-11-18): Fixed Sales Reports custom range picker - `reports.js` now preserves selected dates, supports single-day selections, and respects previously chosen ranges while `main.js` always triggers data reload when switching to custom range; cache-busting version updated in [`index.php`](index.php:47)
+- **v1.9.214** (2025-11-18): Custom date input changes now persist immediately - `main.js` writes new dates to `reports.customStartDate/EndDate` and calls `fetchReportsData('custom')` instead of re-initializing the picker, so selecting a date instantly reloads Sales Reports with the correct range; `index.php` updated to load `main.js?v=1.9.214`
+- **v1.9.211** (2025-11-18): Removed redundant split payment breakdown on receipts - simplified [`ReceiptsManager.showReceipt()`](assets/js/modules/orders/receipts.js:30-220) so split payments display once under "Payment Methods" without repeating under "Payment Breakdown", updated [`index.php`](index.php:42) cache-busting version to ensure new UI loads immediately
 
 - v1.8.19: [Brief description] - [technical details with file links]
 - v1.8.18: Implemented comprehensive reporting system - added [`/api/reports.php`]...
@@ -1791,6 +1796,124 @@ class WP-POS_Cache_Manager {
         }
     }
 }
+## Version 1.9.214 (2025-11-18)
+**FIXED: Custom Date Picker Changes Now Apply Immediately**
+
+**User Report:**
+> "when i selected a date in the custom range selector it does not change"
+
+**Problem:**
+- Changing either date input fired `updateChartPeriod('custom')`, which restored the previous date from state before the new value could be read, so user selections never made it into the API request.
+
+**Solution:**
+1. Updated `assets/js/main.js` so custom date inputs write directly to `reports.customStartDate` / `reports.customEndDate` state.
+2. Date changes now call `reportsManager.fetchReportsData('custom')` immediately rather than re-initializing the picker.
+3. Incremented `assets/js/main.js` cache-busting version to v1.9.214 in `index.php`.
+
+**Results:**
+- Selecting a date instantly refreshes the Sales Report using that exact day.
+- State keeps the new values, so reopening the custom picker shows what you just chose.
+
+**Files Changed:**
+- [`assets/js/main.js`](assets/js/main.js:667-695) - new change handlers that persist date selections and fetch data immediately.
+- [`index.php`](index.php:58) - cache-busting update for `main.js`.
+
+## Version 1.9.213 (2025-11-18)
+**FIXED: Sales Reports Custom Range Picker Keeps Exact Dates + Supports Single-Day Selection**
+
+**User Report:**
+> "the range slection does not work on the reports page... it auto selected different dates and doesn't support single date selections"
+
+**Problem:**
+- Selecting a custom period on the Sales Reports page always defaulted the "from" input to 30 days prior to today, overwriting the date the user just picked.
+- The frontend required both start and end values before hitting the API, so single-day selections weren’t possible unless users manually entered the same date twice.
+- Leaving and returning to the Reports page reset the date inputs, forcing users to start over.
+
+**Solution:**
+1. Added persistent `reports.customStartDate` / `reports.customEndDate` state so the UI remembers your last chosen dates.
+2. Default both custom inputs to today (not “30 days ago”) when first opening custom mode, and preserve any explicit selections you make.
+3. Allow single-day ranges by falling back to whichever date you entered (start or end) and sending that date for both `custom_start` and `custom_end` when the other input is blank.
+4. Updated `reportsPeriodSelect` handler so choosing “Custom Range” immediately fetches data with the current inputs instead of waiting for another change.
+5. Bumped `assets/js/modules/financial/reports.js` cache-busting version to v1.9.213 in `index.php`.
+
+**Results:**
+- Date pickers honor the exact dates you select—no unexpected auto-adjustments.
+- Single-day reporting works out of the box (just set one date; the other auto-fills).
+- Custom range selections persist when navigating away and back, making it easier to compare data across sessions.
+
+**Files Changed:**
+- [`assets/js/modules/financial/reports.js`](assets/js/modules/financial/reports.js:1-520) - state persistence, defaulting, and single-day handling.
+- [`assets/js/main.js`](assets/js/main.js:667-694) - period select handler now always calls `updateChartPeriod`.
+- [`index.php`](index.php:47) - cache-busting version update for reports.js.
+
+## Version 1.9.212 (2025-11-18)
+**FIXED: Reports Receipts Now Show Complete Split Payment Details**
+
+**User Report:**
+> "the receipt on the reports page don't show the breakdown properly like the receipts in the orders page"
+
+**Problem:**
+- `getOrdersForPeriod()` in [`api/reports.php`](api/reports.php:231-285) returned only the primary WooCommerce payment title and never included `_jpos_split_payments`. Receipts opened from the Sales Reports page therefore only displayed a single payment method, even when the order was completed with multiple splits at checkout.
+
+**Solution:**
+1. Normalized `_jpos_split_payments` metadata exactly like the Orders API: decode JSON strings, fall back to `maybe_unserialize()`, and sanitize dollar-formatted amounts into floats.
+2. Attached the normalized `split_payments` array plus a formatted `payment_method` string (e.g., `Cash ($40.00) + Card ($60.00)`) to each order returned by the reports endpoint.
+3. Receipts launched from the reports list now pass full split data into `ReceiptsManager.showReceipt()`, so the same multi-method breakdown shown on the Orders page appears here as well—no frontend changes required.
+
+**Results:**
+- Sales Reports receipts mirror checkout receipts whether the transaction used one or many payment methods.
+- Cashiers can audit historical splits (cash/card/return credit/other) directly from analytics screens.
+- Eliminated confusion when reconciling totals from reports versus actual receipts.
+
+**Files Changed:**
+- [`api/reports.php`](api/reports.php:231-285) - added split payment normalization, customer fallback, and composite payment method labels.
+
+## Version 1.9.211 (2025-11-18)
+**FIXED: Removed Redundant Split Payment Breakdown on Receipts**
+
+**User Report:**
+> "receipts with split payments show payment methos and payment breakdown having both is redundnt fix this as they both show the examt same thign except with different titles"
+
+**Problem:**
+- `ReceiptsManager.showReceipt()` rendered two consecutive sections—"Payment Methods" and "Payment Breakdown"—that repeated the same split payment information, leading to visual clutter and user confusion.
+
+**Solution:**
+1. Simplified split payment rendering to output a single "Payment Methods" list showing each method/amount pair in the order captured at checkout.
+2. Removed the secondary aggregated "Payment Breakdown" summary to eliminate redundant data.
+3. Updated script cache-busting query (`index.php`) so browsers pull the latest receipt logic.
+
+**Results:**
+- Receipts now display one clean payment section regardless of how many payment methods were used.
+- Split payments remain fully transparent (each line shows method + exact amount) without repeating totals under a second heading.
+- Change calculation still works off the summed split payments.
+
+**Files Changed:**
+- [`assets/js/modules/orders/receipts.js`](assets/js/modules/orders/receipts.js:1-220) - removed breakdown block, kept single payment list.
+- [`index.php`](index.php:42) - updated receipts.js version parameter for cache busting.
+
+## Version 1.9.210 (2025-11-18)
+**FIXED: Sales Report Payment Breakdown Ignored Split Payments Saved as JSON**
+
+**User Report:**
+> "sales report breakdown summaries are wrong they are not showing accurate payment splits or amounts"
+
+**Problem:**
+- `getPaymentBreakdown()` in [`api/reports.php`](api/reports.php:320-377) only added split payment amounts when WooCommerce returned an array.
+- Checkout saves `_jpos_split_payments` metadata as a JSON string, so `get_meta()` returned a string and the reports API treated those orders as single-method payments, dumping entire totals into whichever heuristic matched the payment method title.
+
+**Solution:**
+1. Normalize `_jpos_split_payments` metadata by decoding JSON strings and falling back to `maybe_unserialize()` for legacy serialized arrays before iterating.
+2. Added amount sanitization to safely convert values like `$55.00` into floats before summing.
+3. Retained existing fallback that infers payment type from the order payment method title when no split data exists.
+
+**Results:**
+- Sales report payment cards (`cash / card / other`) now reflect the exact amounts entered at checkout for mixed-method transactions.
+- Split payments no longer disappear when saved as JSON strings.
+- Revenue totals shown in the cards match the order totals and chart sums for all time ranges.
+
+**Files Changed:**
+- [`api/reports.php`](api/reports.php:320-377) - normalize meta payloads, sanitize amount strings.
+
 ## Version 1.9.209 (2025-01-XX)
 **FIXED: Virtual Keyboard Appearing During Barcode Scanning**
 
@@ -2835,10 +2958,10 @@ WP POS is a modern, enterprise-grade point-of-sale system built on WordPress. Th
 ## Current System Status
 
 **Status**: ✅ PRODUCTION READY
-**Last Updated**: January 2025
-**Version**: 1.9.209
+**Last Updated**: November 2025
+**Version**: 1.9.214
 **All Phases Completed**: Security, Architecture, Performance, Quality & Monitoring
-**Latest Update**: WP POS v1.9.209 - Fixed Virtual Keyboard Appearing During Barcode Scanning - keyboard no longer shows when scanning barcodes, added skip flag mechanism to prevent auto-show during programmatic focus from barcode detection
+**Latest Update**: WP POS v1.9.214 - Custom date inputs on the Sales Reports page now update immediately when you pick a date (no more silent reverts), keeping selections in state and refreshing the report as soon as you change the start or end day
 
 ## Architecture
 
@@ -3395,6 +3518,7 @@ Use the built-in monitoring system to track system health, performance metrics, 
 - **v1.9.153** (2025-10-09): Fixed Products Page Display and UI Improvements - resolved critical bug where products page showed no products when navigating from sidebar menu, root cause was routing system at [`routing.js:176-181`](assets/js/modules/routing.js:176-181) calling [`renderStockList()`](assets/js/modules/products/products.js:700-770) without first fetching product data, modified to call [`await window.productsManager.fetchProducts()`](assets/js/modules/products/products.js:161-182) before rendering ensuring products are loaded from [`api/products.php`](api/products.php:22-42) API endpoint, fixed products page header layout at [`index.php:791`](index.php:791) by adding `mr-auto` class to "Products" heading pushing action buttons (Create Product, Refresh) to right edge of viewport for consistent alignment across all pages, updated cache-busting version to v1.9.153 for [`routing.js`](index.php:24), provides proper data flow in routing system ensuring products display correctly on first navigation
 
 ## Version History
+- **v1.9.210** (2025-11-18): Fixed Sales Report Payment Breakdown for Split Payments - resolved issue where `getPaymentBreakdown()` in [`api/reports.php:320-377`](api/reports.php:320-377) ignored split payments saved as JSON strings, causing all totals from split orders to be lumped into inferred payment methods instead of their actual cash/card/other amounts; added metadata normalization that decodes JSON or unserializes legacy arrays plus amount sanitization so payment breakdown cards now show accurate totals for all mixed-method transactions; backend-only change (no cache-busting update required)
 - **v1.9.196** (2025-10-27): Completely Fixed Auto-Refresh Timer Initialization and Reset System - resolved critical root cause where auto-refresh countdown timer was not initializing on page load or reinitializing after timeout expiration, deep analysis revealed settings were not properly loaded into state before auto-refresh manager initialization causing `loadSettings()` to read undefined values, modified [`auth.js:275-291`](assets/js/modules/auth.js:275-291) to add critical 100ms delay using `await new Promise(resolve => setTimeout(resolve, 100))` after `settingsManager.loadReceiptSettings()` ensuring async state updates complete before auto-refresh initialization, this delay allows state manager to properly update with settings data before `autoRefreshManager.loadSettings()` reads from it, then calls `autoRefreshManager.init()` to start countdown timer, simplified page navigation reset in [`main-modular.js:193-197`](assets/js/main-modular.js:193-197) replacing complex `updateSettings()` pattern with simple `autoRefreshManager.reset()` call that restarts timer with full interval, timer now reliably displays countdown immediately on login when auto-refresh is enabled (e.g., "05:00" for 5-minute interval), automatically reinitializes with full countdown after page reload when timer expires, resets to full interval on every page navigation preventing premature expiration during active use, provides rock-solid automatic refresh functionality essential for environments where stock levels and product data change frequently throughout the day, updated cache-busting versions to v1.9.196 for [`auth.js`](index.php:28), [`auto-refresh.js`](index.php:55), [`main.js`](index.php:58), system version updated to v1.9.196 in [`index.php:20`](index.php:20)
 
 - **v1.9.194** (2025-10-27): Auto-Refresh Timer Initialization Fix Attempt - attempted to fix countdown not showing by ensuring proper initialization sequence, but timer still not displaying due to missing async state update delay before reading settings

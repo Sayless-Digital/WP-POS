@@ -1,4 +1,4 @@
-// WP POS v1.9.142 - Reports Manager Module with New Window Print
+// WP POS v1.9.213 - Reports Manager Module with New Window Print
 // Handles reports data fetching, chart rendering, and analytics
 
 class ReportsManager {
@@ -15,12 +15,40 @@ class ReportsManager {
     async fetchReportsData(dateRange = null) {
         try {
             const period = dateRange || this.state.getState('reports.currentPeriod') || 'today';
-            const customStart = document.getElementById('custom-start-date')?.value || '';
-            const customEnd = document.getElementById('custom-end-date')?.value || '';
+            const startInput = document.getElementById('custom-start-date');
+            const endInput = document.getElementById('custom-end-date');
+            
+            const customStart = startInput?.value || this.state.getState('reports.customStartDate') || '';
+            const customEnd = endInput?.value || this.state.getState('reports.customEndDate') || '';
+            
+            if (period === 'custom') {
+                if (!customStart) {
+                    const today = new Date();
+                    const start = new Date(today);
+                    start.setDate(today.getDate() - 30);
+                    const defaultStart = start.toISOString().split('T')[0];
+                    if (startInput) startInput.value = defaultStart;
+                    this.state.updateState('reports.customStartDate', defaultStart);
+                } else {
+                    this.state.updateState('reports.customStartDate', customStart);
+                }
+                
+                if (!customEnd) {
+                    const today = new Date().toISOString().split('T')[0];
+                    if (endInput) endInput.value = today;
+                    this.state.updateState('reports.customEndDate', today);
+                } else {
+                    this.state.updateState('reports.customEndDate', customEnd);
+                }
+            }
             
             let url = `api/reports.php?period=${period}`;
             if (period === 'custom' && customStart && customEnd) {
                 url += `&custom_start=${customStart}&custom_end=${customEnd}`;
+            } else if (period === 'custom' && customStart && !customEnd) {
+                url += `&custom_start=${customStart}&custom_end=${customStart}`;
+            } else if (period === 'custom' && customEnd && !customStart) {
+                url += `&custom_start=${customEnd}&custom_end=${customEnd}`;
             }
             
             const response = await fetch(url);
@@ -454,20 +482,36 @@ class ReportsManager {
         this.state.updateState('reports.currentPeriod', period);
         
         const customDateRange = document.getElementById('custom-date-range');
+        const startInput = document.getElementById('custom-start-date');
+        const endInput = document.getElementById('custom-end-date');
+        
         if (customDateRange) {
             if (period === 'custom') {
                 customDateRange.classList.remove('hidden');
                 
-                // Set default dates (last 30 days)
-                const endDate = new Date();
-                const startDate = new Date();
-                startDate.setDate(endDate.getDate() - 30);
+                const endDate = this.state.getState('reports.customEndDate');
+                const startDate = this.state.getState('reports.customStartDate');
                 
-                const startInput = document.getElementById('custom-start-date');
-                const endInput = document.getElementById('custom-end-date');
+                if (startInput) {
+                    if (startDate) {
+                        startInput.value = startDate;
+                    } else {
+                        const today = new Date();
+                        const defaultStart = today.toISOString().split('T')[0];
+                        startInput.value = defaultStart;
+                        this.state.updateState('reports.customStartDate', defaultStart);
+                    }
+                }
                 
-                if (startInput) startInput.value = startDate.toISOString().split('T')[0];
-                if (endInput) endInput.value = endDate.toISOString().split('T')[0];
+                if (endInput) {
+                    if (endDate) {
+                        endInput.value = endDate;
+                    } else {
+                        const today = new Date().toISOString().split('T')[0];
+                        endInput.value = today;
+                        this.state.updateState('reports.customEndDate', today);
+                    }
+                }
             } else {
                 customDateRange.classList.add('hidden');
             }

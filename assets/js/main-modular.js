@@ -76,11 +76,119 @@ document.addEventListener('DOMContentLoaded', async () => {
                     });
                 }
 
-                // Product search
-                const searchInput = document.getElementById('pos-search');
+                // Product search with barcode scanning detection
+                const searchInput = document.getElementById('search-input');
                 if (searchInput && window.productsManager) {
+                    let barcodeTimer = null;
+                    let inputTimeout = null;
+                    
+                    // Handle paste event (most barcode scanners use paste)
+                    searchInput.addEventListener('paste', (e) => {
+                        // Clear any existing timers
+                        if (barcodeTimer) clearTimeout(barcodeTimer);
+                        if (inputTimeout) clearTimeout(inputTimeout);
+                        
+                        // Wait for paste to complete
+                        setTimeout(() => {
+                            const pastedValue = searchInput.value.trim();
+                            if (pastedValue.length > 0) {
+                                console.log('Barcode paste detected:', pastedValue);
+                                window.productsManager.handleBarcodeInput(pastedValue);
+                                searchInput.value = ''; // Clear after scanning
+                            }
+                        }, 50);
+                    });
+                    
+                    // Handle input - detect fast typing (barcode scanners type very quickly)
                     searchInput.addEventListener('input', (e) => {
-                        window.productsManager.handleSearch(e);
+                        const value = e.target.value;
+                        
+                        // Clear any existing search timeout
+                        if (inputTimeout) {
+                            clearTimeout(inputTimeout);
+                            inputTimeout = null;
+                        }
+                        
+                        // Clear any barcode timer
+                        if (barcodeTimer) {
+                            clearTimeout(barcodeTimer);
+                            barcodeTimer = null;
+                        }
+                        
+                        // If we have input, start a timer to detect barcode scanning
+                        // Barcode scanners typically complete input very quickly (< 200ms for full scan)
+                        if (value.length > 0) {
+                            barcodeTimer = setTimeout(() => {
+                                const finalValue = searchInput.value.trim();
+                                if (finalValue.length > 0) {
+                                    // Check if this looks like a barcode scan (entered quickly)
+                                    // Try to find by SKU/barcode first
+                                    const products = window.productsManager?.state?.getState('products.all') || [];
+                                    const foundProduct = products.find(p => {
+                                        // Check product SKU (most common)
+                                        if (p.sku && p.sku.trim() === finalValue) return true;
+                                        
+                                        // Check product barcode
+                                        if (p.barcode && p.barcode.trim() === finalValue) return true;
+                                        
+                                        // Check variation SKUs and barcodes
+                                        if (p.variations && p.variations.length > 0) {
+                                            return p.variations.some(v => 
+                                                (v.sku && v.sku.trim() === finalValue) ||
+                                                (v.barcode && v.barcode.trim() === finalValue)
+                                            );
+                                        }
+                                        
+                                        return false;
+                                    });
+                                    
+                                    if (foundProduct) {
+                                        console.log('Barcode scan found product:', foundProduct.name, finalValue);
+                                        window.productsManager.handleBarcodeInput(finalValue);
+                                        searchInput.value = ''; // Clear after scanning
+                                    } else {
+                                        // Not found, do regular search
+                                        window.productsManager.handleSearch(e);
+                                    }
+                                }
+                            }, 300); // Wait 300ms after last input - if value hasn't changed, it's likely complete
+                        }
+                    });
+                    
+                    // Handle Enter key for manual entry
+                    searchInput.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') {
+                            // Clear timers
+                            if (barcodeTimer) clearTimeout(barcodeTimer);
+                            if (inputTimeout) clearTimeout(inputTimeout);
+                            
+                            const value = searchInput.value.trim();
+                            if (value.length > 0) {
+                                e.preventDefault();
+                                // Try barcode/SKU lookup first
+                                const products = window.productsManager?.state?.getState('products.all') || [];
+                                const foundProduct = products.find(p => {
+                                    if (p.sku && p.sku.trim() === value) return true;
+                                    if (p.barcode && p.barcode.trim() === value) return true;
+                                    if (p.variations && p.variations.length > 0) {
+                                        return p.variations.some(v => 
+                                            (v.sku && v.sku.trim() === value) ||
+                                            (v.barcode && v.barcode.trim() === value)
+                                        );
+                                    }
+                                    return false;
+                                });
+                                
+                                if (foundProduct) {
+                                    console.log('Enter key found product:', foundProduct.name, value);
+                                    window.productsManager.handleBarcodeInput(value);
+                                    searchInput.value = '';
+                                } else {
+                                    // Regular search
+                                    window.productsManager.handleSearch({ target: searchInput });
+                                }
+                            }
+                        }
                     });
                 }
 

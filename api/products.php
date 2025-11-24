@@ -52,7 +52,7 @@ try {
         SELECT post_id, meta_key, meta_value
         FROM {$wpdb->postmeta}
         WHERE post_id IN ({$all_post_ids})
-        AND (meta_key LIKE 'attribute_%' OR meta_key IN ('_price', '_sku', '_stock_status', '_stock', '_manage_stock', '_thumbnail_id', '_sale_price', '_product_type'))
+        AND (meta_key LIKE 'attribute_%' OR meta_key IN ('_price', '_sku', '_stock_status', '_stock', '_manage_stock', '_thumbnail_id', '_sale_price', '_product_type', '_barcode'))
     ");
     
     $meta_map = [];
@@ -111,6 +111,7 @@ try {
         $products[$post_id] = [
             'id'             => (int)$post_id, 'name' => $post->post_title,
             'sku'            => $meta['_sku'] ?? null, 'price' => $meta['_price'] ?? null,
+            'barcode'        => $meta['_barcode'] ?? null,
             'stock_status'   => $meta['_stock_status'] ?? 'instock', 'manages_stock'  => ($meta['_manage_stock'] ?? 'no') === 'yes',
             'stock_quantity' => isset($meta['_stock']) ? (int)$meta['_stock'] : null,
             'type'           => $type_terms,
@@ -135,6 +136,7 @@ try {
             
             $products[$parent_id]['variations'][] = [
                 'id' => (int)$post_id, 'parent_id' => (int)$parent_id, 'sku' => $meta['_sku'] ?? null,
+                'barcode' => $meta['_barcode'] ?? null,
                 'price' => $meta['_price'] ?? null, 'stock_status' => $meta['_stock_status'] ?? 'instock',
                 'manages_stock' => ($meta['_manage_stock'] ?? 'no') === 'yes',
                 'stock_quantity' => isset($meta['_stock']) ? (int)$meta['_stock'] : null,

@@ -3850,6 +3850,104 @@ php tests/php/test-database-optimizer.php
   - Verify meta keys match between save and retrieve operations
   - Document all custom meta keys in central reference
 
+#### Split Payment Breakdown Ignores JSON Metadata (v1.9.210)
+- **Problem**: Sales report payment cards (Cash/Card/Other) showed incorrect totals whenever orders used split payments because the API skipped the stored split allocations.
+- **Symptoms**:
+  - Mixed-method transactions appear entirely under a single payment type.
+  - Chart/summary totals remain correct, but payment breakdown cards do not add up to revenue.
+  - No PHP or JavaScript errors are logged.
+- **Root Cause**: `_jpos_split_payments` is saved as a JSON string in [`api/checkout.php:184`](../api/checkout.php:184), but [`getPaymentBreakdown()`](../api/reports.php:320) only iterated when `get_meta()` returned an array. Strings were ignored, triggering fallback logic that guesses the payment method from `$order->get_payment_method_title()`.
+- **Solution (v1.9.210)**:
+  1. Retrieve raw meta with `$order->get_meta('_jpos_split_payments', true)` and normalize it.
+  2. Attempt `json_decode()` first; if decoding fails, run `maybe_unserialize()` for legacy serialized arrays; accept already-formed arrays as-is.
+  3. Sanitize each `amount` (strip `$` and commas) before casting to float to avoid locale formatting issues.
+  4. Continue falling back to payment method title inference only when no normalized split data exists.
+- **Code Changes**:
+  ```php
+  $raw_split_payments = $order->get_meta('_jpos_split_payments', true);
+  if (is_string($raw_split_payments)) {
+      $decoded = json_decode($raw_split_payments, true);
+      if (json_last_error() === JSON_ERROR_NONE) {
+          $split_payments = $decoded;
+      } else {
+          $maybe = maybe_unserialize($raw_split_payments);
+          if (is_array($maybe)) {
+              $split_payments = $maybe;
+          }
+      }
+  }
+  ```
+- **Testing**:
+  1. Process a POS order with two payment splits (e.g., $50 cash + $50 card).
+  2. Confirm `_jpos_split_payments` meta contains a JSON string.
+  3. Load the Sales Report for that period; Cash and Card cards should show $50 each.
+  4. Repeat with amounts including dollar signs or commas to verify sanitization.
+  5. Verify single-payment orders still display correctly.
+  6. Confirm payment breakdown totals match `summary.total_revenue`.
+
+#### Split Payment Receipts Show Duplicate Sections (v1.9.211)
+- **Problem**: Receipts generated from the POS showed both a "Payment Methods" list and a "Payment Breakdown" summary even though they contained the same split payment values, causing redundant information on every multi-method receipt.
+- **Symptoms**:
+  - Two consecutive sections list identical amounts with different headings.
+  - Receipts look cluttered when customers pay with more than one method.
+  - Users questioned which section they should trust even though both were accurate.
+- **Root Cause**: `ReceiptsManager.showReceipt()` aggregated split payments into `paymentBreakdown` after already outputting each method line-by-line, then rendered both outputs for any order that used multiple splits.
+- **Solution (v1.9.211)**:
+  1. Removed the secondary `Payment Breakdown` block so only the detailed "Payment Methods" list remains.
+  2. Retained totalPaid / change calculations so refunds and cash-change logic still work.
+  3. Updated `index.php` script version to `v1.9.211` to bust caches for the new UI.
+- **Code Changes**:
+  ```javascript
+  if (data.split_payments?.length > 1) {
+      paymentHTML = `<div class='flex flex-col gap-1 mt-2'><p class='font-semibold'>Payment Methods:</p>`;
+      data.split_payments.forEach(sp => {
+          const amount = parseFloat(sp.amount) || 0;
+          totalPaid += amount;
+          paymentHTML += `<div class='flex justify-between'><span>${sp.method}</span><span>$${amount.toFixed(2)}</span></div>`;
+      });
+      paymentHTML += '</div>';
+  }
+  ```
+- **Testing**:
+  1. Complete a checkout using two payment methods (e.g., $20 Cash + $30 Card).
+  2. Open the receipt modal immediately after checkout and via Orders page; confirm only one payment section displays.
+  3. Process a single-method payment to confirm the basic "Payment Method" row still renders.
+  4. Complete an exchange/refund that issues change to ensure change lines still appear correctly.
+
+#### Reports Page Receipts Missing Split Payment Data (v1.9.212)
+- **Problem**: Clicking “Receipt” on the Sales Reports page only showed the primary payment method even when the order used multiple payment splits, unlike receipts opened from the Orders page.
+- **Symptoms**:
+  - Receipts launched from Reports list a single payment method.
+  - Cash and card totals from the original checkout are not visible.
+  - Reports receipts disagree with the official receipt shown immediately after checkout.
+- **Root Cause**: [`getOrdersForPeriod()`](../api/reports.php:231) returned only the base WooCommerce payment title and never included `_jpos_split_payments`, so the frontend had no split data to render.
+- **Solution (v1.9.212)**:
+  1. Retrieve and normalize `_jpos_split_payments` metadata (JSON decode → `maybe_unserialize()` fallback → sanitize amounts).
+  2. Attach `split_payments` array plus a composite `payment_method` string (e.g., `Cash ($40.00) + Card ($60.00)`) to each order in the API response.
+  3. Frontend receipts automatically display all methods because `ReceiptsManager.showReceipt()` already expects the same structure from Orders endpoints.
+- **Testing**:
+  1. Complete a POS order with two splits.
+  2. Navigate to Reports → click the “Receipt” button for that order.
+  3. Verify the modal lists each payment method/amount.
+  4. Repeat with return credit or “Other” payment lines.
+  5. Confirm single-method orders still display their payment title correctly.
+
+#### Sales Reports Custom Range Picker Resets Dates (v1.9.213)
+- **Problem**: Choosing “Custom Range” on the Sales Reports page overwrote the user’s selection with “30 days ago → today”, and required both inputs to be filled before running a report—making single-day reporting impossible.
+- **Root Cause**: `updateChartPeriod('custom')` always seeded the inputs with `today - 30 days`, never persisted selections in state, and refused to fetch data until both start and end values were set.
+- **Solution (v1.9.213)**:
+  1. Persist `reports.customStartDate` / `reports.customEndDate` in state so we always remember the last explicit selection.
+  2. Default both inputs to today the first time you enter custom mode (instead of 30 days ago).
+  3. Allow single-day selections by falling back to whichever date is provided and sending it for both `custom_start` and `custom_end`.
+  4. Updated `assets/js/main.js` so selecting "Custom Range" immediately triggers `reportsManager.updateChartPeriod('custom')`.
+  5. **Follow-up (v1.9.214)**: Custom date inputs now update `reports.customStartDate/EndDate` directly and call `fetchReportsData('custom')`, preventing the picker from overwriting freshly selected dates.
+- **Testing**:
+  1. Switch to “Custom Range”; verify both inputs show today and data loads.
+  2. Change only the start date to a day in the past; ensure the report runs for that single day.
+  3. Set different start/end dates and confirm they persist after navigating away and back.
+  4. Switch from custom to a preset (e.g., “This Month”) and back; prior custom dates should still display.
+  5. Edit just one date; confirm the report refreshes immediately with the new range.
+
 #### Products Not Displaying on Products Page or POS Page (v1.9.154)
 - **Problem**: Products fail to load on both the Products page and POS page, showing only skeleton loaders indefinitely
 - **Symptoms**:

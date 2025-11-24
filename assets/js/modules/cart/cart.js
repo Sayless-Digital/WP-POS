@@ -1,5 +1,6 @@
-// WP POS v1.9.0 - Cart Manager Module
+// WP POS v1.9.203 - Cart Manager Module
 // Handles all cart operations, calculations, and customer attachment
+// Simplified: Use historical order price directly (already includes discounts/fees)
 
 class CartManager {
     constructor(stateManager, uiHelpers) {
@@ -457,23 +458,12 @@ class CartManager {
             const itemInfo = document.createElement('div');
             itemInfo.className = 'flex-grow truncate';
             
-            // Check if this is a return item with original discount
-            const originalDiscount = this.state.getState('returns.originalDiscount');
-            const originalFee = this.state.getState('returns.originalFee');
+            // For return items, the price is already the actual amount paid (no adjustment needed)
             const isReturnItem = item.qty < 0;
-            const hasOriginalDiscount = isReturnItem && (originalDiscount || originalFee);
-            
             let priceDisplay = `$${parseFloat(item.price).toFixed(2)}`;
-            if (hasOriginalDiscount) {
-                // Calculate what the customer actually paid
-                let adjustedPrice = parseFloat(item.price);
-                if (originalDiscount && originalDiscount.amount && originalDiscount.amountType === 'percentage') {
-                    adjustedPrice = adjustedPrice * (1 - parseFloat(originalDiscount.amount) / 100);
-                }
-                if (originalFee && originalFee.amount && originalFee.amountType === 'percentage') {
-                    adjustedPrice = adjustedPrice * (1 + parseFloat(originalFee.amount) / 100);
-                }
-                priceDisplay = `<span class="text-slate-400 line-through">$${parseFloat(item.price).toFixed(2)}</span> <span class="text-amber-400 font-semibold">$${adjustedPrice.toFixed(2)}</span>`;
+            if (isReturnItem) {
+                // Show in amber color to indicate it's a return credit
+                priceDisplay = `<span class="text-amber-400 font-semibold">$${parseFloat(item.price).toFixed(2)}</span>`;
             }
             
             itemInfo.innerHTML = `<span class="font-semibold text-slate-100 truncate block" title="${item.name}">${item.name}</span><span class="font-mono block">${priceDisplay}</span>`;
@@ -507,33 +497,21 @@ class CartManager {
         });
 
         // Calculate totals - separate returns from new items
+        // Return items already have the correct price (what customer paid), no adjustment needed
         const cartItems = cart.items || [];
         let returnItemsTotal = 0;
         let newItemsTotal = 0;
         
         cartItems.forEach(item => {
-            let itemPrice = parseFloat(item.price) || 0;
+            const itemPrice = parseFloat(item.price) || 0;
+            const itemTotal = itemPrice * Math.abs(item.qty);
             
-            // For return items, check if we should use adjusted price
             if (item.qty < 0) {
-                const originalDiscount = this.state.getState('returns.originalDiscount');
-                const originalFee = this.state.getState('returns.originalFee');
-                const applyDiscountCheckbox = document.getElementById('apply-discount-checkbox');
-                const shouldApplyDiscount = applyDiscountCheckbox ? applyDiscountCheckbox.checked : true;
-                
-                if (shouldApplyDiscount && (originalDiscount || originalFee)) {
-                    // Calculate adjusted price (what customer actually paid)
-                    if (originalDiscount && originalDiscount.amount && originalDiscount.amountType === 'percentage') {
-                        itemPrice = itemPrice * (1 - parseFloat(originalDiscount.amount) / 100);
-                    }
-                    if (originalFee && originalFee.amount && originalFee.amountType === 'percentage') {
-                        itemPrice = itemPrice * (1 + parseFloat(originalFee.amount) / 100);
-                    }
-                }
-                
-                returnItemsTotal += Math.abs(itemPrice * Math.abs(item.qty)); // Store as positive
+                // Return items - price is already what customer paid
+                returnItemsTotal += itemTotal;
             } else {
-                newItemsTotal += itemPrice * item.qty;
+                // New items - regular price
+                newItemsTotal += itemTotal;
             }
         });
         

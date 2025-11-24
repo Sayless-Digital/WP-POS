@@ -673,8 +673,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     customDateRange.classList.remove('hidden');
                 } else {
                     customDateRange.classList.add('hidden');
-                    reportsManager.updateChartPeriod(e.target.value);
                 }
+                
+                reportsManager.updateChartPeriod(e.target.value);
             });
         }
         
@@ -682,13 +683,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         const customEndDate = document.getElementById('custom-end-date');
         if (customStartDate && customEndDate) {
             customStartDate.addEventListener('change', () => {
-                if (document.getElementById('reports-period-select').value === 'custom') {
-                    reportsManager.updateChartPeriod('custom');
+                if (reportsPeriodSelect?.value === 'custom') {
+                    reportsManager.state.updateState('reports.customStartDate', customStartDate.value);
+                    reportsManager.fetchReportsData('custom');
                 }
             });
             customEndDate.addEventListener('change', () => {
-                if (document.getElementById('reports-period-select').value === 'custom') {
-                    reportsManager.updateChartPeriod('custom');
+                if (reportsPeriodSelect?.value === 'custom') {
+                    reportsManager.state.updateState('reports.customEndDate', customEndDate.value);
+                    reportsManager.fetchReportsData('custom');
                 }
             });
         }
